@@ -31,11 +31,11 @@ export default function Login() {
 
         <form onSubmit={handleSubmit}>
           <label className="field">
-            <span>Employee ID</span>
+            <span>WorkBuddy ID</span>
             <input
               value={id}
               onChange={(e) => setId(e.target.value)}
-              placeholder="e.g. EMP001"
+              placeholder="e.g. EMP001 or DRV01"
               autoFocus
             />
           </label>
@@ -46,7 +46,7 @@ export default function Login() {
               type="password"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              placeholder="4-digit PIN"
+              placeholder="Your PIN"
             />
           </label>
 
@@ -60,8 +60,10 @@ export default function Login() {
         <div className="login-help">
           <strong>Test logins:</strong>
           <ul>
-            <li>Employee — <code>EMP001</code> / PIN <code>1111</code></li>
-            <li>HR / Admin — <code>ADM001</code> / PIN <code>0000</code></li>
+            <li>Employee &mdash; <code>EMP001</code> / PIN <code>1111</code></li>
+            <li>HR / Admin &mdash; <code>ADM001</code> / PIN <code>0000</code></li>
+            <li>IT Support &mdash; <code>IT001</code> / PIN <code>5555</code></li>
+            <li>Driver &mdash; <code>DRV01</code> / PIN <code>1234</code></li>
           </ul>
         </div>
       </div>

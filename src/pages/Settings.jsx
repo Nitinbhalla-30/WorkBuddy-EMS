@@ -88,6 +88,20 @@ export default function Settings() {
           </label>
         </div>
 
+        <h3 className="section-title">Cab timing rules</h3>
+        <div className="two-col">
+          <label className="field">
+            <span>Maximum wait time for employees (minutes)</span>
+            <input
+              type="number"
+              min="0"
+              value={form.cabWaitingTime || ''}
+              onChange={(e) => update('cabWaitingTime', Number(e.target.value))}
+            />
+          </label>
+          <div />
+        </div>
+
         <h3 className="section-title">Leave allowance (per year)</h3>
         <p className="hint first">
           Paid-leave days given to every employee each year. Unpaid leave has

@@ -4,12 +4,14 @@ import {
   addCabMessage,
   createCabRequest,
   getCabAssignmentForEmployee,
+  getCabCancellationForEmployee,
   getCabMessagesForEmployee,
   getCabRequestsForEmployee,
   getDrivers,
   getProfileForEmployee,
   getTrips,
-  getVehicles
+  getVehicles,
+  setCabCancellation
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
 import {
@@ -31,6 +33,9 @@ export default function MyCab() {
   const [refresh, setRefresh] = useState(0)
   const [showForm, setShowForm] = useState(false)
 
+  // Today's date key, e.g. "2026-08-05"
+  const todayKey = new Date().toISOString().slice(0, 10)
+
   const vehicles = useMemo(() => getVehicles(), [refresh])
   const drivers = useMemo(() => getDrivers(), [refresh])
   const trips = useMemo(() => getTrips(), [refresh])
@@ -48,6 +53,21 @@ export default function MyCab() {
     () => getCabMessagesForEmployee(user.id),
     [user.id, refresh]
   )
+
+  // Today's cancellation preference for this employee
+  const cancellation = useMemo(
+    () => getCabCancellationForEmployee(user.id, todayKey),
+    [user.id, refresh]
+  )
+  const skipPickup = cancellation?.skipPickup || false
+  const skipDrop   = cancellation?.skipDrop   || false
+
+  function toggleCancellation(field) {
+    const newSkipPickup = field === 'pickup' ? !skipPickup : skipPickup
+    const newSkipDrop   = field === 'drop'   ? !skipDrop   : skipDrop
+    setCabCancellation(user.id, todayKey, newSkipPickup, newSkipDrop)
+    setRefresh((n) => n + 1)
+  }
 
   const pickupTrip = assignment ? tripById(trips, assignment.pickupTripId) : null
   const dropTrip = assignment ? tripById(trips, assignment.dropTripId) : null
@@ -80,6 +100,42 @@ export default function MyCab() {
       {!assignment && (
         <div className="info-box first">
           You have not been assigned a cab yet. Please check with HR.
+        </div>
+      )}
+
+      {/* Today's cancellation panel — only shown when a cab is assigned */}
+      {assignment && (
+        <div className="cab-cancellation-panel">
+          <div className="cab-cancellation-title">Today&rsquo;s cab preference</div>
+          <p className="hint first">
+            Let the driver know in advance if you don&rsquo;t need a pickup or drop today.
+            Toggle a button below and the driver&rsquo;s list will update automatically.
+          </p>
+          <div className="cab-cancellation-actions">
+            <button
+              id="btn-skip-pickup"
+              className={`btn cab-cancel-btn ${skipPickup ? 'cab-cancel-btn-active' : 'btn-light'}`}
+              onClick={() => toggleCancellation('pickup')}
+            >
+              {skipPickup ? '✓ Skipping pickup today' : 'Skip pickup today'}
+            </button>
+            <button
+              id="btn-skip-drop"
+              className={`btn cab-cancel-btn ${skipDrop ? 'cab-cancel-btn-active' : 'btn-light'}`}
+              onClick={() => toggleCancellation('drop')}
+            >
+              {skipDrop ? '✓ Skipping drop today' : 'Skip drop today'}
+            </button>
+          </div>
+          {(skipPickup || skipDrop) && (
+            <div className="cab-cancellation-notice">
+              {skipPickup && skipDrop
+                ? 'You have skipped both pickup and drop for today. The driver will not collect or drop you.'
+                : skipPickup
+                ? 'You have skipped pickup for today. The driver will not collect you this morning.'
+                : 'You have skipped drop for today. The driver will not drop you this evening.'}
+            </div>
+          )}
         </div>
       )}
 

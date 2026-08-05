@@ -41,7 +41,7 @@ export default function EmployeeTickets() {
   return (
     <div>
       <div className="page-head">
-        <h2>Queries &amp; Grievances</h2>
+        <h2>My Queries &amp; Grievances</h2>
         <button
           className="btn btn-primary btn-tiny"
           onClick={() => { setShowForm((s) => !s); setOpenId(null) }}

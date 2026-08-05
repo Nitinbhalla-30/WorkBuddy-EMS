@@ -9,6 +9,8 @@ import EmployeeTasks from './pages/EmployeeTasks.jsx'
 import TeamTasks from './pages/TeamTasks.jsx'
 import EmployeeProfile from './pages/EmployeeProfile.jsx'
 import EmployeeTickets from './pages/EmployeeTickets.jsx'
+import EmployeeITHelpDesk from './pages/EmployeeITHelpDesk.jsx'
+import EmployeeAnnouncements from './pages/EmployeeAnnouncements.jsx'
 import MyCab from './pages/MyCab.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import AdminLeaves from './pages/AdminLeaves.jsx'
@@ -16,9 +18,12 @@ import AdminSalary from './pages/AdminSalary.jsx'
 import AdminTasks from './pages/AdminTasks.jsx'
 import AdminProfiles from './pages/AdminProfiles.jsx'
 import AdminTickets from './pages/AdminTickets.jsx'
+import AdminITHelpDesk from './pages/AdminITHelpDesk.jsx'
+import AdminAnnouncements from './pages/AdminAnnouncements.jsx'
 import CabManagement from './pages/CabManagement.jsx'
 import AttendanceRecords from './pages/AttendanceRecords.jsx'
 import Settings from './pages/Settings.jsx'
+import DriverView from './pages/DriverView.jsx'
 
 // Only let logged-in users through. Admin-only pages also check the role.
 function Protected({ children, adminOnly }) {
@@ -33,9 +38,9 @@ function Protected({ children, adminOnly }) {
 function Home() {
   const { user } = useAuth()
   if (!user) return <Navigate to="/login" replace />
-  return user.role === 'admin'
-    ? <Navigate to="/admin" replace />
-    : <Navigate to="/me" replace />
+  if (user.role === 'admin')  return <Navigate to="/admin" replace />
+  if (user.role === 'driver') return <Navigate to={`/driver/${user.id}`} replace />
+  return <Navigate to="/me" replace />
 }
 
 export default function App() {
@@ -61,6 +66,8 @@ export default function App() {
         <Route path="/team-tasks" element={<TeamTasks />} />
         <Route path="/my-profile" element={<EmployeeProfile />} />
         <Route path="/help" element={<EmployeeTickets />} />
+        <Route path="/it-help" element={<EmployeeITHelpDesk />} />
+        <Route path="/announcements" element={<EmployeeAnnouncements />} />
         <Route path="/my-cab" element={<MyCab />} />
         <Route
           path="/admin"
@@ -111,6 +118,22 @@ export default function App() {
           }
         />
         <Route
+          path="/it-help-desk"
+          element={
+            <Protected adminOnly>
+              <AdminITHelpDesk />
+            </Protected>
+          }
+        />
+        <Route
+          path="/company-announcements"
+          element={
+            <Protected adminOnly>
+              <AdminAnnouncements />
+            </Protected>
+          }
+        />
+        <Route
           path="/cab-management"
           element={
             <Protected adminOnly>
@@ -143,6 +166,16 @@ export default function App() {
           }
         />
       </Route>
+
+      {/* Driver run-sheet — requires login, only accessible to the driver themselves */}
+      <Route
+        path="/driver/:driverId"
+        element={
+          <Protected>
+            <DriverView />
+          </Protected>
+        }
+      />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

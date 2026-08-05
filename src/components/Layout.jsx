@@ -1,13 +1,39 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getSettings } from '../data/store.js'
+import { getSettings, getUnreadAnnouncementCount } from '../data/store.js'
+import { useState, useEffect } from 'react'
 
 // The shared frame: top bar with the company name, side menu, and content.
 export default function Layout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const settings = getSettings()
   const isAdmin = user?.role === 'admin'
+  const isIT = user?.department === 'IT Support'
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (user && (isIT || !isAdmin)) {
+      setUnreadCount(getUnreadAnnouncementCount(user.id))
+    } else {
+      setUnreadCount(0)
+    }
+  }, [user, isAdmin, isIT, location])
+
+  // Listen for announcement read events to update badge in real-time
+  useEffect(() => {
+    const handleAnnouncementRead = () => {
+      if (user && (isIT || !isAdmin)) {
+        setUnreadCount(getUnreadAnnouncementCount(user.id))
+      }
+    }
+
+    window.addEventListener('announcementRead', handleAnnouncementRead)
+    return () => {
+      window.removeEventListener('announcementRead', handleAnnouncementRead)
+    }
+  }, [user, isAdmin, isIT])
 
   function handleLogout() {
     logout()
@@ -20,7 +46,7 @@ export default function Layout() {
         <div className="brand">WorkBuddy - {settings.companyName}</div>
         <div className="topbar-right">
           <span className="who">
-            {user?.name} <small>({isAdmin ? 'HR / Admin' : 'Employee'})</small>
+            {user?.name} <small>({isAdmin ? (isIT ? 'IT Support' : 'HR / Admin') : 'Employee'})</small>
           </span>
           <button className="btn btn-light" onClick={handleLogout}>
             Log out
@@ -40,11 +66,18 @@ export default function Layout() {
               {user?.isManager && (
                 <NavLink to="/team-tasks" className="nav-item">My Team Tasks</NavLink>
               )}
-              <NavLink to="/help" className="nav-item">My Queries &amp; Grievances</NavLink>
               <NavLink to="/my-cab" className="nav-item">My Cab</NavLink>
+              <NavLink to="/it-help" className="nav-item">My IT Issues</NavLink>
+              <NavLink to="/help" className="nav-item">My Queries &amp; Grievances</NavLink>
+              <NavLink to="/announcements" className="nav-item">
+                Announcements
+                {unreadCount > 0 && (
+                  <span className="notification-badge">{unreadCount}</span>
+                )}
+              </NavLink>
             </>
           )}
-          {isAdmin && (
+          {isAdmin && !isIT && (
             <>
               <NavLink to="/admin" className="nav-item">Dashboard</NavLink>
               <NavLink to="/records-profiles" className="nav-item">Employee Records</NavLink>
@@ -52,9 +85,27 @@ export default function Layout() {
               <NavLink to="/leave-requests" className="nav-item">Leave Requests</NavLink>
               <NavLink to="/salary" className="nav-item">Salaries</NavLink>
               <NavLink to="/tasks" className="nav-item">Tasks</NavLink>
-              <NavLink to="/queries" className="nav-item">Queries &amp; Grievances</NavLink>
               <NavLink to="/cab-management" className="nav-item">Cab Management</NavLink>
+              <NavLink to="/it-help-desk" className="nav-item">IT Issues</NavLink>
+              <NavLink to="/queries" className="nav-item">Queries &amp; Grievances</NavLink>
+              <NavLink to="/company-announcements" className="nav-item">
+                Announcements
+                {unreadCount > 0 && (
+                  <span className="notification-badge">{unreadCount}</span>
+                )}
+              </NavLink>
               <NavLink to="/settings" className="nav-item">Settings</NavLink>
+            </>
+          )}
+          {isIT && (
+            <>
+              <NavLink to="/it-help-desk" className="nav-item">IT Issues</NavLink>
+              <NavLink to="/company-announcements" className="nav-item">
+                Announcements
+                {unreadCount > 0 && (
+                  <span className="notification-badge">{unreadCount}</span>
+                )}
+              </NavLink>
             </>
           )}
         </nav>

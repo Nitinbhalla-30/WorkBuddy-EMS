@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS = {
   officeStartTime: '09:30',          // used to decide "Late"
   standardWorkHours: 8,              // used to show a target per day
   officeIp: '',                      // office internet address (set by admin)
+  cabWaitingTime: 20,                // max wait time in minutes for cabs
   // Test helper: when true, the office-internet check always passes.
   // Turn this OFF in the real office once officeIp is set.
   pretendOnOfficeNetwork: true,
@@ -55,7 +56,16 @@ export const SAMPLE_EMPLOYEES = [
     salary: { basic: 15000, hra: 7000, other: 4000, tdsMonthly: 800 } },
   { id: 'ADM001', name: 'Meera Kapoor', pin: '0000', role: 'admin', department: 'Human Resources',
     isManager: false, managerId: null,
-    salary: { basic: 0, hra: 0, other: 0, tdsMonthly: 0 } }
+    salary: { basic: 0, hra: 0, other: 0, tdsMonthly: 0 } },
+  { id: 'IT001', name: 'Rajesh Kumar', pin: '5555', role: 'it', department: 'IT Support',
+    isManager: false, managerId: null,
+    salary: { basic: 20000, hra: 8000, other: 5000, tdsMonthly: 1000 } },
+  { id: 'IT002', name: 'Anita Desai', pin: '6666', role: 'it', department: 'IT Support',
+    isManager: false, managerId: null,
+    salary: { basic: 18000, hra: 7000, other: 4000, tdsMonthly: 800 } },
+  { id: 'IT003', name: 'Vikram Singh', pin: '7777', role: 'it', department: 'IT Support',
+    isManager: true, managerId: null,
+    salary: { basic: 25000, hra: 10000, other: 6000, tdsMonthly: 1500 } }
 ]
 
 // ---- small date helpers ----
@@ -194,6 +204,140 @@ export const TASK_PRIORITIES = [
   { key: 'low',    label: 'Low' },
   { key: 'medium', label: 'Medium' },
   { key: 'high',   label: 'High' }
+]
+
+// ---- IT Help Desk ----
+// IT issue priority levels.
+export const IT_ISSUE_PRIORITIES = [
+  { key: 'low',    label: 'Low' },
+  { key: 'medium', label: 'Medium' },
+  { key: 'high',   label: 'High' }
+]
+
+// The stages an IT issue moves through.
+export const IT_ISSUE_STATUSES = [
+  { key: 'open',       label: 'Open' },
+  { key: 'inprogress', label: 'In progress' },
+  { key: 'resolved',   label: 'Resolved' },
+  { key: 'closed',     label: 'Closed' }
+]
+
+// IT support team members (for assigning issues)
+export const SAMPLE_IT_STAFF = [
+  { id: 'IT001', name: 'Rajesh Kumar', mobile: '9876543210', email: 'rajesh.kumar@company.com' },
+  { id: 'IT002', name: 'Anita Desai', mobile: '9876543211', email: 'anita.desai@company.com' },
+  { id: 'IT003', name: 'Vikram Singh', mobile: '9876543212', email: 'vikram.singh@company.com' }
+]
+
+// Sample IT issues reported by employees
+export const SAMPLE_IT_ISSUES = [
+  {
+    id: 'ITI01',
+    employeeId: 'EMP001',
+    issue: 'Computer not starting',
+    description: 'My computer is not booting up. Shows blue screen error.',
+    priority: 'high',
+    status: 'inprogress',
+    assignedTo: 'IT001',
+    estimatedTime: '2 hours',
+    createdOn: dayFromToday(-1),
+    updatedOn: dayFromToday(0)
+  },
+  {
+    id: 'ITI02',
+    employeeId: 'EMP002',
+    issue: 'Internet connection slow',
+    description: 'Internet is very slow since morning. Unable to work.',
+    priority: 'medium',
+    status: 'open',
+    assignedTo: null,
+    estimatedTime: null,
+    createdOn: dayFromToday(0),
+    updatedOn: dayFromToday(0)
+  },
+  {
+    id: 'ITI03',
+    employeeId: 'EMP003',
+    issue: 'Printer not working',
+    description: 'The shared printer on 2nd floor is not responding.',
+    priority: 'low',
+    status: 'resolved',
+    assignedTo: 'IT002',
+    estimatedTime: '1 hour',
+    createdOn: dayFromToday(-2),
+    updatedOn: dayFromToday(-1)
+  },
+  {
+    id: 'ITI04',
+    employeeId: 'EMP004',
+    issue: 'Monitor flickering',
+    description: 'My monitor keeps flickering. It is hard to work.',
+    priority: 'medium',
+    status: 'open',
+    assignedTo: null,
+    estimatedTime: null,
+    createdOn: dayFromToday(0),
+    updatedOn: dayFromToday(0)
+  }
+]
+
+// ---- Company Announcements ----
+// Announcement types for categorization
+export const ANNOUNCEMENT_TYPES = [
+  { key: 'general', label: 'General' },
+  { key: 'policy', label: 'Policy Update' },
+  { key: 'event', label: 'Event' },
+  { key: 'job', label: 'Internal Job Posting' },
+  { key: 'urgent', label: 'Urgent' }
+]
+
+// Sample company announcements
+export const SAMPLE_ANNOUNCEMENTS = [
+  {
+    id: 'ANN01',
+    title: 'Office closure for Diwali',
+    content: 'The office will remain closed from October 28th to November 1st for Diwali celebrations. Normal operations will resume from November 2nd. Wishing everyone a happy and prosperous Diwali!',
+    type: 'general',
+    createdBy: 'ADM001',
+    createdOn: dayFromToday(-5),
+    excludedEmployees: [] // All employees receive this
+  },
+  {
+    id: 'ANN02',
+    title: 'Updated Work from Home Policy',
+    content: 'Effective from next month, employees can work from home up to 2 days per week. Prior approval from manager is required. Please review the full policy document attached in the HR portal.',
+    type: 'policy',
+    createdBy: 'ADM001',
+    createdOn: dayFromToday(-3),
+    excludedEmployees: ['IT003'] // IT manager excluded as it doesn't apply to his team
+  },
+  {
+    id: 'ANN03',
+    title: 'Senior Sales Executive Position Available',
+    content: 'We are looking for an experienced Sales Executive to join our team. Minimum 3 years of experience required. Interested internal candidates can apply by sending their CV to HR by end of this week.',
+    type: 'job',
+    createdBy: 'ADM001',
+    createdOn: dayFromToday(-1),
+    excludedEmployees: ['EMP001', 'EMP004'] // Current sales team excluded
+  },
+  {
+    id: 'ANN04',
+    title: 'Annual Sports Day - November 15th',
+    content: 'Join us for our annual sports day on November 15th at the company ground. Events include cricket, badminton, and track events. Registration closes on November 10th. Contact HR for more details.',
+    type: 'event',
+    createdBy: 'ADM001',
+    createdOn: dayFromToday(0),
+    excludedEmployees: []
+  },
+  {
+    id: 'ANN05',
+    title: 'Urgent: Server Maintenance Tonight',
+    content: 'Critical server maintenance will be performed tonight from 11 PM to 2 AM. All systems will be unavailable during this period. Please save your work before leaving the office.',
+    type: 'urgent',
+    createdBy: 'IT001',
+    createdOn: dayFromToday(0),
+    excludedEmployees: []
+  }
 ]
 
 // Sample tasks. Most are assigned by the manager (EMP001) to the team;
@@ -392,10 +536,10 @@ export const SAMPLE_VEHICLES = [
   { id: 'VEH02', number: 'HR 26 CD 5678', label: 'SUV / Silver' }
 ]
 
-// Company drivers (master list).
+// Company drivers (master list). Each driver has a PIN for WorkBuddy login.
 export const SAMPLE_DRIVERS = [
-  { id: 'DRV01', name: 'Ramesh Kumar', mobile: '9811012345' },
-  { id: 'DRV02', name: 'Suresh Yadav', mobile: '9822067890' }
+  { id: 'DRV01', name: 'Ramesh Kumar', mobile: '9811012345', pin: '1234' },
+  { id: 'DRV02', name: 'Suresh Yadav', mobile: '9822067890', pin: '5678' }
 ]
 
 // Cab trips. Each trip = one vehicle + driver + direction + time.

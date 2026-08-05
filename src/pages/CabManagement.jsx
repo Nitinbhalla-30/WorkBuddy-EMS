@@ -8,6 +8,7 @@ import {
   deleteTrip,
   deleteVehicle,
   getCabAssignments,
+  getCabCancellationsForDate,
   getCabMessagesForEmployee,
   getCabRequests,
   getCabUnreadByEmployee,
@@ -17,7 +18,8 @@ import {
   getVehicles,
   markCabThreadRead,
   setCabAssignment,
-  setCabRequestStatus
+  setCabRequestStatus,
+  setDriverPin
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
 import {
@@ -30,7 +32,7 @@ import {
   vehicleById
 } from '../utils/cab.js'
 
-const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Requests', 'Messages']
+const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Requests', 'Messages', 'Today']
 
 // Admin page to manage the company cab system.
 export default function CabManagement() {
@@ -78,6 +80,7 @@ export default function CabManagement() {
       {tab === 3 && <AssignTab employees={employees} trips={trips} assignments={assignments} bump={bump} />}
       {tab === 4 && <RequestsTab requests={requests} nameOf={nameOf} bump={bump} />}
       {tab === 5 && <MessagesTab employees={employees} unreadByEmp={unreadByEmp} bump={bump} />}
+      {tab === 6 && <TodayTab employees={employees} bump={bump} />}
     </div>
   )
 }
@@ -121,31 +124,81 @@ function VehiclesTab({ vehicles, bump }) {
 function DriversTab({ drivers, bump }) {
   const [name, setName] = useState('')
   const [mobile, setMobile] = useState('')
+  const [newPin, setNewPin] = useState('')
+  // Per-driver inline PIN editing state: { [driverId]: value }
+  const [pins, setPins] = useState({})
+  const [pinSaved, setPinSaved] = useState({})
 
   function add() {
     if (!name.trim()) return
-    addDriver({ name: name.trim(), mobile: mobile.trim() })
-    setName(''); setMobile(''); bump()
+    addDriver({ name: name.trim(), mobile: mobile.trim(), pin: newPin.trim() })
+    setName(''); setMobile(''); setNewPin(''); bump()
+  }
+
+  function savePin(driverId) {
+    const pin = (pins[driverId] || '').trim()
+    if (!pin) return
+    setDriverPin(driverId, pin)
+    setPinSaved({ ...pinSaved, [driverId]: true })
+    setTimeout(() => setPinSaved((s) => ({ ...s, [driverId]: false })), 2000)
+    bump()
   }
 
   return (
     <div className="card">
       <h3 className="section-title first">Company drivers</h3>
+      <p className="hint first">
+        Each driver needs a <strong>WorkBuddy ID</strong> and <strong>PIN</strong> to log in and
+        view their run sheet. Set or change a driver&rsquo;s PIN in the table below.
+      </p>
       <table className="table">
-        <thead><tr><th>Name</th><th>Mobile</th><th></th></tr></thead>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Mobile</th>
+            <th>WorkBuddy ID</th>
+            <th>PIN</th>
+            <th></th>
+          </tr>
+        </thead>
         <tbody>
           {drivers.map((d) => (
             <tr key={d.id}>
               <td><strong>{d.name}</strong></td>
               <td>{d.mobile}</td>
-              <td><button className="btn btn-tiny btn-danger" onClick={() => { deleteDriver(d.id); bump() }}>Remove</button></td>
+              <td><code>{d.id}</code></td>
+              <td>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    className="inline-input"
+                    style={{ width: 80 }}
+                    type="password"
+                    placeholder={d.pin ? '••••' : 'Set PIN'}
+                    value={pins[d.id] || ''}
+                    onChange={(e) => setPins({ ...pins, [d.id]: e.target.value })}
+                    maxLength={8}
+                  />
+                  <button
+                    className="btn btn-primary btn-tiny"
+                    onClick={() => savePin(d.id)}
+                    disabled={!(pins[d.id] || '').trim()}
+                  >
+                    {pinSaved[d.id] ? '✓ Saved' : 'Save PIN'}
+                  </button>
+                </div>
+              </td>
+              <td>
+                <button className="btn btn-tiny btn-danger" onClick={() => { deleteDriver(d.id); bump() }}>Remove</button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <h4 className="sub-title" style={{ marginTop: '1.5rem' }}>Add a driver</h4>
       <div className="button-row">
         <input className="inline-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Driver name" />
         <input className="inline-input" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="Mobile" maxLength={10} />
+        <input className="inline-input" style={{ width: 80 }} value={newPin} onChange={(e) => setNewPin(e.target.value)} placeholder="PIN" maxLength={8} />
         <button className="btn btn-primary btn-tiny" onClick={add}>Add</button>
       </div>
     </div>
@@ -470,5 +523,107 @@ function MessagesTab({ employees, unreadByEmp, bump }) {
         </>
       )}
     </div>
+  )
+}
+
+// ---- Today's cancellations (driver view) ----
+function TodayTab({ employees, bump }) {
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const cancellations = useMemo(
+    () => getCabCancellationsForDate(todayKey),
+    [bump]
+  )
+  const drivers = useMemo(() => getDrivers(), [bump])
+
+  function nameOf(id) {
+    return employees.find((e) => e.id === id)?.name || id
+  }
+
+  const skippingPickup = cancellations.filter((c) => c.skipPickup)
+  const skippingDrop   = cancellations.filter((c) => c.skipDrop)
+
+  const todayLabel = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  })
+
+  const origin = window.location.origin
+
+  return (
+    <>
+      {/* Driver run-sheet links */}
+      <div className="card">
+        <h3 className="section-title first">Driver run sheets — {todayLabel}</h3>
+        <p className="hint first">
+          Open or share a driver&rsquo;s run sheet link on their phone before the shift starts.
+          The page shows their full pickup and drop list with addresses, times, and map links.
+        </p>
+        {drivers.length === 0 && <p className="muted">No drivers added yet.</p>}
+        <div className="driver-link-grid">
+          {drivers.map((d) => (
+            <div key={d.id} className="driver-link-card">
+              <div className="driver-link-name">{d.name}</div>
+              <div className="muted small" style={{ marginBottom: 8 }}>{d.mobile}</div>
+              <a
+                href={`${origin}/driver/${d.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-primary btn-tiny"
+              >
+                Open run sheet →
+              </a>
+              <button
+                className="btn btn-light btn-tiny"
+                style={{ marginLeft: 8 }}
+                onClick={() => {
+                  navigator.clipboard.writeText(`${origin}/driver/${d.id}`)
+                    .catch(() => {})
+                }}
+              >
+                Copy link
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Cancellation summary */}
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3 className="section-title first">Cancellation summary</h3>
+
+        <h4 className="sub-title">Not taking pickup today</h4>
+        {skippingPickup.length === 0 ? (
+          <p className="muted">All employees are taking the pickup cab today.</p>
+        ) : (
+          <table className="table">
+            <thead><tr><th>Employee</th><th>ID</th></tr></thead>
+            <tbody>
+              {skippingPickup.map((c) => (
+                <tr key={c.employeeId}>
+                  <td><strong>{nameOf(c.employeeId)}</strong></td>
+                  <td className="muted">{c.employeeId}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <h4 className="sub-title" style={{ marginTop: '1.5rem' }}>Not taking drop today</h4>
+        {skippingDrop.length === 0 ? (
+          <p className="muted">All employees are taking the drop cab today.</p>
+        ) : (
+          <table className="table">
+            <thead><tr><th>Employee</th><th>ID</th></tr></thead>
+            <tbody>
+              {skippingDrop.map((c) => (
+                <tr key={c.employeeId}>
+                  <td><strong>{nameOf(c.employeeId)}</strong></td>
+                  <td className="muted">{c.employeeId}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
   )
 }

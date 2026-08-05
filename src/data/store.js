@@ -15,7 +15,10 @@ import {
   SAMPLE_TRIPS,
   SAMPLE_CAB_ASSIGNMENTS,
   SAMPLE_CAB_REQUESTS,
-  SAMPLE_CAB_MESSAGES
+  SAMPLE_CAB_MESSAGES,
+  SAMPLE_IT_ISSUES,
+  SAMPLE_IT_STAFF,
+  SAMPLE_ANNOUNCEMENTS
 } from './sampleData.js'
 import { blankProfile } from '../utils/profile.js'
 
@@ -32,7 +35,12 @@ const KEYS = {
   trips: 'hr_trips',
   cabAssignments: 'hr_cab_assignments',
   cabRequests: 'hr_cab_requests',
-  cabMessages: 'hr_cab_messages'
+  cabMessages: 'hr_cab_messages',
+  cabCancellations: 'hr_cab_cancellations',
+  itIssues: 'hr_it_issues',
+  itStaff: 'hr_it_staff',
+  announcements: 'hr_announcements',
+  readAnnouncements: 'hr_read_announcements'
 }
 
 function read(key, fallback) {
@@ -90,6 +98,18 @@ export function seedIfEmpty() {
   if (localStorage.getItem(KEYS.cabMessages) === null) {
     write(KEYS.cabMessages, SAMPLE_CAB_MESSAGES)
   }
+  if (localStorage.getItem(KEYS.itIssues) === null) {
+    write(KEYS.itIssues, SAMPLE_IT_ISSUES)
+  }
+  if (localStorage.getItem(KEYS.itStaff) === null) {
+    write(KEYS.itStaff, SAMPLE_IT_STAFF)
+  }
+  if (localStorage.getItem(KEYS.announcements) === null) {
+    write(KEYS.announcements, SAMPLE_ANNOUNCEMENTS)
+  }
+  if (localStorage.getItem(KEYS.readAnnouncements) === null) {
+    write(KEYS.readAnnouncements, {})
+  }
 }
 
 // Wipe everything and load fresh sample data (handy while testing).
@@ -107,6 +127,10 @@ export function resetToSampleData() {
   write(KEYS.cabAssignments, SAMPLE_CAB_ASSIGNMENTS)
   write(KEYS.cabRequests, SAMPLE_CAB_REQUESTS)
   write(KEYS.cabMessages, SAMPLE_CAB_MESSAGES)
+  write(KEYS.itIssues, SAMPLE_IT_ISSUES)
+  write(KEYS.itStaff, SAMPLE_IT_STAFF)
+  write(KEYS.announcements, SAMPLE_ANNOUNCEMENTS)
+  write(KEYS.readAnnouncements, {})
 }
 
 // ---- employees ----
@@ -470,9 +494,12 @@ export function deleteVehicle(id) {
 
 // Drivers
 export function getDrivers() { return read(KEYS.drivers, []) }
-export function addDriver({ name, mobile }) {
+export function getDriverById(id) {
+  return getDrivers().find((d) => d.id === id) || null
+}
+export function addDriver({ name, mobile, pin }) {
   const all = getDrivers()
-  const d = { id: `DRV${Date.now()}`, name: name || '', mobile: mobile || '' }
+  const d = { id: `DRV${Date.now()}`, name: name || '', mobile: mobile || '', pin: pin || '' }
   all.push(d); write(KEYS.drivers, all); return d
 }
 export function updateDriver(id, data) {
@@ -481,6 +508,9 @@ export function updateDriver(id, data) {
   if (idx < 0) return null
   all[idx] = { ...all[idx], ...data }
   write(KEYS.drivers, all); return all[idx]
+}
+export function setDriverPin(id, pin) {
+  return updateDriver(id, { pin: pin || '' })
 }
 export function deleteDriver(id) {
   write(KEYS.drivers, getDrivers().filter((d) => d.id !== id))
@@ -600,4 +630,239 @@ export function getCabUnreadByEmployee() {
     }
   }
   return counts
+}
+
+// ---- cab cancellations (skip pickup / drop for today) ----
+// Stored as an array of { employeeId, date, skipPickup, skipDrop }.
+// One record per employee per date; upserted on every save.
+export function getCabCancellations() {
+  return read(KEYS.cabCancellations, [])
+}
+
+export function getCabCancellationForEmployee(employeeId, date) {
+  return getCabCancellations().find(
+    (c) => c.employeeId === employeeId && c.date === date
+  ) || null
+}
+
+// date is a YYYY-MM-DD string (today). skipPickup / skipDrop are booleans.
+export function setCabCancellation(employeeId, date, skipPickup, skipDrop) {
+  const all = getCabCancellations()
+  const idx = all.findIndex((c) => c.employeeId === employeeId && c.date === date)
+  const entry = { employeeId, date, skipPickup: !!skipPickup, skipDrop: !!skipDrop }
+  if (idx >= 0) all[idx] = entry
+  else all.push(entry)
+  write(KEYS.cabCancellations, all)
+  return entry
+}
+
+// All cancellations for a specific date (for the admin / driver view).
+export function getCabCancellationsForDate(date) {
+  return getCabCancellations().filter((c) => c.date === date)
+}
+
+// ---- driver run sheet ----
+// Builds the complete pickup + drop list for a driver on a given date.
+// Returns { driver, pickupStops, dropStops } where each stop is:
+//   { employee, trip, vehicle, profile, cancelled }
+// cancelled = true means the employee opted out for today.
+export function getDriverRunSheet(driverId, date) {
+  const drivers    = getDrivers()
+  const driver     = drivers.find((d) => d.id === driverId) || null
+  if (!driver) return null
+
+  const trips       = getTrips()
+  const vehicles    = getVehicles()
+  const assignments = getCabAssignments()
+  const employees   = getEmployees()
+  const cancels     = getCabCancellationsForDate(date)
+
+  // Helper: get profile personal data for an employee
+  function personInfo(empId) {
+    const profile = getProfileForEmployee(empId)
+    const p = profile?.personal || {}
+    return {
+      address:      p.address       || '--',
+      homeGate:     p.homeGate      || '--',
+      mobile:       p.contactNumber || '--',
+      pickupPoint:  p.pickupPoint   || null,
+      dropPoint:    p.dropSameAsPickup !== false ? (p.pickupPoint || null) : (p.dropPoint || null)
+    }
+  }
+
+  // All trips belonging to this driver
+  const driverTrips = trips.filter((t) => t.driverId === driverId)
+  const pickupTrips = driverTrips.filter((t) => t.direction === 'pickup')
+  const dropTrips   = driverTrips.filter((t) => t.direction === 'drop')
+
+  function buildStops(tripList, direction) {
+    const stops = []
+    for (const trip of tripList) {
+      const vehicle = vehicles.find((v) => v.id === trip.vehicleId) || null
+      // Find all employees on this trip
+      const assigned = assignments.filter((a) =>
+        direction === 'pickup'
+          ? a.pickupTripId === trip.id
+          : a.dropTripId === trip.id
+      )
+      for (const a of assigned) {
+        const emp = employees.find((e) => e.id === a.employeeId) || { id: a.employeeId, name: a.employeeId }
+        const cancel = cancels.find((c) => c.employeeId === a.employeeId) || null
+        const cancelled = direction === 'pickup'
+          ? !!(cancel?.skipPickup)
+          : !!(cancel?.skipDrop)
+        stops.push({
+          employee:  emp,
+          trip,
+          vehicle,
+          info: personInfo(a.employeeId),
+          cancelled
+        })
+      }
+    }
+    // Sort by trip time
+    stops.sort((a, b) => (a.trip.time < b.trip.time ? -1 : 1))
+    return stops
+  }
+
+  return {
+    driver,
+    pickupStops: buildStops(pickupTrips, 'pickup'),
+    dropStops:   buildStops(dropTrips, 'drop')
+  }
+}
+
+// ---- IT Help Desk ----
+export function getITIssues() {
+  return read(KEYS.itIssues, [])
+}
+
+export function getITIssuesForEmployee(employeeId) {
+  return getITIssues()
+    .filter((i) => i.employeeId === employeeId)
+    .sort((a, b) => (a.createdOn < b.createdOn ? 1 : -1))
+}
+
+export function getITStaff() {
+  return read(KEYS.itStaff, [])
+}
+
+export function getITStaffById(id) {
+  return getITStaff().find((s) => s.id === id) || null
+}
+
+// Create a new IT issue. Returns the saved issue.
+export function createITIssue({ employeeId, issue, description, priority }) {
+  const all = getITIssues()
+  const newIssue = {
+    id: `ITI${Date.now()}`,
+    employeeId,
+    issue,
+    description: description || '',
+    priority,
+    status: 'open',
+    assignedTo: null,
+    estimatedTime: null,
+    createdOn: todayKey(),
+    updatedOn: todayKey()
+  }
+  all.push(newIssue)
+  write(KEYS.itIssues, all)
+  return newIssue
+}
+
+// Assign an IT issue to a staff member and set estimated time
+export function assignITIssue(issueId, assignedTo, estimatedTime) {
+  const all = getITIssues()
+  const idx = all.findIndex((i) => i.id === issueId)
+  if (idx < 0) return null
+  all[idx] = {
+    ...all[idx],
+    assignedTo,
+    estimatedTime,
+    status: 'inprogress',
+    updatedOn: todayKey()
+  }
+  write(KEYS.itIssues, all)
+  return all[idx]
+}
+
+// Update IT issue status
+export function setITIssueStatus(issueId, status) {
+  const all = getITIssues()
+  const idx = all.findIndex((i) => i.id === issueId)
+  if (idx < 0) return null
+  all[idx] = {
+    ...all[idx],
+    status,
+    updatedOn: todayKey()
+  }
+  write(KEYS.itIssues, all)
+  return all[idx]
+}
+
+// ---- Company Announcements ----
+export function getAnnouncements() {
+  return read(KEYS.announcements, [])
+}
+
+// Get announcements for a specific employee (excludes those where employee is in excludedEmployees list)
+export function getAnnouncementsForEmployee(employeeId) {
+  const all = getAnnouncements()
+  return all
+    .filter((a) => !a.excludedEmployees.includes(employeeId))
+    .sort((a, b) => (a.createdOn < b.createdOn ? 1 : -1))
+}
+
+// Create a new announcement. Returns the saved announcement.
+export function createAnnouncement({ title, content, type, createdBy, excludedEmployees }) {
+  const all = getAnnouncements()
+  const announcement = {
+    id: `ANN${Date.now()}`,
+    title,
+    content: content || '',
+    type,
+    createdBy,
+    createdOn: todayKey(),
+    excludedEmployees: excludedEmployees || []
+  }
+  all.push(announcement)
+  write(KEYS.announcements, all)
+  return announcement
+}
+
+// Delete an announcement
+export function deleteAnnouncement(announcementId) {
+  const all = getAnnouncements()
+  const filtered = all.filter((a) => a.id !== announcementId)
+  write(KEYS.announcements, filtered)
+  return filtered
+}
+
+// Get read announcements tracking data
+function getReadAnnouncements() {
+  return read(KEYS.readAnnouncements, {})
+}
+
+// Count unread announcements for an employee
+export function getUnreadAnnouncementCount(employeeId) {
+  const readData = getReadAnnouncements()
+  const readIds = readData[employeeId] || []
+  const allAnnouncements = getAnnouncements()
+  const availableToEmployee = allAnnouncements.filter((a) => 
+    !a.excludedEmployees.includes(employeeId)
+  )
+  return availableToEmployee.filter((a) => !readIds.includes(a.id)).length
+}
+
+// Mark an announcement as read for an employee
+export function markAnnouncementAsRead(employeeId, announcementId) {
+  const readData = getReadAnnouncements()
+  if (!readData[employeeId]) {
+    readData[employeeId] = []
+  }
+  if (!readData[employeeId].includes(announcementId)) {
+    readData[employeeId].push(announcementId)
+    write(KEYS.readAnnouncements, readData)
+  }
 }
