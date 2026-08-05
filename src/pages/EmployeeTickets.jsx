@@ -51,14 +51,22 @@ export default function EmployeeTickets() {
       </div>
 
       {showForm && (
-        <>
-          <p className="hint first">
-            Raise a routine question (payslip, leave, PF, policy, IT) or a
-            serious concern. Grievances are kept confidential, and you can
-            choose to stay anonymous.
-          </p>
-          <TicketForm onCreate={handleCreate} />
-        </>
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-form">
+              <div className="modal-header">
+                <h3 className="section-title first">Raise Query or Grievance</h3>
+                <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)}>✕</button>
+              </div>
+              <p className="hint first">
+                Raise a routine question (payslip, leave, PF, policy, IT) or a
+                serious concern. Grievances are kept confidential, and you can
+                choose to stay anonymous.
+              </p>
+              <TicketForm onCreate={handleCreate} onCancel={() => setShowForm(false)} />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* My tickets */}

@@ -84,6 +84,12 @@ export default function Payslip({ employee, monthKey, calc }) {
         <span>Net pay</span>
         <span>{formatRupees(calc.netPay)}</span>
       </div>
+
+      <div className="payslip-footer">
+        <div className="payslip-signature">
+          *Signature not required because this is a system-generated document*
+        </div>
+      </div>
     </div>
   )
 }

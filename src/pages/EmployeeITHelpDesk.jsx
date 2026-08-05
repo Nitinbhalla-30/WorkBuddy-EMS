@@ -86,42 +86,51 @@ export default function EmployeeITHelpDesk() {
       </div>
 
       {showForm && (
-        <div className="card">
-          <form onSubmit={handleSubmit}>
-            <div className="field">
-              <label>Issue *</label>
-              <input
-                type="text"
-                value={formData.issue}
-                onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
-                placeholder="e.g., Computer not starting"
-                required
-              />
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-form">
+              <div className="modal-header">
+                <h3 className="section-title first">Report IT Issue</h3>
+                <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)}>✕</button>
+              </div>
+              <form onSubmit={handleSubmit}>
+                <div className="field">
+                  <label>Issue *</label>
+                  <input
+                    type="text"
+                    value={formData.issue}
+                    onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
+                    placeholder="e.g., Computer not starting"
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label>Description</label>
+                  <input
+                    type="text"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Describe the problem in detail..."
+                  />
+                </div>
+                <div className="field">
+                  <label>Priority</label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                  >
+                    {IT_ISSUE_PRIORITIES.map((p) => (
+                      <option key={p.key} value={p.key}>{p.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="button-row">
+                  <button type="submit" className="btn btn-primary">Submit Issue</button>
+                  <button type="button" className="btn btn-light" onClick={() => setShowForm(false)}>Cancel</button>
+                </div>
+              </form>
             </div>
-            <div className="field">
-              <label>Description</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe the problem in detail..."
-                rows={3}
-              />
-            </div>
-            <div className="field">
-              <label>Priority</label>
-              <select
-                value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-              >
-                {IT_ISSUE_PRIORITIES.map((p) => (
-                  <option key={p.key} value={p.key}>{p.label}</option>
-                ))}
-              </select>
-            </div>
-            <button type="submit" className="btn btn-primary">
-              Submit Issue
-            </button>
-          </form>
+          </div>
         </div>
       )}
 

@@ -148,7 +148,7 @@ export default function MyCab() {
             <div className="cab-detail"><span>Office starts</span><strong>{formatTime12(pickupTrip?.shiftStart)}</strong></div>
             <div className="cab-detail"><span>Vehicle</span><strong>{pickupVehicle?.number || '--'}</strong></div>
             <div className="cab-detail"><span>Driver</span><strong>{pickupDriver?.name || '--'}</strong></div>
-            <div className="cab-detail"><span>Driver mobile</span><strong>{pickupDriver?.mobile || '--'}</strong></div>
+            <div className="cab-detail"><span>Driver mobile</span><strong>{pickupDriver?.mobile ? <a href={`tel:${pickupDriver.mobile}`} className="phone-link">{pickupDriver.mobile}</a> : '--'}</strong></div>
             <div className="cab-detail"><span>Your address</span><strong>{homeAddress}</strong></div>
             <div className="cab-detail"><span>Your gate</span><strong>{homeGate}</strong></div>
             <div className="cab-detail">
@@ -162,7 +162,7 @@ export default function MyCab() {
             </div>
             <div className="cab-detail cab-supervisor">
               <span>Cab late / driver not answering? Call</span>
-              <strong>{pickupTrip?.supervisorName || '--'} {pickupTrip?.supervisorMobile ? `(${pickupTrip.supervisorMobile})` : ''}</strong>
+              <strong>{pickupTrip?.supervisorName || '--'} {pickupTrip?.supervisorMobile ? <a href={`tel:${pickupTrip.supervisorMobile}`} className="phone-link">({pickupTrip.supervisorMobile})</a> : ''}</strong>
             </div>
           </div>
 
@@ -173,7 +173,7 @@ export default function MyCab() {
             <div className="cab-detail"><span>Cab leaves office</span><strong>{formatTime12(dropTrip?.time)}</strong></div>
             <div className="cab-detail"><span>Vehicle</span><strong>{dropVehicle?.number || '--'}</strong></div>
             <div className="cab-detail"><span>Driver</span><strong>{dropDriver?.name || '--'}</strong></div>
-            <div className="cab-detail"><span>Driver mobile</span><strong>{dropDriver?.mobile || '--'}</strong></div>
+            <div className="cab-detail"><span>Driver mobile</span><strong>{dropDriver?.mobile ? <a href={`tel:${dropDriver.mobile}`} className="phone-link">{dropDriver.mobile}</a> : '--'}</strong></div>
             <div className="cab-detail"><span>Drop address</span><strong>{homeAddress}</strong></div>
             <div className="cab-detail"><span>Office gate</span><strong>{dropTrip?.officeGate || '--'}</strong></div>
             <div className="cab-detail">
@@ -187,23 +187,27 @@ export default function MyCab() {
             </div>
             <div className="cab-detail cab-supervisor">
               <span>Cab late / driver not answering? Call</span>
-              <strong>{dropTrip?.supervisorName || '--'} {dropTrip?.supervisorMobile ? `(${dropTrip.supervisorMobile})` : ''}</strong>
+              <strong>{dropTrip?.supervisorName || '--'} {dropTrip?.supervisorMobile ? <a href={`tel:${dropTrip.supervisorMobile}`} className="phone-link">({dropTrip.supervisorMobile})</a> : ''}</strong>
             </div>
           </div>
         </div>
       )}
 
-      {/* Temporary change request form */}
+      {/* Temporary change request form - Modal */}
       {showForm && (
-        <RequestForm
-          pickupTrip={pickupTrip}
-          onSubmit={(data) => {
-            createCabRequest({ ...data, employeeId: user.id })
-            setShowForm(false)
-            setRefresh((n) => n + 1)
-          }}
-          onCancel={() => setShowForm(false)}
-        />
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <RequestForm
+              pickupTrip={pickupTrip}
+              onSubmit={(data) => {
+                createCabRequest({ ...data, employeeId: user.id })
+                setShowForm(false)
+                setRefresh((n) => n + 1)
+              }}
+              onCancel={() => setShowForm(false)}
+            />
+          </div>
+        </div>
       )}
 
       {/* Past requests */}
@@ -282,14 +286,18 @@ function RequestForm({ pickupTrip, onSubmit, onCancel }) {
   }
 
   return (
-    <form className="card" onSubmit={submit}>
-      <h3 className="section-title first">Request a temporary change</h3>
-      <p className="hint first">
-        For 1 or 2 days only. Must be raised at least 5 hours before your pickup
-        time ({formatTime12(pickupTrip?.time)}).
-      </p>
+    <div className="modal-form">
+      <div className="modal-header">
+        <h3 className="section-title first">Request a temporary change</h3>
+        <button type="button" className="btn btn-tiny btn-light" onClick={onCancel}>✕</button>
+      </div>
+      <form onSubmit={submit}>
+        <p className="hint first">
+          For 1 or 2 days only. Must be raised at least 5 hours before your pickup
+          time ({formatTime12(pickupTrip?.time)}).
+        </p>
 
-      {error && <div className="error-box">{error}</div>}
+        {error && <div className="error-box">{error}</div>}
 
       <div className="two-col">
         <label className="field">
@@ -329,7 +337,8 @@ function RequestForm({ pickupTrip, onSubmit, onCancel }) {
         <button type="submit" className="btn btn-primary">Submit request</button>
         <button type="button" className="btn btn-light" onClick={onCancel}>Cancel</button>
       </div>
-    </form>
+      </form>
+    </div>
   )
 }
 

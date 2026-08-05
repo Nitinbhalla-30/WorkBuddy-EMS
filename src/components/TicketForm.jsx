@@ -3,7 +3,7 @@ import { categoriesForKind, isPosh } from '../utils/tickets.js'
 
 // Form to raise a new query or grievance.
 // onCreate({ kind, category, subject, message, anonymous }).
-export default function TicketForm({ onCreate }) {
+export default function TicketForm({ onCreate, onCancel }) {
   const [kind, setKind] = useState('query')
   const [category, setCategory] = useState('')
   const [subject, setSubject] = useState('')
@@ -40,12 +40,15 @@ export default function TicketForm({ onCreate }) {
     setMessage('')
     setAnonymous(false)
     setError('')
+    
+    // Call onCancel if provided to close the modal
+    if (onCancel) onCancel()
   }
 
   const poshChosen = isPosh(category)
 
   return (
-    <form className="card" onSubmit={submit}>
+    <form onSubmit={submit}>
       {error && <div className="error-box first">{error}</div>}
 
       <div className="two-col">
@@ -112,6 +115,7 @@ export default function TicketForm({ onCreate }) {
 
       <div className="button-row">
         <button type="submit" className="btn btn-primary">Submit</button>
+        {onCancel && <button type="button" className="btn btn-light" onClick={onCancel}>Cancel</button>}
       </div>
     </form>
   )

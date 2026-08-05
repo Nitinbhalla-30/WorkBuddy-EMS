@@ -268,6 +268,17 @@ code {
   font-weight: 700;
   color: var(--brand-dark);
 }
+.payslip-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.payslip-signature {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+}
 
 /* ---------- Tasks board ---------- */
 .board { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
@@ -498,6 +509,134 @@ code {
 .cab-cancel-btn-active:hover {
   background: #1e40af;
   border-color: #1e40af;
+  color: #fff;
+}
+/* Ensure cab buttons maintain proper hover states */
+.btn.cab-cancel-btn.cab-cancel-btn-active:hover {
+  background: #1e40af !important;
+  border-color: #1e40af !important;
+  color: #fff !important;
+}
+.btn.cab-cancel-btn:not(.cab-cancel-btn-active):hover {
+  background: #f5f7fc;
+  color: var(--ink);
+}
+
+.phone-link {
+  color: var(--brand);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--brand);
+}
+.phone-link:hover {
+  color: var(--brand-dark);
+  border-bottom-style: solid;
+}
+
+/* ---------- Task Menu Dropdown ---------- */
+.task-menu-container {
+  position: relative;
+  display: inline-block;
+}
+.task-menu-button {
+  font-size: 18px;
+  padding: 3px 8px;
+  min-width: 32px;
+  cursor: pointer;
+}
+.task-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 120px;
+  z-index: 100;
+}
+.task-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 0;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.task-menu-item:hover {
+  background: #f5f7fc;
+}
+.task-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.task-menu-item:first-child {
+  border-radius: 8px 8px 0 0;
+}
+.task-menu-item:last-child {
+  border-radius: 0 0 8px 8px;
+}
+
+/* ---------- Modal ---------- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+.modal-content .card {
+  border: none;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+}
+.modal-content form {
+  margin: 0;
+}
+.modal-content .error-box.first {
+  margin-top: 0;
+}
+.modal-form {
+  padding: 24px;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.modal-header h3 {
+  margin: 0;
+}
+
+.phone-link {
+  color: var(--brand);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--brand);
+}
+.phone-link:hover {
+  color: var(--brand-dark);
+  border-bottom-style: solid;
 }
 .cab-cancellation-notice {
   margin-top: 12px;
@@ -594,6 +733,11 @@ code {
   min-width: 18px;
   text-align: center;
   display: inline-block;
+}
+
+.text-bad {
+  color: var(--bad);
+  font-weight: 600;
 }
 
 .cab-request {
