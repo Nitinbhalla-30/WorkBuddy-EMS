@@ -12,6 +12,9 @@ import {
   totalBreakMinutes,
   workedMinutes
 } from '../utils/attendance.js'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { useTableControls } from '../hooks/useTableControls.js'
 
 function todayKey() {
   const d = new Date()
@@ -29,15 +32,32 @@ export default function AdminDashboard() {
   const attendance = getAttendance()
   const today = todayKey()
 
-  const rows = employees.map((emp) => {
+  const allRows = useMemo(() => employees.map((emp) => {
     const rec = attendance.find(
       (r) => r.employeeId === emp.id && r.date === today
     ) || null
     return { emp, rec }
+  }), [employees, attendance, today])
+
+  const table = useTableControls(allRows, {
+    getSearchText: ({ emp, rec }) =>
+      [emp.name, emp.id, emp.department, formatClock(rec?.timeIn), formatClock(rec?.timeOut), statusOf(rec, settings.officeStartTime)].join(' '),
+    getSortValue: ({ emp, rec }, key) => {
+      if (key === 'name') return emp.name
+      if (key === 'department') return emp.department
+      if (key === 'timeIn') return rec?.timeIn || ''
+      if (key === 'timeOut') return rec?.timeOut || ''
+      if (key === 'worked') return rec ? workedMinutes(rec) : -1
+      if (key === 'break') return rec ? totalBreakMinutes(rec) : -1
+      if (key === 'status') return statusOf(rec, settings.officeStartTime)
+      return ''
+    },
+    initialSortKey: 'name',
+    initialSortDir: 'asc'
   })
 
-  const present = rows.filter((r) => r.rec && r.rec.timeIn).length
-  const late = rows.filter(
+  const present = allRows.filter((r) => r.rec && r.rec.timeIn).length
+  const late = allRows.filter(
     (r) => r.rec && isLate(r.rec, settings.officeStartTime)
   ).length
   const absent = employees.length - present
@@ -70,20 +90,30 @@ export default function AdminDashboard() {
 
       <h3 className="section-title">Today by employee</h3>
       <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search employees..."
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>Employee</th>
-              <th>Department</th>
-              <th>Time In</th>
-              <th>Time Out</th>
-              <th>Worked</th>
-              <th>Break</th>
-              <th>Status</th>
+              <SortableTh label="Employee" keyName="name" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Department" keyName="department" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Time In" keyName="timeIn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Time Out" keyName="timeOut" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Worked" keyName="worked" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Break" keyName="break" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ emp, rec }) => (
+            {table.count === 0 && (
+              <tr><td colSpan={7} className="muted">No employees match your search.</td></tr>
+            )}
+            {table.rows.map(({ emp, rec }) => (
               <tr key={emp.id}>
                 <td>
                   <strong>{emp.name}</strong>

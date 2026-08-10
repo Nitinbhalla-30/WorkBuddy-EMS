@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getSettings } from '../data/store.js'
+import CinematicThemeSwitcher from '../components/ui/cinematic-theme-switcher.tsx'
 
 // Simple login for the test phase: Employee ID + PIN.
 export default function Login() {
@@ -26,7 +27,12 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1 className="login-brand">WorkBuddy - {settings.companyName}</h1>
+        <div className="login-card-head">
+          <h1 className="login-brand">WorkBuddy - {settings.companyName}</h1>
+          <div className="cinematic-theme-switcher-wrap cinematic-theme-switcher-wrap--login">
+            <CinematicThemeSwitcher />
+          </div>
+        </div>
         <p className="login-sub">Please log in to continue</p>
 
         <form onSubmit={handleSubmit}>

@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getSettings, getUnreadAnnouncementCount } from '../data/store.js'
+import CinematicThemeSwitcher from './ui/cinematic-theme-switcher.tsx'
 import { useState, useEffect } from 'react'
 
 // The shared frame: top bar with the company name, side menu, and content.
@@ -45,6 +46,9 @@ export default function Layout() {
       <header className="topbar">
         <div className="brand">WorkBuddy - {settings.companyName}</div>
         <div className="topbar-right">
+          <div className="cinematic-theme-switcher-wrap">
+            <CinematicThemeSwitcher />
+          </div>
           <span className="who">
             {user?.name} <small>({isAdmin ? (isIT ? 'IT Support' : 'HR / Admin') : 'Employee'})</small>
           </span>
@@ -63,6 +67,7 @@ export default function Layout() {
               <NavLink to="/my-leaves" className="nav-item">My Leaves</NavLink>
               <NavLink to="/my-salary" className="nav-item">My Salary</NavLink>
               <NavLink to="/my-tasks" className="nav-item">My Tasks</NavLink>
+              <NavLink to="/my-team" className="nav-item">My Team</NavLink>
               {user?.isManager && (
                 <NavLink to="/team-tasks" className="nav-item">My Team Tasks</NavLink>
               )}
@@ -111,7 +116,9 @@ export default function Layout() {
         </nav>
 
         <main className="content">
-          <Outlet />
+          <div className="content-inner">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

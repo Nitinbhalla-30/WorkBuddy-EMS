@@ -9,12 +9,14 @@ export function blankProfile(employeeId) {
   for (const d of DOCUMENT_TYPES) documents[d.key] = []
   return {
     employeeId,
-    status: 'draft',        // draft | submitted | verified | returned
+    status: 'draft',        // draft | submitted | verified | returned | update_requested | update_approved
     updatedOn: '',
     submittedOn: '',
     reviewedBy: '',
     reviewedOn: '',
     reviewNote: '',
+    updateRequestedOn: '',
+    updateRequestNote: '',
     personal: {
       fullName: '',
       dob: '',
@@ -109,6 +111,8 @@ export function profileStatusLabel(status) {
   if (status === 'verified') return 'Verified'
   if (status === 'submitted') return 'Submitted (awaiting review)'
   if (status === 'returned') return 'Returned for correction'
+  if (status === 'update_requested') return 'Update requested (awaiting HR)'
+  if (status === 'update_approved') return 'Update approved — please edit'
   return 'Not submitted'
 }
 
@@ -116,12 +120,18 @@ export function profileStatusTagClass(status) {
   if (status === 'verified') return 'tag-ok'
   if (status === 'submitted') return 'tag-late'
   if (status === 'returned') return 'tag-high'
+  if (status === 'update_requested') return 'tag-medium'
+  if (status === 'update_approved') return 'tag-medium'
   return 'tag-absent'
 }
 
-// Employee can edit only when it is a draft or was returned.
+// Employee can edit when onboarding, after HR return, or after HR approved an update request.
 export function isEditable(status) {
-  return status === 'draft' || status === 'returned'
+  return status === 'draft' || status === 'returned' || status === 'update_approved'
+}
+
+export function canRequestProfileUpdate(status) {
+  return status === 'verified'
 }
 
 // Turn bytes into a short, friendly size like "120 KB".

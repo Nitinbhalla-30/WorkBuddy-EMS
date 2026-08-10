@@ -5,8 +5,23 @@ import {
   getITIssuesForEmployee,
   getITStaffById
 } from '../data/store.js'
-import { IT_ISSUE_PRIORITIES } from '../data/sampleData.js'
+import { IT_ISSUE_PRIORITIES, IT_ISSUE_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
+import Pagination from '../components/Pagination.jsx'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { usePagination } from '../hooks/usePagination.js'
+import { useTableControls } from '../hooks/useTableControls.js'
+import Modal from '../components/Modal.jsx'
+
+const IT_STATUS_FILTER_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  ...IT_ISSUE_STATUSES.map((s) => ({ value: s.key, label: s.label }))
+]
+const IT_PRIORITY_FILTER_OPTS = [
+  { value: 'all', label: 'All priorities' },
+  ...IT_ISSUE_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
+]
 
 export default function EmployeeITHelpDesk() {
   const { user } = useAuth()
@@ -22,6 +37,29 @@ export default function EmployeeITHelpDesk() {
     () => getITIssuesForEmployee(user.id),
     [user.id, refresh]
   )
+  const table = useTableControls(issues, {
+    getSearchText: (i) =>
+      [i.issue, i.description, i.priority, i.status, i.estimatedTime, i.createdOn].join(' '),
+    getSortValue: (i, key) => {
+      if (key === 'assigned') return i.assignedTo || ''
+      return i[key]
+    },
+    initialSortKey: 'createdOn',
+    initialSortDir: 'desc',
+    filterFns: {
+      status: (i, val) => i.status === val,
+      priority: (i, val) => i.priority === val
+    }
+  })
+  const {
+    items: issuesPage,
+    page: issuesPageNum,
+    totalPages: issuesTotalPages,
+    total: issuesTotal,
+    startIndex: issuesStart,
+    endIndex: issuesEnd,
+    setPage: setIssuesPage
+  } = usePagination(table.rows)
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -86,9 +124,8 @@ export default function EmployeeITHelpDesk() {
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-form">
+        <Modal onClose={() => setShowForm(false)} title="Report IT Issue">
+          <div className="modal-form">
               <div className="modal-header">
                 <h3 className="section-title first">Report IT Issue</h3>
                 <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)}>✕</button>
@@ -130,28 +167,39 @@ export default function EmployeeITHelpDesk() {
                 </div>
               </form>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* My IT Issues */}
       <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search IT issues..."
+          filters={[
+            { key: 'status', label: 'Status', value: table.filters.status || 'all', options: IT_STATUS_FILTER_OPTS },
+            { key: 'priority', label: 'Priority', value: table.filters.priority || 'all', options: IT_PRIORITY_FILTER_OPTS }
+          ]}
+          onFilterChange={table.setFilter}
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>Issue</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Assigned To</th>
-              <th>Est. Time</th>
-              <th>Reported On</th>
+              <SortableTh label="Issue" keyName="issue" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Assigned To" keyName="assigned" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Est. Time" keyName="estimatedTime" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Reported On" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
             </tr>
           </thead>
           <tbody>
-            {issues.length === 0 && (
-              <tr><td colSpan={6} className="muted">You have not reported any IT issues yet.</td></tr>
+            {table.count === 0 && (
+              <tr><td colSpan={6} className="muted">No IT issues match your filters.</td></tr>
             )}
-            {issues.map((issue) => {
+            {issuesPage.map((issue) => {
               const assignedStaff = issue.assignedTo ? getITStaffById(issue.assignedTo) : null
               return (
                 <tr key={issue.id}>
@@ -190,6 +238,14 @@ export default function EmployeeITHelpDesk() {
             })}
           </tbody>
         </table>
+        <Pagination
+          page={issuesPageNum}
+          totalPages={issuesTotalPages}
+          total={issuesTotal}
+          startIndex={issuesStart}
+          endIndex={issuesEnd}
+          onPageChange={setIssuesPage}
+        />
       </div>
 
       <p className="hint">

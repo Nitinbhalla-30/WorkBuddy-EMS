@@ -1,9 +1,25 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { addTask, getTasksForAssignee, updateTaskStatus } from '../data/store.js'
+import { addTask, addTaskMessage, getEmployeeById, getTasksForAssignee, updateTaskStatus } from '../data/store.js'
 import { TASK_STATUSES, TASK_PRIORITIES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import TaskForm from '../components/TaskForm.jsx'
+import TaskThread from '../components/TaskThread.jsx'
+import Modal from '../components/Modal.jsx'
+import Pagination from '../components/Pagination.jsx'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { usePagination } from '../hooks/usePagination.js'
+import { useTableControls } from '../hooks/useTableControls.js'
+
+const TASK_STATUS_FILTER_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  ...TASK_STATUSES.map((s) => ({ value: s.key, label: s.label }))
+]
+const TASK_PRIORITY_FILTER_OPTS = [
+  { value: 'all', label: 'All priorities' },
+  ...TASK_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
+]
 
 // The employee's own task board. They can add tasks for themselves and move
 // them across the columns.
@@ -12,11 +28,54 @@ export default function EmployeeTasks() {
   const [refresh, setRefresh] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [openTaskId, setOpenTaskId] = useState(null)
 
   const tasks = useMemo(
     () => getTasksForAssignee(user.id),
     [user.id, refresh]
   )
+  const table = useTableControls(tasks, {
+    getSearchText: (t) => {
+      const creator = getEmployeeById(t.createdById)
+      const creatorName = t.createdById === t.assigneeId ? 'Myself' : creator?.name || ''
+      return [t.title, t.description, t.priority, t.status, t.dueDate, t.createdOn, creatorName].join(' ')
+    },
+    getSortValue: (t, key) => {
+      if (key === 'createdBy') {
+        if (t.createdById === t.assigneeId) return 'Myself'
+        return getEmployeeById(t.createdById)?.name || t.createdById
+      }
+      return t[key]
+    },
+    initialSortKey: 'dueDate',
+    initialSortDir: 'asc',
+    filterFns: {
+      status: (t, val) => t.status === val,
+      priority: (t, val) => t.priority === val
+    }
+  })
+  const {
+    items: tasksPage,
+    page: tasksPageNum,
+    totalPages: tasksTotalPages,
+    total: tasksTotal,
+    startIndex: tasksStart,
+    endIndex: tasksEnd,
+    setPage: setTasksPage
+  } = usePagination(table.rows)
+
+  const openTask = tasks.find((t) => t.id === openTaskId) || null
+
+  function nameOf(id) {
+    if (id === user.id) return user.name
+    const emp = getEmployeeById(id)
+    return emp?.name || id
+  }
+
+  function assignerLabel(task) {
+    if (task.createdById === task.assigneeId) return 'Myself'
+    return nameOf(task.createdById)
+  }
 
   function handleCreate(data) {
     addTask({ ...data, createdById: user.id })
@@ -26,6 +85,12 @@ export default function EmployeeTasks() {
 
   function move(id, status) {
     updateTaskStatus(id, status)
+    setRefresh((n) => n + 1)
+  }
+
+  function handleTaskReply(text) {
+    if (!openTask) return
+    addTaskMessage(openTask.id, { byId: user.id, text })
     setRefresh((n) => n + 1)
   }
 
@@ -92,9 +157,8 @@ export default function EmployeeTasks() {
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-form">
+        <Modal onClose={() => setShowForm(false)} title="Add a task for myself">
+          <div className="modal-form">
               <div className="modal-header">
                 <h3 className="section-title first">Add a task for myself</h3>
                 <button
@@ -114,30 +178,89 @@ export default function EmployeeTasks() {
                 onCancel={() => setShowForm(false)}
               />
             </div>
+        </Modal>
+      )}
+
+      {openTask && (
+        <Modal onClose={() => setOpenTaskId(null)} title={openTask.title}>
+          <div className="modal-form">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>{openTask.title}</h3>
+                <div className="muted small">
+                  Assigned by {assignerLabel(openTask)} on {openTask.createdOn ? formatDate(openTask.createdOn) : '--'}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-tiny btn-light"
+                onClick={() => setOpenTaskId(null)}
+              >
+                ✕
+              </button>
+            </div>
+            {openTask.description && (
+              <p className="hint first">{openTask.description}</p>
+            )}
+            <TaskThread
+              task={openTask}
+              viewerId={user.id}
+              nameOf={nameOf}
+              onReply={handleTaskReply}
+              onClose={() => setOpenTaskId(null)}
+            />
           </div>
-        </div>
+        </Modal>
       )}
 
       <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search tasks..."
+          filters={[
+            {
+              key: 'status',
+              label: 'Status',
+              value: table.filters.status || 'all',
+              options: TASK_STATUS_FILTER_OPTS
+            },
+            {
+              key: 'priority',
+              label: 'Priority',
+              value: table.filters.priority || 'all',
+              options: TASK_PRIORITY_FILTER_OPTS
+            }
+          ]}
+          onFilterChange={table.setFilter}
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Description</th>
-              <th>Priority</th>
+              <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Description" keyName="description" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Assigned by" keyName="createdBy" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Assigned on" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Status</th>
-              <th>Due Date</th>
+              <SortableTh label="Due Date" keyName="dueDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {tasks.length === 0 && (
-              <tr><td colSpan={6} className="muted">No tasks yet.</td></tr>
+            {table.count === 0 && (
+              <tr><td colSpan={8} className="muted">No tasks match your filters.</td></tr>
             )}
-            {tasks.map((task) => (
+            {tasksPage.map((task) => (
               <tr key={task.id}>
                 <td><strong>{task.title}</strong></td>
                 <td>{task.description || <span className="muted">--</span>}</td>
+                <td>{assignerLabel(task)}</td>
+                <td>
+                  {task.createdOn ? formatDate(task.createdOn) : <span className="muted">--</span>}
+                </td>
                 <td>
                   <span className={`tag ${getPriorityClass(task.priority)}`}>
                     {getPriorityLabel(task.priority)}
@@ -171,6 +294,15 @@ export default function EmployeeTasks() {
                         <button
                           className="task-menu-item"
                           onClick={() => {
+                            setOpenTaskId(task.id)
+                            closeMenu()
+                          }}
+                        >
+                          Ask question
+                        </button>
+                        <button
+                          className="task-menu-item"
+                          onClick={() => {
                             move(task.id, 'done')
                             closeMenu()
                           }}
@@ -186,10 +318,20 @@ export default function EmployeeTasks() {
             ))}
           </tbody>
         </table>
+        <Pagination
+          page={tasksPageNum}
+          totalPages={tasksTotalPages}
+          total={tasksTotal}
+          startIndex={tasksStart}
+          endIndex={tasksEnd}
+          onPageChange={setTasksPage}
+        />
       </div>
 
       <p className="hint">
         Change the status dropdown to move tasks between To do, In progress, and Done.
+        Use the <strong>⋯</strong> menu and choose <strong>Ask question</strong> to request clarifications,
+        access details, or anything else you need from the person who assigned the task.
       </p>
     </div>
   )

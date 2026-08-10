@@ -7,6 +7,9 @@ import {
   updateEmployeeSalary
 } from '../data/store.js'
 import Payslip from '../components/Payslip.jsx'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { useTableControls } from '../hooks/useTableControls.js'
 import {
   computeSalary,
   formatRupees,
@@ -28,7 +31,7 @@ export default function AdminSalary() {
     [refresh]
   )
 
-  const rows = useMemo(() => {
+  const allRows = useMemo(() => {
     const attendance = getAttendance()
     const leaves = getLeaves()
     const settings = getSettings()
@@ -39,7 +42,22 @@ export default function AdminSalary() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employees, selected, refresh])
 
-  const totalNet = rows.reduce((sum, r) => sum + r.calc.netPay, 0)
+  const table = useTableControls(allRows, {
+    getSearchText: ({ emp, calc }) =>
+      [emp.name, emp.id, emp.department, calc.gross, calc.lopDays, calc.netPay].join(' '),
+    getSortValue: ({ emp, calc }, key) => {
+      if (key === 'employee') return emp.name
+      if (key === 'gross') return calc.gross
+      if (key === 'lopDays') return calc.lopDays
+      if (key === 'deductions') return calc.lopDeduction + calc.totalDeductions
+      if (key === 'netPay') return calc.netPay
+      return ''
+    },
+    initialSortKey: 'employee',
+    initialSortDir: 'asc'
+  })
+
+  const totalNet = table.rows.reduce((sum, r) => sum + r.calc.netPay, 0)
 
   function startEdit(emp) {
     setEditId(emp.id)
@@ -59,7 +77,7 @@ export default function AdminSalary() {
     setRefresh((n) => n + 1)
   }
 
-  const viewRow = rows.find((r) => r.emp.id === viewId)
+  const viewRow = allRows.find((r) => r.emp.id === viewId)
 
   return (
     <div>
@@ -75,19 +93,29 @@ export default function AdminSalary() {
       </div>
 
       <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search employees..."
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>Employee</th>
-              <th>Gross</th>
-              <th>LOP days</th>
-              <th>Deductions</th>
-              <th>Net pay</th>
+              <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Gross" keyName="gross" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="LOP days" keyName="lopDays" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Deductions" keyName="deductions" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Net pay" keyName="netPay" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ emp, calc }) => (
+            {table.count === 0 && (
+              <tr><td colSpan={6} className="muted">No employees match your search.</td></tr>
+            )}
+            {table.rows.map(({ emp, calc }) => (
               <tr key={emp.id}>
                 <td>
                   <strong>{emp.name}</strong>

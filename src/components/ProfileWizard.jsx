@@ -253,6 +253,12 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
             Please check everything below. Once you submit, the form is locked and
             sent to HR. If they need a change, they will return it to you.
           </p>
+          {profile.status === 'update_approved' && (
+            <p className="hint">
+              You are submitting <strong>updated</strong> details. HR will verify
+              your changes before they are final.
+            </p>
+          )}
           <ProfileView profile={form} />
         </div>
       )}
@@ -277,7 +283,9 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
           <button className="btn btn-primary" onClick={() => setStep((n) => n + 1)}>Next</button>
         )}
         {step === last && (
-          <button className="btn btn-primary" onClick={submit}>Submit to HR</button>
+          <button className="btn btn-primary" onClick={submit}>
+            {profile.status === 'update_approved' ? 'Submit updates to HR' : 'Submit to HR'}
+          </button>
         )}
         <button className="btn" onClick={saveDraft}>Save draft</button>
       </div>

@@ -5,10 +5,27 @@ import {
   createTicket,
   getTicketsForEmployee
 } from '../data/store.js'
+import { TICKET_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import { categoryLabel, kindLabel, statusLabel, statusTagClass } from '../utils/tickets.js'
 import TicketForm from '../components/TicketForm.jsx'
 import TicketThread from '../components/TicketThread.jsx'
+import Modal from '../components/Modal.jsx'
+import Pagination from '../components/Pagination.jsx'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { usePagination } from '../hooks/usePagination.js'
+import { useTableControls } from '../hooks/useTableControls.js'
+
+const TICKET_KIND_OPTS = [
+  { value: 'all', label: 'All types' },
+  { value: 'query', label: 'Query' },
+  { value: 'grievance', label: 'Grievance' }
+]
+const TICKET_STATUS_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  ...TICKET_STATUSES.map((s) => ({ value: s.key, label: s.label }))
+]
 
 // The employee's help desk: raise queries or grievances and follow the replies.
 export default function EmployeeTickets() {
@@ -21,8 +38,42 @@ export default function EmployeeTickets() {
     () => getTicketsForEmployee(user.id),
     [user.id, refresh]
   )
+  const table = useTableControls(tickets, {
+    getSearchText: (t) =>
+      [t.subject, kindLabel(t.kind), categoryLabel(t.category), statusLabel(t.status), t.updatedOn].join(' '),
+    getSortValue: (t, key) => {
+      if (key === 'kind') return t.kind
+      if (key === 'category') return categoryLabel(t.category)
+      if (key === 'status') return t.status
+      return t[key]
+    },
+    initialSortKey: 'updatedOn',
+    initialSortDir: 'desc',
+    filterFns: {
+      kind: (t, val) => t.kind === val,
+      status: (t, val) => t.status === val
+    }
+  })
+  const {
+    items: ticketsPage,
+    page: ticketsPageNum,
+    totalPages: ticketsTotalPages,
+    total: ticketsTotal,
+    startIndex: ticketsStart,
+    endIndex: ticketsEnd,
+    setPage: setTicketsPage
+  } = usePagination(table.rows)
 
   const open = tickets.find((t) => t.id === openId) || null
+
+  function closeTicket() {
+    setOpenId(null)
+  }
+
+  function handleOpen(ticketId) {
+    setOpenId(ticketId)
+    setShowForm(false)
+  }
 
   function handleCreate(data) {
     const t = createTicket({ ...data, employeeId: user.id })
@@ -51,9 +102,8 @@ export default function EmployeeTickets() {
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-form">
+        <Modal onClose={() => setShowForm(false)} title="Raise Query or Grievance">
+          <div className="modal-form">
               <div className="modal-header">
                 <h3 className="section-title first">Raise Query or Grievance</h3>
                 <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)}>✕</button>
@@ -65,28 +115,39 @@ export default function EmployeeTickets() {
               </p>
               <TicketForm onCreate={handleCreate} onCancel={() => setShowForm(false)} />
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* My tickets */}
       <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search tickets..."
+          filters={[
+            { key: 'kind', label: 'Type', value: table.filters.kind || 'all', options: TICKET_KIND_OPTS },
+            { key: 'status', label: 'Status', value: table.filters.status || 'all', options: TICKET_STATUS_OPTS }
+          ]}
+          onFilterChange={table.setFilter}
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>Subject</th>
-              <th>Type</th>
-              <th>Category</th>
-              <th>Status</th>
-              <th>Updated</th>
+              <SortableTh label="Subject" keyName="subject" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Type" keyName="kind" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Category" keyName="category" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Updated" keyName="updatedOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {tickets.length === 0 && (
-              <tr><td colSpan={6} className="muted">You have not raised anything yet.</td></tr>
+            {table.count === 0 && (
+              <tr><td colSpan={6} className="muted">No tickets match your filters.</td></tr>
             )}
-            {tickets.map((t) => (
+            {ticketsPage.map((t) => (
               <tr key={t.id}>
                 <td><strong>{t.subject}</strong></td>
                 <td>{kindLabel(t.kind)}{t.anonymous ? ' (anon)' : ''}</td>
@@ -96,36 +157,56 @@ export default function EmployeeTickets() {
                 <td>
                   <button
                     className="btn btn-tiny btn-light"
-                    onClick={() => { setOpenId(t.id === openId ? null : t.id); setShowForm(false) }}
+                    onClick={() => handleOpen(t.id)}
                   >
-                    {t.id === openId ? 'Hide' : 'Open'}
+                    Open
                   </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        <Pagination
+          page={ticketsPageNum}
+          totalPages={ticketsTotalPages}
+          total={ticketsTotal}
+          startIndex={ticketsStart}
+          endIndex={ticketsEnd}
+          onPageChange={setTicketsPage}
+        />
       </div>
 
-      {/* Open one ticket */}
       {open && (
-        <div className="card">
-          <div className="page-head">
-            <div>
-              <h3 style={{ margin: 0 }}>{open.subject}</h3>
-              <div className="muted small">
-                {kindLabel(open.kind)} — {categoryLabel(open.category)}
+        <Modal onClose={closeTicket} title={open.subject}>
+          <div className="modal-form modal-form-wide">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>{open.subject}</h3>
+                <div className="muted small">
+                  {kindLabel(open.kind)} — {categoryLabel(open.category)}
+                  {open.anonymous ? ' (anonymous)' : ''}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={`tag ${statusTagClass(open.status)}`}>{statusLabel(open.status)}</span>
+                <button
+                  type="button"
+                  className="btn btn-tiny btn-light"
+                  onClick={closeTicket}
+                >
+                  ✕
+                </button>
               </div>
             </div>
-            <span className={`tag ${statusTagClass(open.status)}`}>{statusLabel(open.status)}</span>
+            <TicketThread
+              ticket={open}
+              viewerRole="employee"
+              nameOf={nameOf}
+              onReply={handleReply}
+              onClose={closeTicket}
+            />
           </div>
-          <TicketThread
-            ticket={open}
-            viewerRole="employee"
-            nameOf={nameOf}
-            onReply={handleReply}
-          />
-        </div>
+        </Modal>
       )}
     </div>
   )

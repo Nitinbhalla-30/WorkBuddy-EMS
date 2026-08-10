@@ -11,7 +11,8 @@ export default function TicketThread({
   viewerRole,
   nameOf,
   onReply,
-  onSetStatus // only passed on the HR side
+  onSetStatus, // only passed on the HR side
+  onClose
 }) {
   const [text, setText] = useState('')
 
@@ -68,7 +69,16 @@ export default function TicketThread({
 
       {/* Reply box (hidden once the ticket is closed) */}
       {closed ? (
-        <p className="hint first">This ticket is closed. No more replies can be added.</p>
+        <>
+          <p className="hint first">This ticket is closed. No more replies can be added.</p>
+          {onClose && (
+            <div className="button-row">
+              <button type="button" className="btn btn-light" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="reply-box">
           <textarea
@@ -82,6 +92,11 @@ export default function TicketThread({
             <button className="btn btn-primary" disabled={!text.trim()} onClick={send}>
               Send reply
             </button>
+            {onClose && (
+              <button type="button" className="btn btn-light" onClick={onClose}>
+                Close
+              </button>
+            )}
           </div>
         </div>
       )}

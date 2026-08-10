@@ -169,6 +169,41 @@ export function getTeamMembers(managerId) {
   )
 }
 
+// Full team roster for the My Team screen: manager/lead plus everyone on the same team.
+export function getMyTeammates(employeeId) {
+  const emp = getEmployees().find((e) => e.id === employeeId)
+  if (!emp || emp.role !== 'employee') return []
+
+  if (emp.isManager) {
+    const members = getTeamMembers(employeeId)
+    return [emp, ...members]
+  }
+
+  if (!emp.managerId) return []
+
+  const manager = getEmployeeById(emp.managerId)
+  const peers = getEmployees().filter(
+    (e) => e.role === 'employee' && e.managerId === emp.managerId
+  )
+  return manager ? [manager, ...peers] : peers
+}
+
+// Teammate rows with contact details for the My Team directory.
+export function getMyTeamDirectory(employeeId) {
+  return getMyTeammates(employeeId).map((e) => {
+    const profile = getProfileForEmployee(e.id)
+    const manager = e.managerId ? getEmployeeById(e.managerId) : null
+    return {
+      id: e.id,
+      name: e.name,
+      mobile: profile?.personal?.contactNumber || '',
+      email: e.email || '',
+      designation: e.designation || e.department || '',
+      reportsTo: manager?.name || ''
+    }
+  })
+}
+
 // ---- settings ----
 export function getSettings() {
   // Merge with defaults so new settings (added in later phases) always exist,
@@ -184,7 +219,12 @@ export function getSettings() {
     salary: {
       ...DEFAULT_SETTINGS.salary,
       ...(saved.salary || {})
-    }
+    },
+    lunchPolicy: {
+      ...DEFAULT_SETTINGS.lunchPolicy,
+      ...(saved.lunchPolicy || {})
+    },
+    companyHolidays: saved.companyHolidays ?? DEFAULT_SETTINGS.companyHolidays
   }
 }
 
@@ -311,7 +351,8 @@ export function addTask({ title, description, assigneeId, createdById, dueDate, 
     dueDate: dueDate || '',
     priority: priority || 'medium',
     status: 'todo',
-    createdOn: todayKey()
+    createdOn: todayKey(),
+    messages: []
   }
   all.push(task)
   write(KEYS.tasks, all)
@@ -332,6 +373,33 @@ export function updateTaskStatus(taskId, status) {
 export function deleteTask(taskId) {
   const all = getTasks().filter((t) => t.id !== taskId)
   write(KEYS.tasks, all)
+}
+
+export function getTaskById(taskId) {
+  return getTasks().find((t) => t.id === taskId) || null
+}
+
+// Add a message to a task Q&A thread (assignee or task creator only).
+export function addTaskMessage(taskId, { byId, text }) {
+  const all = getTasks()
+  const idx = all.findIndex((t) => t.id === taskId)
+  if (idx < 0) return null
+
+  const task = all[idx]
+  if (byId !== task.assigneeId && byId !== task.createdById) return null
+
+  const trimmed = String(text || '').trim()
+  if (!trimmed) return null
+
+  all[idx] = {
+    ...task,
+    messages: [
+      ...(task.messages || []),
+      { id: `TSM${Date.now()}`, byId, text: trimmed, on: todayKey() }
+    ]
+  }
+  write(KEYS.tasks, all)
+  return all[idx]
 }
 
 // ---- onboarding profiles ----
@@ -355,13 +423,15 @@ function upsertProfile(profile) {
   return profile
 }
 
-// Employee saves progress. Stays editable (status becomes 'draft').
+// Employee saves progress. Keeps the current editable status.
 export function saveProfileDraft(employeeId, data) {
+  const current = getProfileForEmployee(employeeId)
+  const editableStatuses = ['draft', 'returned', 'update_approved']
   const profile = {
-    ...getProfileForEmployee(employeeId),
+    ...current,
     ...data,
     employeeId,
-    status: 'draft',
+    status: editableStatuses.includes(current.status) ? current.status : 'draft',
     updatedOn: todayKey()
   }
   return upsertProfile(profile)
@@ -369,16 +439,57 @@ export function saveProfileDraft(employeeId, data) {
 
 // Employee submits for review. Becomes locked ('submitted').
 export function submitProfile(employeeId, data) {
+  const current = getProfileForEmployee(employeeId)
   const profile = {
-    ...getProfileForEmployee(employeeId),
+    ...current,
     ...data,
     employeeId,
     status: 'submitted',
     updatedOn: todayKey(),
     submittedOn: todayKey(),
+    reviewNote: '',
+    updateRequestedOn: '',
+    updateRequestNote: ''
+  }
+  return upsertProfile(profile)
+}
+
+// Verified employee asks HR for permission to update their details.
+export function requestProfileUpdate(employeeId, note = '') {
+  const current = getProfileForEmployee(employeeId)
+  if (current.status !== 'verified') return null
+  const profile = {
+    ...current,
+    status: 'update_requested',
+    updateRequestedOn: todayKey(),
+    updateRequestNote: String(note || '').trim(),
     reviewNote: ''
   }
   return upsertProfile(profile)
+}
+
+// HR approves or denies an employee's request to update their details.
+export function reviewProfileUpdateRequest(employeeId, approved, reviewedBy, note = '') {
+  const current = getProfileForEmployee(employeeId)
+  if (current.status !== 'update_requested') return null
+  if (approved) {
+    return upsertProfile({
+      ...current,
+      status: 'update_approved',
+      reviewedBy: reviewedBy || '',
+      reviewedOn: todayKey(),
+      reviewNote: String(note || '').trim()
+    })
+  }
+  return upsertProfile({
+    ...current,
+    status: 'verified',
+    updateRequestedOn: '',
+    updateRequestNote: '',
+    reviewedBy: reviewedBy || '',
+    reviewedOn: todayKey(),
+    reviewNote: String(note || '').trim()
+  })
 }
 
 // HR verifies or returns a profile. decision = 'verified' | 'returned'.

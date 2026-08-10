@@ -25,7 +25,24 @@ export const DEFAULT_SETTINGS = {
     pfPercent: 12,        // Provident Fund: % of Basic (employee side)
     esiPercent: 0.75,     // ESI: % of gross (employee side)
     esiThreshold: 21000   // ESI only applies when gross is at or below this
-  }
+  },
+  // Lunch break policy shown to all employees on My Attendance.
+  lunchPolicy: {
+    durationMinutes: 30,
+    place: 'Company cafeteria (2nd floor). Lunch at your desk is not allowed.',
+    startTime: '13:00',
+    endTime: '14:00',
+    notes: 'Please take lunch only during the allowed window and return to your workstation on time.'
+  },
+  // Dates the company observes as holidays. isHoliday = true means a day off for employees.
+  companyHolidays: [
+    { id: 'HOL01', date: '2026-01-26', name: 'Republic Day', isHoliday: true },
+    { id: 'HOL02', date: '2026-03-14', name: 'Holi', isHoliday: true },
+    { id: 'HOL03', date: '2026-08-15', name: 'Independence Day', isHoliday: true },
+    { id: 'HOL04', date: '2026-10-02', name: 'Gandhi Jayanti', isHoliday: true },
+    { id: 'HOL05', date: '2026-11-08', name: 'Diwali', isHoliday: true },
+    { id: 'HOL06', date: '2026-12-25', name: 'Christmas', isHoliday: false }
+  ]
 }
 
 // The kinds of leave. "paid: true" means it does not cut salary later.
@@ -44,15 +61,19 @@ export const LEAVE_TYPES = [
 export const SAMPLE_EMPLOYEES = [
   { id: 'EMP001', name: 'Aarav Sharma', pin: '1111', role: 'employee', department: 'Sales',
     isManager: true, managerId: null,
+    email: 'aarav.sharma@company.com', designation: 'Sales Manager',
     salary: { basic: 18000, hra: 9000, other: 5000, tdsMonthly: 1500 } },
   { id: 'EMP002', name: 'Priya Nair', pin: '2222', role: 'employee', department: 'Design',
     isManager: false, managerId: 'EMP001',
+    email: 'priya.nair@company.com', designation: 'UI Designer',
     salary: { basic: 12000, hra: 5000, other: 3000, tdsMonthly: 0 } },
   { id: 'EMP003', name: 'Rohan Gupta', pin: '3333', role: 'employee', department: 'Support',
     isManager: false, managerId: 'EMP001',
+    email: 'rohan.gupta@company.com', designation: 'Support Executive',
     salary: { basic: 10000, hra: 4000, other: 2000, tdsMonthly: 0 } },
   { id: 'EMP004', name: 'Sneha Iyer', pin: '4444', role: 'employee', department: 'Sales',
     isManager: false, managerId: 'EMP001',
+    email: 'sneha.iyer@company.com', designation: 'Sales Executive',
     salary: { basic: 15000, hra: 7000, other: 4000, tdsMonthly: 800 } },
   { id: 'ADM001', name: 'Meera Kapoor', pin: '0000', role: 'admin', department: 'Human Resources',
     isManager: false, managerId: null,
@@ -146,7 +167,7 @@ function hasApprovedLeaveOn(employeeId, key) {
   )
 }
 
-// Build attendance for every working day of THIS month up to yesterday.
+// Build attendance for roughly the last 25 working days (up to yesterday).
 // Days covered by an approved leave are skipped (the person was on leave).
 function buildSampleAttendance() {
   const records = []
@@ -162,7 +183,9 @@ function buildSampleAttendance() {
     EMP004: { inH: 9, inM: 32, outH: 18, outM: 0,  bs: [13, 15], be: [13, 45] }
   }
 
-  const d = new Date(today.getFullYear(), today.getMonth(), 1)
+  // ~35 calendar days back yields ~25 weekdays for pagination testing.
+  const d = new Date(today)
+  d.setDate(d.getDate() - 35)
   while (dateKey(d) < todayStr) {
     const dow = d.getDay()
     if (dow !== 0 && dow !== 6) {
@@ -354,7 +377,11 @@ export const SAMPLE_TASKS = [
   { id: 'TSK03', title: 'Update design mockups',
     description: 'Revise the home page mockups after the client feedback.',
     assigneeId: 'EMP002', createdById: 'EMP001',
-    dueDate: dayFromToday(4), priority: 'medium', status: 'todo', createdOn: dayFromToday(-2) },
+    dueDate: dayFromToday(4), priority: 'medium', status: 'todo', createdOn: dayFromToday(-2),
+    messages: [
+      { id: 'TSM01', byId: 'EMP002', text: 'Which mockup version should I use as the base?', on: dayFromToday(-1) },
+      { id: 'TSM02', byId: 'EMP001', text: 'Use the March draft. Client comments are in the email I sent yesterday.', on: dayFromToday(-1) }
+    ] },
   { id: 'TSK04', title: 'Reply to support tickets',
     description: 'Clear the pending customer emails from this week.',
     assigneeId: 'EMP003', createdById: 'EMP001',
@@ -437,8 +464,44 @@ export const SAMPLE_PROFILES = [
       ],
       experience: [{ name: 'priya-relieving.pdf', size: 130000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }],
       form12b: [{ name: 'priya-form12b.pdf', size: 95000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }],
-      bankProof: []
+      bankProof: [{ name: 'priya-cheque.pdf', size: 90000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }]
     }
+  },
+  {
+    employeeId: 'EMP003', status: 'verified',
+    updatedOn: dayFromToday(-15), submittedOn: dayFromToday(-18),
+    reviewedBy: 'ADM001', reviewedOn: dayFromToday(-15), reviewNote: '',
+    personal: {
+      fullName: 'Rohan Gupta', dob: '1992-01-20',
+      address: '8 Sector 18, Noida 201301', contactNumber: '9811122233',
+      emergencyName: 'Kiran Gupta', emergencyRelation: 'Spouse', emergencyContact: '9811144455',
+      aadhaar: '112233445566', pan: 'ROHPG1234M', homeGate: 'Gate 1',
+      pickupPoint: { lat: 28.5355, lng: 77.3910 }, dropPoint: null, dropSameAsPickup: true
+    },
+    bank: { accountNumber: '30099887766', ifsc: 'SBIN0001234', bankName: 'State Bank of India' },
+    statutory: {
+      uan: '111222333444', esicApplicable: true, esic: '3100998877',
+      nomineeName: 'Kiran Gupta', nomineeRelation: 'Spouse', nomineeShare: '100'
+    },
+    documents: {}
+  },
+  {
+    employeeId: 'EMP004', status: 'verified',
+    updatedOn: dayFromToday(-12), submittedOn: dayFromToday(-14),
+    reviewedBy: 'ADM001', reviewedOn: dayFromToday(-12), reviewNote: '',
+    personal: {
+      fullName: 'Sneha Iyer', dob: '1993-07-08',
+      address: '22 Anna Salai, Chennai 600002', contactNumber: '9840055666',
+      emergencyName: 'Lakshmi Iyer', emergencyRelation: 'Mother', emergencyContact: '9840077888',
+      aadhaar: '998877665544', pan: 'SNHPI5678N', homeGate: 'Gate 2',
+      pickupPoint: { lat: 13.0827, lng: 80.2707 }, dropPoint: null, dropSameAsPickup: true
+    },
+    bank: { accountNumber: '40055667788', ifsc: 'AXIS0000456', bankName: 'Axis Bank' },
+    statutory: {
+      uan: '222333444555', esicApplicable: false, esic: '',
+      nomineeName: 'Lakshmi Iyer', nomineeRelation: 'Mother', nomineeShare: '100'
+    },
+    documents: {}
   }
 ]
 

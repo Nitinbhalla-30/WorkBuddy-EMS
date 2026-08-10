@@ -12,6 +12,7 @@ import EmployeeTickets from './pages/EmployeeTickets.jsx'
 import EmployeeITHelpDesk from './pages/EmployeeITHelpDesk.jsx'
 import EmployeeAnnouncements from './pages/EmployeeAnnouncements.jsx'
 import MyCab from './pages/MyCab.jsx'
+import MyTeam from './pages/MyTeam.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import AdminLeaves from './pages/AdminLeaves.jsx'
 import AdminSalary from './pages/AdminSalary.jsx'
@@ -63,6 +64,7 @@ export default function App() {
         <Route path="/my-leaves" element={<EmployeeLeaves />} />
         <Route path="/my-salary" element={<EmployeeSalary />} />
         <Route path="/my-tasks" element={<EmployeeTasks />} />
+        <Route path="/my-team" element={<MyTeam />} />
         <Route path="/team-tasks" element={<TeamTasks />} />
         <Route path="/my-profile" element={<EmployeeProfile />} />
         <Route path="/help" element={<EmployeeTickets />} />

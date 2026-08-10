@@ -14,6 +14,10 @@ import {
   setCabCancellation
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { useTableControls } from '../hooks/useTableControls.js'
+import Modal from '../components/Modal.jsx'
 import {
   driverById,
   formatDateTime,
@@ -49,6 +53,20 @@ export default function MyCab() {
     () => getCabRequestsForEmployee(user.id),
     [user.id, refresh]
   )
+  const requestsTable = useTableControls(requests, {
+    getSearchText: (r) =>
+      [
+        r.forDates.join(' '), r.newLocation, r.newGate, r.newTime,
+        r.reason, requestStatusLabel(r.status), r.adminNote
+      ].join(' '),
+    getSortValue: (r, key) => {
+      if (key === 'dates') return r.forDates[0] || ''
+      if (key === 'status') return r.status
+      return r[key]
+    },
+    initialSortKey: 'dates',
+    initialSortDir: 'desc'
+  })
   const messages = useMemo(
     () => getCabMessagesForEmployee(user.id),
     [user.id, refresh]
@@ -195,19 +213,17 @@ export default function MyCab() {
 
       {/* Temporary change request form - Modal */}
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <RequestForm
-              pickupTrip={pickupTrip}
-              onSubmit={(data) => {
-                createCabRequest({ ...data, employeeId: user.id })
-                setShowForm(false)
-                setRefresh((n) => n + 1)
-              }}
-              onCancel={() => setShowForm(false)}
-            />
-          </div>
-        </div>
+        <Modal onClose={() => setShowForm(false)} title="Request a temporary change">
+          <RequestForm
+            pickupTrip={pickupTrip}
+            onSubmit={(data) => {
+              createCabRequest({ ...data, employeeId: user.id })
+              setShowForm(false)
+              setRefresh((n) => n + 1)
+            }}
+            onCancel={() => setShowForm(false)}
+          />
+        </Modal>
       )}
 
       {/* Past requests */}
@@ -215,18 +231,28 @@ export default function MyCab() {
         <>
           <h3 className="section-title">My change requests</h3>
           <div className="card">
+            <TableToolbar
+              search={requestsTable.search}
+              onSearchChange={requestsTable.setSearch}
+              showing={requestsTable.count}
+              total={requestsTable.total}
+              placeholder="Search requests..."
+            />
             <table className="table">
               <thead>
                 <tr>
-                  <th>Date(s)</th>
+                  <SortableTh label="Date(s)" keyName="dates" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
                   <th>Changes</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                  <th>Admin note</th>
+                  <SortableTh label="Reason" keyName="reason" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+                  <SortableTh label="Status" keyName="status" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+                  <SortableTh label="Admin note" keyName="adminNote" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
                 </tr>
               </thead>
               <tbody>
-                {requests.map((r) => (
+                {requestsTable.count === 0 && (
+                  <tr><td colSpan={5} className="muted">No requests match your search.</td></tr>
+                )}
+                {requestsTable.rows.map((r) => (
                   <tr key={r.id}>
                     <td>{r.forDates.map((d) => formatDate(d)).join(', ')}</td>
                     <td>

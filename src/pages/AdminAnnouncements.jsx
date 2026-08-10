@@ -8,6 +8,14 @@ import {
 } from '../data/store.js'
 import { ANNOUNCEMENT_TYPES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { useTableControls } from '../hooks/useTableControls.js'
+
+const ANNOUNCEMENT_TYPE_OPTS = [
+  { value: 'all', label: 'All types' },
+  ...ANNOUNCEMENT_TYPES.map((t) => ({ value: t.key, label: t.label }))
+]
 
 export default function AdminAnnouncements() {
   const { user } = useAuth()
@@ -20,9 +28,21 @@ export default function AdminAnnouncements() {
     excludedEmployees: []
   })
 
-  const announcements = useMemo(() => {
-    return getAnnouncements().sort((a, b) => (a.createdOn < b.createdOn ? 1 : -1))
-  }, [refresh])
+  const announcements = useMemo(() => getAnnouncements(), [refresh])
+
+  const table = useTableControls(announcements, {
+    getSearchText: (a) => [a.title, a.content, a.type, a.createdOn].join(' '),
+    getSortValue: (a, key) => {
+      if (key === 'type') return a.type
+      if (key === 'excluded') return a.excludedEmployees?.length || 0
+      return a[key]
+    },
+    initialSortKey: 'createdOn',
+    initialSortDir: 'desc',
+    filterFns: {
+      type: (a, val) => a.type === val
+    }
+  })
 
   const employees = useMemo(() => {
     return getEmployees().filter((e) => e.role === 'employee' || e.role === 'it')
@@ -158,21 +178,35 @@ export default function AdminAnnouncements() {
 
       {/* All Announcements */}
       <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search announcements..."
+          filters={[{
+            key: 'type',
+            label: 'Type',
+            value: table.filters.type || 'all',
+            options: ANNOUNCEMENT_TYPE_OPTS
+          }]}
+          onFilterChange={table.setFilter}
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Type</th>
-              <th>Created On</th>
-              <th>Excluded</th>
+              <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Type" keyName="type" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Created On" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Excluded" keyName="excluded" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {announcements.length === 0 && (
-              <tr><td colSpan={5} className="muted">No announcements sent yet.</td></tr>
+            {table.count === 0 && (
+              <tr><td colSpan={5} className="muted">No announcements match your filters.</td></tr>
             )}
-            {announcements.map((announcement) => (
+            {table.rows.map((announcement) => (
               <tr key={announcement.id}>
                 <td>
                   <strong>{announcement.title}</strong>

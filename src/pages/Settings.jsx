@@ -26,6 +26,43 @@ export default function Settings() {
     setSaved(false)
   }
 
+  function updateLunchPolicy(key, value) {
+    setForm((f) => ({
+      ...f,
+      lunchPolicy: { ...f.lunchPolicy, [key]: value }
+    }))
+    setSaved(false)
+  }
+
+  function updateHoliday(id, field, value) {
+    setForm((f) => ({
+      ...f,
+      companyHolidays: (f.companyHolidays || []).map((h) =>
+        h.id === id ? { ...h, [field]: value } : h
+      )
+    }))
+    setSaved(false)
+  }
+
+  function addHoliday() {
+    setForm((f) => ({
+      ...f,
+      companyHolidays: [
+        ...(f.companyHolidays || []),
+        { id: `HOL${Date.now()}`, date: '', name: '', isHoliday: true }
+      ]
+    }))
+    setSaved(false)
+  }
+
+  function removeHoliday(id) {
+    setForm((f) => ({
+      ...f,
+      companyHolidays: (f.companyHolidays || []).filter((h) => h.id !== id)
+    }))
+    setSaved(false)
+  }
+
   function handleSave(e) {
     e.preventDefault()
     saveSettings(form)
@@ -102,6 +139,60 @@ export default function Settings() {
           <div />
         </div>
 
+        <h3 className="section-title">Lunch policy</h3>
+        <p className="hint first">
+          These details are shown to every employee on My Attendance so new joiners
+          know where and how long they can take lunch without HR repeating it.
+        </p>
+        <div className="two-col">
+          <label className="field">
+            <span>Lunch duration (minutes)</span>
+            <input
+              type="number"
+              min="1"
+              max="120"
+              value={form.lunchPolicy.durationMinutes}
+              onChange={(e) => updateLunchPolicy('durationMinutes', Number(e.target.value))}
+            />
+          </label>
+          <label className="field">
+            <span>Allowed lunch window — from</span>
+            <input
+              type="time"
+              value={form.lunchPolicy.startTime}
+              onChange={(e) => updateLunchPolicy('startTime', e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>Allowed lunch window — until</span>
+            <input
+              type="time"
+              value={form.lunchPolicy.endTime}
+              onChange={(e) => updateLunchPolicy('endTime', e.target.value)}
+            />
+          </label>
+        </div>
+        <label className="field">
+          <span>Where employees may have lunch</span>
+          <textarea
+            className="reply-input"
+            rows={3}
+            value={form.lunchPolicy.place}
+            onChange={(e) => updateLunchPolicy('place', e.target.value)}
+            placeholder="e.g. Company cafeteria, 2nd floor. Lunch at your desk is not allowed."
+          />
+        </label>
+        <label className="field">
+          <span>Additional notes (optional)</span>
+          <textarea
+            className="reply-input"
+            rows={2}
+            value={form.lunchPolicy.notes}
+            onChange={(e) => updateLunchPolicy('notes', e.target.value)}
+            placeholder="Any other lunch rules employees should follow"
+          />
+        </label>
+
         <h3 className="section-title">Leave allowance (per year)</h3>
         <p className="hint first">
           Paid-leave days given to every employee each year. Unpaid leave has
@@ -135,6 +226,73 @@ export default function Settings() {
               onChange={(e) => updateLeaveAllowance('earned', e.target.value)}
             />
           </label>
+        </div>
+
+        <h3 className="section-title">Company holidays</h3>
+        <p className="hint first">
+          List dates that may be public holidays or special occasions. Tick
+          <strong> Company holiday</strong> only for days when employees get a
+          day off. Unticked dates are shown here for reference but employees may
+          still be expected to work.
+        </p>
+        <table className="table" style={{ marginTop: '12px' }}>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Occasion</th>
+              <th>Company holiday</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {(form.companyHolidays || []).length === 0 && (
+              <tr>
+                <td colSpan={4} className="muted">No dates added yet.</td>
+              </tr>
+            )}
+            {(form.companyHolidays || []).map((h) => (
+              <tr key={h.id}>
+                <td>
+                  <input
+                    type="date"
+                    value={h.date}
+                    onChange={(e) => updateHoliday(h.id, 'date', e.target.value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    value={h.name}
+                    onChange={(e) => updateHoliday(h.id, 'name', e.target.value)}
+                    placeholder="e.g. Independence Day"
+                  />
+                </td>
+                <td>
+                  <label className="checkbox-row" style={{ margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={!!h.isHoliday}
+                      onChange={(e) => updateHoliday(h.id, 'isHoliday', e.target.checked)}
+                    />
+                    <span>Day off for employees</span>
+                  </label>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn btn-tiny btn-light"
+                    onClick={() => removeHoliday(h.id)}
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="button-row">
+          <button type="button" className="btn btn-light btn-tiny" onClick={addHoliday}>
+            Add date
+          </button>
         </div>
 
         <h3 className="section-title">Office internet check</h3>

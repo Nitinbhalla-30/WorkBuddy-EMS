@@ -11,6 +11,9 @@ import {
   leaveTypeLabel,
   statusTagClass
 } from '../utils/leaves.js'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { useTableControls } from '../hooks/useTableControls.js'
 
 // HR/Admin leave screen: see all requests and approve or reject them.
 export default function AdminLeaves() {
@@ -18,11 +21,30 @@ export default function AdminLeaves() {
   const [leaves, setLeaves] = useState(() => getLeaves())
   const [filter, setFilter] = useState('pending')
 
-  const shown = useMemo(() => {
+  const tabFiltered = useMemo(() => {
     let list = [...leaves]
     if (filter !== 'all') list = list.filter((l) => l.status === filter)
-    return list.sort((a, b) => (a.appliedOn < b.appliedOn ? 1 : -1))
+    return list
   }, [leaves, filter])
+
+  const table = useTableControls(tabFiltered, {
+    getSearchText: (lv) => {
+      const emp = getEmployeeById(lv.employeeId)
+      return [
+        emp?.name, emp?.department, leaveTypeLabel(lv.type),
+        lv.fromDate, lv.toDate, lv.reason, lv.status
+      ].join(' ')
+    },
+    getSortValue: (lv, key) => {
+      if (key === 'employee') return getEmployeeById(lv.employeeId)?.name || lv.employeeId
+      if (key === 'type') return leaveTypeLabel(lv.type)
+      if (key === 'days') return countLeaveDays(lv.fromDate, lv.toDate)
+      if (key === 'status') return lv.status
+      return lv[key]
+    },
+    initialSortKey: 'appliedOn',
+    initialSortDir: 'desc'
+  })
 
   const pendingCount = leaves.filter((l) => l.status === 'pending').length
 
@@ -42,7 +64,7 @@ export default function AdminLeaves() {
     <div>
       <div className="page-head">
         <h2>Leave Requests</h2>
-        <span className="muted">{shown.length} shown</span>
+        <span className="muted">{table.count} shown</span>
       </div>
 
       <div className="tabs">
@@ -58,24 +80,31 @@ export default function AdminLeaves() {
       </div>
 
       <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search leave requests..."
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>Employee</th>
-              <th>Type</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Days</th>
-              <th>Reason</th>
-              <th>Status</th>
+              <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Type" keyName="type" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="From" keyName="fromDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="To" keyName="toDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Days" keyName="days" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Reason" keyName="reason" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            {shown.length === 0 && (
-              <tr><td colSpan="8" className="muted">No requests here.</td></tr>
+            {table.count === 0 && (
+              <tr><td colSpan="8" className="muted">No requests match your filters.</td></tr>
             )}
-            {shown.map((lv) => {
+            {table.rows.map((lv) => {
               const emp = getEmployeeById(lv.employeeId)
               return (
                 <tr key={lv.id}>

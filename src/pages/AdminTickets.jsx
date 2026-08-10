@@ -16,26 +16,49 @@ import {
   statusTagClass
 } from '../utils/tickets.js'
 import TicketThread from '../components/TicketThread.jsx'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { useTableControls } from '../hooks/useTableControls.js'
+
+const TICKET_KIND_OPTS = [
+  { value: 'all', label: 'All types' },
+  { value: 'query', label: 'Queries' },
+  { value: 'grievance', label: 'Grievances' }
+]
+const TICKET_STATUS_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  ...TICKET_STATUSES.map((s) => ({ value: s.key, label: s.label }))
+]
 
 // HR view of every query and grievance, with filters and a reply thread.
 export default function AdminTickets() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
-  const [kindFilter, setKindFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
   const [openId, setOpenId] = useState(null)
 
   const nameOf = (id) => getEmployeeById(id)?.name || id
 
-  const tickets = useMemo(() => {
-    return getTicketsForHR().filter((t) => {
-      if (kindFilter !== 'all' && t.kind !== kindFilter) return false
-      if (statusFilter !== 'all' && t.status !== statusFilter) return false
-      return true
-    })
-  }, [kindFilter, statusFilter, refresh])
+  const allTickets = useMemo(() => getTicketsForHR(), [refresh])
 
-  const open = getTicketsForHR().find((t) => t.id === openId) || null
+  const table = useTableControls(allTickets, {
+    getSearchText: (t) =>
+      [t.subject, raisedByName(t, nameOf), kindLabel(t.kind), categoryLabel(t.category), statusLabel(t.status), t.updatedOn].join(' '),
+    getSortValue: (t, key) => {
+      if (key === 'from') return raisedByName(t, nameOf)
+      if (key === 'kind') return t.kind
+      if (key === 'category') return categoryLabel(t.category)
+      if (key === 'status') return t.status
+      return t[key]
+    },
+    initialSortKey: 'updatedOn',
+    initialSortDir: 'desc',
+    filterFns: {
+      kind: (t, val) => t.kind === val,
+      status: (t, val) => t.status === val
+    }
+  })
+
+  const open = allTickets.find((t) => t.id === openId) || null
 
   function handleReply(text) {
     addTicketMessage(open.id, { byId: user.id, byRole: 'admin', text })
@@ -47,7 +70,7 @@ export default function AdminTickets() {
     setRefresh((n) => n + 1)
   }
 
-  const openCount = getTicketsForHR().filter((t) => t.status === 'open').length
+  const openCount = allTickets.filter((t) => t.status === 'open').length
 
   return (
     <div>
@@ -56,48 +79,36 @@ export default function AdminTickets() {
         <span className="muted">{openCount} open</span>
       </div>
 
-      {/* Filters */}
       <div className="card">
-        <div className="filters">
-          <label className="field inline">
-            <span>Type</span>
-            <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}>
-              <option value="all">All</option>
-              <option value="query">Queries</option>
-              <option value="grievance">Grievances</option>
-            </select>
-          </label>
-          <label className="field inline">
-            <span>Status</span>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="all">All</option>
-              {TICKET_STATUSES.map((s) => (
-                <option key={s.key} value={s.key}>{s.label}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
-
-      {/* List */}
-      <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search tickets..."
+          filters={[
+            { key: 'kind', label: 'Type', value: table.filters.kind || 'all', options: TICKET_KIND_OPTS },
+            { key: 'status', label: 'Status', value: table.filters.status || 'all', options: TICKET_STATUS_OPTS }
+          ]}
+          onFilterChange={table.setFilter}
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>Subject</th>
-              <th>From</th>
-              <th>Type</th>
-              <th>Category</th>
-              <th>Status</th>
-              <th>Updated</th>
+              <SortableTh label="Subject" keyName="subject" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="From" keyName="from" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Type" keyName="kind" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Category" keyName="category" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Updated" keyName="updatedOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {tickets.length === 0 && (
-              <tr><td colSpan={7} className="muted">Nothing matches these filters.</td></tr>
+            {table.count === 0 && (
+              <tr><td colSpan={7} className="muted">Nothing matches your filters.</td></tr>
             )}
-            {tickets.map((t) => (
+            {table.rows.map((t) => (
               <tr key={t.id}>
                 <td>
                   <strong>{t.subject}</strong>

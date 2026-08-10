@@ -7,6 +7,22 @@ import {
 } from '../data/store.js'
 import { ANNOUNCEMENT_TYPES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
+import Pagination from '../components/Pagination.jsx'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { usePagination } from '../hooks/usePagination.js'
+import { useTableControls } from '../hooks/useTableControls.js'
+import Modal from '../components/Modal.jsx'
+
+const ANNOUNCEMENT_TYPE_OPTS = [
+  { value: 'all', label: 'All types' },
+  ...ANNOUNCEMENT_TYPES.map((t) => ({ value: t.key, label: t.label }))
+]
+const READ_FILTER_OPTS = [
+  { value: 'all', label: 'All' },
+  { value: 'new', label: 'Unread' },
+  { value: 'read', label: 'Read' }
+]
 
 export default function EmployeeAnnouncements() {
   const { user } = useAuth()
@@ -17,6 +33,34 @@ export default function EmployeeAnnouncements() {
     () => getAnnouncementsForEmployee(user.id),
     [user.id, refresh]
   )
+  const table = useTableControls(announcements, {
+    getSearchText: (a) => [a.title, a.content, a.type, a.createdOn].join(' '),
+    getSortValue: (a, key) => {
+      if (key === 'read') return isAnnouncementRead(user.id, a.id) ? 'read' : 'new'
+      if (key === 'type') return a.type
+      return a[key]
+    },
+    initialSortKey: 'createdOn',
+    initialSortDir: 'desc',
+    filterFns: {
+      type: (a, val) => a.type === val,
+      read: (a, val) => {
+        const isRead = isAnnouncementRead(user.id, a.id)
+        if (val === 'read') return isRead
+        if (val === 'new') return !isRead
+        return true
+      }
+    }
+  })
+  const {
+    items: announcementsPage,
+    page: announcementsPageNum,
+    totalPages: announcementsTotalPages,
+    total: announcementsTotal,
+    startIndex: announcementsStart,
+    endIndex: announcementsEnd,
+    setPage: setAnnouncementsPage
+  } = usePagination(table.rows)
 
   const open = announcements.find((a) => a.id === openId) || null
 
@@ -54,21 +98,33 @@ export default function EmployeeAnnouncements() {
       </div>
 
       <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search announcements..."
+          filters={[
+            { key: 'type', label: 'Type', value: table.filters.type || 'all', options: ANNOUNCEMENT_TYPE_OPTS },
+            { key: 'read', label: 'Status', value: table.filters.read || 'all', options: READ_FILTER_OPTS }
+          ]}
+          onFilterChange={table.setFilter}
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Type</th>
-              <th>Date</th>
-              <th>Status</th>
+              <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Type" keyName="type" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Date" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Status" keyName="read" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {announcements.length === 0 && (
-              <tr><td colSpan={5} className="muted">No announcements for you at this time.</td></tr>
+            {table.count === 0 && (
+              <tr><td colSpan={5} className="muted">No announcements match your filters.</td></tr>
             )}
-            {announcements.map((announcement) => {
+            {announcementsPage.map((announcement) => {
               const isRead = isAnnouncementRead(user.id, announcement.id)
 
               return (
@@ -105,12 +161,19 @@ export default function EmployeeAnnouncements() {
             })}
           </tbody>
         </table>
+        <Pagination
+          page={announcementsPageNum}
+          totalPages={announcementsTotalPages}
+          total={announcementsTotal}
+          startIndex={announcementsStart}
+          endIndex={announcementsEnd}
+          onPageChange={setAnnouncementsPage}
+        />
       </div>
 
       {open && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-form">
+        <Modal onClose={closeModal} title={open.title}>
+          <div className="modal-form">
               <div className="modal-header">
                 <div>
                   <h3 className="section-title first" style={{ margin: 0 }}>{open.title}</h3>
@@ -137,8 +200,7 @@ export default function EmployeeAnnouncements() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       <p className="hint">

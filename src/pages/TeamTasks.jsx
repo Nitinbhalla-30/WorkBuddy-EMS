@@ -2,7 +2,9 @@ import { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addTask,
+  addTaskMessage,
   deleteTask,
+  getEmployeeById,
   getTasks,
   getTeamMembers,
   updateTaskStatus
@@ -10,6 +12,22 @@ import {
 import { TASK_STATUSES, TASK_PRIORITIES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import TaskForm from '../components/TaskForm.jsx'
+import TaskThread from '../components/TaskThread.jsx'
+import Modal from '../components/Modal.jsx'
+import Pagination from '../components/Pagination.jsx'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { usePagination } from '../hooks/usePagination.js'
+import { useTableControls } from '../hooks/useTableControls.js'
+
+const TASK_STATUS_FILTER_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  ...TASK_STATUSES.map((s) => ({ value: s.key, label: s.label }))
+]
+const TASK_PRIORITY_FILTER_OPTS = [
+  { value: 'all', label: 'All priorities' },
+  ...TASK_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
+]
 
 // A manager's board: tasks for the whole team (and the manager). The manager
 // can create tasks for any team member or themselves, move them, and remove them.
@@ -18,6 +36,7 @@ export default function TeamTasks() {
   const [refresh, setRefresh] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [openTaskId, setOpenTaskId] = useState(null)
 
   // The team plus the manager themselves (they can own tasks too).
   const people = useMemo(() => {
@@ -33,9 +52,39 @@ export default function TeamTasks() {
     [ids, refresh]
   )
 
+  const table = useTableControls(tasks, {
+    getSearchText: (t) => {
+      const assignee = people.find((p) => p.id === t.assigneeId)
+      return [t.title, t.description, t.priority, t.status, t.dueDate, assignee?.name].join(' ')
+    },
+    getSortValue: (t, key) => {
+      if (key === 'assignee') return people.find((p) => p.id === t.assigneeId)?.name || t.assigneeId
+      return t[key]
+    },
+    initialSortKey: 'dueDate',
+    initialSortDir: 'asc',
+    filterFns: {
+      status: (t, val) => t.status === val,
+      priority: (t, val) => t.priority === val
+    }
+  })
+  const {
+    items: tasksPage,
+    page: tasksPageNum,
+    totalPages: tasksTotalPages,
+    total: tasksTotal,
+    startIndex: tasksStart,
+    endIndex: tasksEnd,
+    setPage: setTasksPage
+  } = usePagination(table.rows)
+
+  const openTask = tasks.find((t) => t.id === openTaskId) || null
+
   function nameOf(id) {
     const found = people.find((p) => p.id === id)
-    return found ? found.name : id
+    if (found) return found.name.replace(' (me)', '')
+    const emp = getEmployeeById(id)
+    return emp?.name || id
   }
 
   function handleCreate(data) {
@@ -46,6 +95,12 @@ export default function TeamTasks() {
 
   function move(id, status) {
     updateTaskStatus(id, status)
+    setRefresh((n) => n + 1)
+  }
+
+  function handleTaskReply(text) {
+    if (!openTask) return
+    addTaskMessage(openTask.id, { byId: user.id, text })
     setRefresh((n) => n + 1)
   }
 
@@ -65,15 +120,6 @@ export default function TeamTasks() {
       case 'medium': return 'tag-medium'
       case 'low': return 'tag-low'
       default: return ''
-    }
-  }
-
-  function getStatusLabel(status) {
-    switch (status) {
-      case 'todo': return 'To do'
-      case 'inprogress': return 'In progress'
-      case 'done': return 'Done'
-      default: return status
     }
   }
 
@@ -134,9 +180,8 @@ export default function TeamTasks() {
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-form">
+        <Modal onClose={() => setShowForm(false)} title="Assign a new task">
+          <div className="modal-form">
               <div className="modal-header">
                 <h3 className="section-title first">Assign a new task</h3>
                 <button
@@ -156,28 +201,81 @@ export default function TeamTasks() {
                 onCancel={() => setShowForm(false)}
               />
             </div>
+        </Modal>
+      )}
+
+      {openTask && (
+        <Modal onClose={() => setOpenTaskId(null)} title={openTask.title}>
+          <div className="modal-form">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>{openTask.title}</h3>
+                <div className="muted small">
+                  Assigned to {nameOf(openTask.assigneeId)} on {openTask.createdOn ? formatDate(openTask.createdOn) : '--'}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-tiny btn-light"
+                onClick={() => setOpenTaskId(null)}
+              >
+                ✕
+              </button>
+            </div>
+            {openTask.description && (
+              <p className="hint first">{openTask.description}</p>
+            )}
+            <TaskThread
+              task={openTask}
+              viewerId={user.id}
+              nameOf={nameOf}
+              onReply={handleTaskReply}
+              onClose={() => setOpenTaskId(null)}
+            />
           </div>
-        </div>
+        </Modal>
       )}
 
       <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search tasks..."
+          filters={[
+            {
+              key: 'status',
+              label: 'Status',
+              value: table.filters.status || 'all',
+              options: TASK_STATUS_FILTER_OPTS
+            },
+            {
+              key: 'priority',
+              label: 'Priority',
+              value: table.filters.priority || 'all',
+              options: TASK_PRIORITY_FILTER_OPTS
+            }
+          ]}
+          onFilterChange={table.setFilter}
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Description</th>
-              <th>Assigned To</th>
-              <th>Priority</th>
+              <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Description" keyName="description" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Assigned To" keyName="assignee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Status</th>
-              <th>Due Date</th>
+              <SortableTh label="Due Date" keyName="dueDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {tasks.length === 0 && (
-              <tr><td colSpan={7} className="muted">No tasks yet.</td></tr>
+            {table.count === 0 && (
+              <tr><td colSpan={7} className="muted">No tasks match your filters.</td></tr>
             )}
-            {tasks.map((task) => (
+            {tasksPage.map((task) => (
               <tr key={task.id}>
                 <td><strong>{task.title}</strong></td>
                 <td>{task.description || <span className="muted">--</span>}</td>
@@ -215,6 +313,15 @@ export default function TeamTasks() {
                         <button
                           className="task-menu-item"
                           onClick={() => {
+                            setOpenTaskId(task.id)
+                            closeMenu()
+                          }}
+                        >
+                          Ask question
+                        </button>
+                        <button
+                          className="task-menu-item"
+                          onClick={() => {
                             move(task.id, 'done')
                             closeMenu()
                           }}
@@ -239,11 +346,20 @@ export default function TeamTasks() {
             ))}
           </tbody>
         </table>
+        <Pagination
+          page={tasksPageNum}
+          totalPages={tasksTotalPages}
+          total={tasksTotal}
+          startIndex={tasksStart}
+          endIndex={tasksEnd}
+          onPageChange={setTasksPage}
+        />
       </div>
 
       <p className="hint">
         You can assign tasks to anyone on your team or to yourself. Team members
-        see their own tasks under &ldquo;My Tasks&rdquo;.
+        see their own tasks under &ldquo;My Tasks&rdquo; and can ask questions there.
+        Open <strong>Questions</strong> on a task to reply with clarifications or access details.
       </p>
     </div>
   )

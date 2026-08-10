@@ -5,11 +5,21 @@ import {
   getEmployees,
   getProfileForEmployee,
   reviewProfile,
+  reviewProfileUpdateRequest,
   updateEmployeeTeam
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
 import { profileStatusLabel, profileStatusTagClass } from '../utils/profile.js'
 import ProfileView from '../components/ProfileView.jsx'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { useTableControls } from '../hooks/useTableControls.js'
+
+const ROLE_FILTER_OPTS = [
+  { value: 'all', label: 'All roles' },
+  { value: 'employee', label: 'Employee' },
+  { value: 'admin', label: 'HR / Admin' }
+]
 
 // Combined "Employee Records" page. It shows the staff directory with team
 // info (who is a manager, who reports to whom) AND each person's onboarding
@@ -27,6 +37,35 @@ export default function EmployeeRecords() {
   const [note, setNote] = useState('')
 
   const employees = useMemo(() => getEmployees(), [refresh])
+
+  const table = useTableControls(employees, {
+    getSearchText: (e) => {
+      const profile = e.role === 'employee' ? getProfileForEmployee(e.id) : null
+      const manager = e.managerId ? employees.find((m) => m.id === e.managerId) : null
+      return [
+        e.id, e.name, e.department, e.role,
+        e.isManager ? 'manager' : '',
+        manager?.name,
+        profile ? profileStatusLabel(profile.status) : ''
+      ].join(' ')
+    },
+    getSortValue: (e, key) => {
+      if (key === 'role') return e.role === 'admin' ? 'HR / Admin' : 'Employee'
+      if (key === 'isManager') return e.isManager ? 1 : 0
+      if (key === 'manager') return e.managerId ? (employees.find((m) => m.id === e.managerId)?.name || '') : ''
+      if (key === 'days') return getAttendanceForEmployee(e.id).length
+      if (key === 'record') {
+        const profile = e.role === 'employee' ? getProfileForEmployee(e.id) : null
+        return profile ? profileStatusLabel(profile.status) : ''
+      }
+      return e[key]
+    },
+    initialSortKey: 'name',
+    initialSortDir: 'asc',
+    filterFns: {
+      role: (e, val) => e.role === val
+    }
+  })
 
   // Only real employees can be picked as a manager.
   const managers = employees.filter((e) => e.role === 'employee' && e.isManager)
@@ -81,6 +120,19 @@ export default function EmployeeRecords() {
     setRefresh((n) => n + 1)
   }
 
+  function approveUpdateRequest(employeeId) {
+    reviewProfileUpdateRequest(employeeId, true, user.id, note.trim())
+    setNote('')
+    setRefresh((n) => n + 1)
+  }
+
+  function denyUpdateRequest(employeeId) {
+    if (!note.trim()) return
+    reviewProfileUpdateRequest(employeeId, false, user.id, note.trim())
+    setNote('')
+    setRefresh((n) => n + 1)
+  }
+
   return (
     <div>
       <div className="page-head">
@@ -89,22 +141,39 @@ export default function EmployeeRecords() {
       </div>
 
       <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search employees..."
+          filters={[{
+            key: 'role',
+            label: 'Role',
+            value: table.filters.role || 'all',
+            options: ROLE_FILTER_OPTS
+          }]}
+          onFilterChange={table.setFilter}
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Department</th>
-              <th>Role</th>
-              <th>Manager?</th>
-              <th>Reports to</th>
-              <th>Days</th>
-              <th>Record</th>
+              <SortableTh label="ID" keyName="id" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Name" keyName="name" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Department" keyName="department" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Role" keyName="role" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Manager?" keyName="isManager" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Reports to" keyName="manager" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Days" keyName="days" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Record" keyName="record" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {employees.map((e) => {
+            {table.count === 0 && (
+              <tr><td colSpan={9} className="muted">No employees match your filters.</td></tr>
+            )}
+            {table.rows.map((e) => {
               const profile = profileOf(e)
               return (
                 <tr key={e.id}>
@@ -207,10 +276,52 @@ export default function EmployeeRecords() {
             </div>
           )}
 
+          {openProfile.status === 'update_requested' && (
+            <div className="info-box first">
+              <strong>Update request</strong> — sent on{' '}
+              {formatDate(openProfile.updateRequestedOn)}.
+              {openProfile.updateRequestNote
+                ? <> Reason: &ldquo;{openProfile.updateRequestNote}&rdquo;</>
+                : ' No reason was given.'}
+              Approve to let the employee edit their details, then verify after they submit.
+            </div>
+          )}
+
+          {openProfile.status === 'update_approved' && (
+            <div className="info-box first">
+              Update approved on {formatDate(openProfile.reviewedOn)}. The employee
+              is editing their details and will submit for your verification.
+            </div>
+          )}
+
           <ProfileView profile={openProfile} />
 
-          {/* Review actions */}
-          {openProfile.status === 'submitted' ? (
+          {/* HR decision on update request */}
+          {openProfile.status === 'update_requested' ? (
+            <>
+              <h3 className="section-title">Update request</h3>
+              <label className="field">
+                <span>Note to employee (optional when approving, required when denying)</span>
+                <input
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="e.g. Approved — please update your bank details only"
+                />
+              </label>
+              <div className="button-row">
+                <button className="btn btn-primary" onClick={() => approveUpdateRequest(openEmp.id)}>
+                  Approve update
+                </button>
+                <button
+                  className="btn btn-danger"
+                  disabled={!note.trim()}
+                  onClick={() => denyUpdateRequest(openEmp.id)}
+                >
+                  Deny request
+                </button>
+              </div>
+            </>
+          ) : openProfile.status === 'submitted' ? (
             <>
               <h3 className="section-title">Review decision</h3>
               <label className="field">
@@ -251,8 +362,9 @@ export default function EmployeeRecords() {
       <p className="hint">
         Mark someone as a Manager first, then set their team members&rsquo;
         &ldquo;Reports to&rdquo; to that manager. Employees fill their own
-        onboarding details under &ldquo;My Details&rdquo;; open a record to
-        verify it. Documents show the file name only in this test phase.
+        onboarding details under &ldquo;My Details&rdquo;. Verified employees must
+        request HR permission before updating. Open a record to approve update
+        requests or verify submissions.
       </p>
     </div>
   )

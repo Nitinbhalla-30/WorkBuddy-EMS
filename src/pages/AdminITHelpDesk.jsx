@@ -9,25 +9,48 @@ import {
 } from '../data/store.js'
 import { IT_ISSUE_PRIORITIES, IT_ISSUE_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { useTableControls } from '../hooks/useTableControls.js'
+
+const IT_STATUS_FILTER_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  ...IT_ISSUE_STATUSES.map((s) => ({ value: s.key, label: s.label }))
+]
+const IT_PRIORITY_FILTER_OPTS = [
+  { value: 'all', label: 'All priorities' },
+  ...IT_ISSUE_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
+]
 
 export default function AdminITHelpDesk() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [priorityFilter, setPriorityFilter] = useState('all')
   const [editingIssue, setEditingIssue] = useState(null)
   const [editForm, setEditForm] = useState({
     assignedTo: '',
     estimatedTime: ''
   })
 
-  const issues = useMemo(() => {
-    return getITIssues().filter((i) => {
-      if (statusFilter !== 'all' && i.status !== statusFilter) return false
-      if (priorityFilter !== 'all' && i.priority !== priorityFilter) return false
-      return true
-    })
-  }, [statusFilter, priorityFilter, refresh])
+  const allIssues = useMemo(() => getITIssues(), [refresh])
+
+  const table = useTableControls(allIssues, {
+    getSearchText: (i) => {
+      const employee = getEmployeeById(i.employeeId)
+      const assigned = i.assignedTo ? getITStaff().find((s) => s.id === i.assignedTo) : null
+      return [employee?.name, i.issue, i.description, i.priority, i.status, assigned?.name, i.estimatedTime, i.createdOn].join(' ')
+    },
+    getSortValue: (i, key) => {
+      if (key === 'employee') return getEmployeeById(i.employeeId)?.name || i.employeeId
+      if (key === 'assigned') return i.assignedTo || ''
+      return i[key]
+    },
+    initialSortKey: 'createdOn',
+    initialSortDir: 'desc',
+    filterFns: {
+      status: (i, val) => i.status === val,
+      priority: (i, val) => i.priority === val
+    }
+  })
 
   const itStaff = getITStaff()
 
@@ -77,27 +100,7 @@ export default function AdminITHelpDesk() {
     }
   }
 
-  function getStatusLabel(status) {
-    switch (status) {
-      case 'open': return 'Open'
-      case 'inprogress': return 'In Progress'
-      case 'resolved': return 'Resolved'
-      case 'closed': return 'Closed'
-      default: return status
-    }
-  }
-
-  function getStatusClass(status) {
-    switch (status) {
-      case 'open': return 'tag-high'
-      case 'inprogress': return 'tag-medium'
-      case 'resolved': return 'tag-low'
-      case 'closed': return ''
-      default: return ''
-    }
-  }
-
-  const openCount = getITIssues().filter((i) => i.status === 'open').length
+  const openCount = allIssues.filter((i) => i.status === 'open').length
 
   return (
     <div>
@@ -106,50 +109,37 @@ export default function AdminITHelpDesk() {
         <span className="muted">{openCount} open issues</span>
       </div>
 
-      {/* Filters */}
       <div className="card">
-        <div className="filters">
-          <label className="field inline">
-            <span>Status</span>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="all">All</option>
-              {IT_ISSUE_STATUSES.map((s) => (
-                <option key={s.key} value={s.key}>{s.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field inline">
-            <span>Priority</span>
-            <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
-              <option value="all">All</option>
-              {IT_ISSUE_PRIORITIES.map((p) => (
-                <option key={p.key} value={p.key}>{p.label}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
-
-      {/* IT Issues Table */}
-      <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          showing={table.count}
+          total={table.total}
+          placeholder="Search IT issues..."
+          filters={[
+            { key: 'status', label: 'Status', value: table.filters.status || 'all', options: IT_STATUS_FILTER_OPTS },
+            { key: 'priority', label: 'Priority', value: table.filters.priority || 'all', options: IT_PRIORITY_FILTER_OPTS }
+          ]}
+          onFilterChange={table.setFilter}
+        />
         <table className="table">
           <thead>
             <tr>
-              <th>Employee</th>
-              <th>Issue</th>
-              <th>Priority</th>
+              <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Issue" keyName="issue" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Status</th>
-              <th>Assigned To</th>
-              <th>Est. Time</th>
-              <th>Reported On</th>
+              <SortableTh label="Assigned To" keyName="assigned" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Est. Time" keyName="estimatedTime" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Reported On" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {issues.length === 0 && (
-              <tr><td colSpan={8} className="muted">No IT issues match these filters.</td></tr>
+            {table.count === 0 && (
+              <tr><td colSpan={8} className="muted">No IT issues match your filters.</td></tr>
             )}
-            {issues.map((issue) => {
+            {table.rows.map((issue) => {
               const employee = getEmployeeById(issue.employeeId)
               const assignedStaff = issue.assignedTo ? itStaff.find((s) => s.id === issue.assignedTo) : null
               const isEditing = editingIssue?.id === issue.id
