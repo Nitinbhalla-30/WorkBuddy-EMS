@@ -7,7 +7,7 @@ import { TASK_PRIORITIES } from '../data/sampleData.js'
 //               If null/empty, the task is assigned to defaultAssigneeId (self).
 //   defaultAssigneeId - who to assign to when there is no picker.
 //   onCreate  - function({ title, description, assigneeId, dueDate, priority })
-export default function TaskForm({ people, defaultAssigneeId, onCreate }) {
+export default function TaskForm({ people, defaultAssigneeId, onCreate, onCancel }) {
   const hasPicker = Array.isArray(people) && people.length > 0
 
   const [title, setTitle] = useState('')
@@ -38,7 +38,9 @@ export default function TaskForm({ people, defaultAssigneeId, onCreate }) {
   }
 
   return (
-    <form className="card" onSubmit={handleSubmit}>
+    <form className={onCancel ? undefined : 'card'} onSubmit={handleSubmit}>
+      {error && <div className="error-box first">{error}</div>}
+
       <div className="two-col">
         <label className="field">
           <span>Task title</span>
@@ -84,10 +86,11 @@ export default function TaskForm({ people, defaultAssigneeId, onCreate }) {
         </label>
       </div>
 
-      {error && <div className="error-box">{error}</div>}
-
       <div className="button-row">
         <button className="btn btn-primary" type="submit">Add task</button>
+        {onCancel && (
+          <button type="button" className="btn btn-light" onClick={onCancel}>Cancel</button>
+        )}
       </div>
     </form>
   )

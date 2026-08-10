@@ -525,11 +525,9 @@ code {
 .phone-link {
   color: var(--brand);
   text-decoration: none;
-  border-bottom: 1px dashed var(--brand);
 }
 .phone-link:hover {
   color: var(--brand-dark);
-  border-bottom-style: solid;
 }
 
 /* ---------- Task Menu Dropdown ---------- */
@@ -629,15 +627,6 @@ code {
   margin: 0;
 }
 
-.phone-link {
-  color: var(--brand);
-  text-decoration: none;
-  border-bottom: 1px dashed var(--brand);
-}
-.phone-link:hover {
-  color: var(--brand-dark);
-  border-bottom-style: solid;
-}
 .cab-cancellation-notice {
   margin-top: 12px;
   padding: 10px 14px;

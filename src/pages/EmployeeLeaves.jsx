@@ -5,7 +5,6 @@ import {
   getLeavesForEmployee,
   getSettings
 } from '../data/store.js'
-import { LEAVE_TYPES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import {
   countLeaveDays,
@@ -13,6 +12,7 @@ import {
   leaveTypeLabel,
   statusTagClass
 } from '../utils/leaves.js'
+import LeaveForm from '../components/LeaveForm.jsx'
 
 // The employee's leave screen: balance, apply form, and their requests.
 export default function EmployeeLeaves() {
@@ -20,48 +20,63 @@ export default function EmployeeLeaves() {
   const settings = getSettings()
 
   const [leaves, setLeaves] = useState(() => getLeavesForEmployee(user.id))
-  const [type, setType] = useState('casual')
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
-  const [reason, setReason] = useState('')
+  const [showForm, setShowForm] = useState(false)
   const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
 
   const balance = useMemo(
     () => leaveBalance(leaves, settings.leaveAllowance),
     [leaves, settings.leaveAllowance]
   )
 
-  const requestedDays = countLeaveDays(fromDate, toDate)
-
-  function handleApply(e) {
-    e.preventDefault()
-    setError('')
-    setMessage('')
-
-    if (!fromDate || !toDate) {
-      setError('Please choose both a start and end date.')
-      return
-    }
-    if (requestedDays <= 0) {
-      setError('The dates are not valid (end date is before start, or only weekends).')
-      return
-    }
-
-    applyLeave({ employeeId: user.id, type, fromDate, toDate, reason })
+  function handleApply(data) {
+    applyLeave({ employeeId: user.id, ...data })
     setLeaves(getLeavesForEmployee(user.id))
+    setShowForm(false)
     setMessage('Your leave request was sent to HR/Admin.')
-    setFromDate('')
-    setToDate('')
-    setReason('')
   }
 
   return (
     <div>
       <div className="page-head">
         <h2>My Leaves</h2>
-        <span className="muted">Year {new Date().getFullYear()}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span className="muted">Year {new Date().getFullYear()}</span>
+          <button
+            className="btn btn-primary btn-tiny"
+            onClick={() => setShowForm(true)}
+          >
+            Apply for leave
+          </button>
+        </div>
       </div>
+
+      {message && <div className="info-box">{message}</div>}
+
+      {showForm && (
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-form">
+              <div className="modal-header">
+                <h3 className="section-title first">Apply for leave</h3>
+                <button
+                  type="button"
+                  className="btn btn-tiny btn-light"
+                  onClick={() => setShowForm(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="hint first">
+                Choose your leave type and dates. Weekends are not counted toward your request.
+              </p>
+              <LeaveForm
+                onApply={handleApply}
+                onCancel={() => setShowForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Balance cards */}
       <div className="stat-grid">
@@ -74,53 +89,6 @@ export default function EmployeeLeaves() {
           </div>
         ))}
       </div>
-
-      {/* Apply form */}
-      <h3 className="section-title">Apply for leave</h3>
-      <form className="card" onSubmit={handleApply}>
-        <div className="two-col">
-          <label className="field">
-            <span>Leave type</span>
-            <select value={type} onChange={(e) => setType(e.target.value)}>
-              {LEAVE_TYPES.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.label}{t.paid ? '' : ' (no pay)'}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Reason (optional)</span>
-            <input
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Family function"
-            />
-          </label>
-        </div>
-
-        <div className="two-col">
-          <label className="field">
-            <span>From date</span>
-            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-          </label>
-          <label className="field">
-            <span>To date</span>
-            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-          </label>
-        </div>
-
-        {requestedDays > 0 && (
-          <p className="hint first">This request is for <strong>{requestedDays}</strong> working day(s). Weekends are not counted.</p>
-        )}
-
-        {error && <div className="error-box">{error}</div>}
-        {message && <div className="info-box">{message}</div>}
-
-        <div className="button-row">
-          <button className="btn btn-primary" type="submit">Send request</button>
-        </div>
-      </form>
 
       {/* My requests */}
       <h3 className="section-title">My requests</h3>

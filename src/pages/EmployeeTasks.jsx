@@ -10,6 +10,7 @@ import TaskForm from '../components/TaskForm.jsx'
 export default function EmployeeTasks() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
+  const [showForm, setShowForm] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
 
   const tasks = useMemo(
@@ -20,6 +21,7 @@ export default function EmployeeTasks() {
   function handleCreate(data) {
     addTask({ ...data, createdById: user.id })
     setRefresh((n) => n + 1)
+    setShowForm(false)
   }
 
   function move(id, status) {
@@ -78,8 +80,43 @@ export default function EmployeeTasks() {
     <div>
       <div className="page-head">
         <h2>My Tasks</h2>
-        <span className="muted">{tasks.length} task(s)</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span className="muted">{tasks.length} task(s)</span>
+          <button
+            className="btn btn-primary btn-tiny"
+            onClick={() => setShowForm(true)}
+          >
+            Add a task
+          </button>
+        </div>
       </div>
+
+      {showForm && (
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-form">
+              <div className="modal-header">
+                <h3 className="section-title first">Add a task for myself</h3>
+                <button
+                  type="button"
+                  className="btn btn-tiny btn-light"
+                  onClick={() => setShowForm(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="hint first">
+                Create a personal task and track it through To do, In progress, and Done.
+              </p>
+              <TaskForm
+                defaultAssigneeId={user.id}
+                onCreate={handleCreate}
+                onCancel={() => setShowForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <table className="table">
@@ -150,9 +187,6 @@ export default function EmployeeTasks() {
           </tbody>
         </table>
       </div>
-
-      <h3 className="section-title">Add a task for myself</h3>
-      <TaskForm defaultAssigneeId={user.id} onCreate={handleCreate} />
 
       <p className="hint">
         Change the status dropdown to move tasks between To do, In progress, and Done.

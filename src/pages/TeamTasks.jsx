@@ -16,6 +16,7 @@ import TaskForm from '../components/TaskForm.jsx'
 export default function TeamTasks() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
+  const [showForm, setShowForm] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
 
   // The team plus the manager themselves (they can own tasks too).
@@ -40,6 +41,7 @@ export default function TeamTasks() {
   function handleCreate(data) {
     addTask({ ...data, createdById: user.id })
     setRefresh((n) => n + 1)
+    setShowForm(false)
   }
 
   function move(id, status) {
@@ -120,8 +122,43 @@ export default function TeamTasks() {
     <div>
       <div className="page-head">
         <h2>Team Tasks</h2>
-        <span className="muted">{people.length - 1} team member(s)</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span className="muted">{people.length - 1} team member(s)</span>
+          <button
+            className="btn btn-primary btn-tiny"
+            onClick={() => setShowForm(true)}
+          >
+            Assign a task
+          </button>
+        </div>
       </div>
+
+      {showForm && (
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-form">
+              <div className="modal-header">
+                <h3 className="section-title first">Assign a new task</h3>
+                <button
+                  type="button"
+                  className="btn btn-tiny btn-light"
+                  onClick={() => setShowForm(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="hint first">
+                Assign a task to anyone on your team or to yourself.
+              </p>
+              <TaskForm
+                people={people}
+                onCreate={handleCreate}
+                onCancel={() => setShowForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <table className="table">
@@ -203,9 +240,6 @@ export default function TeamTasks() {
           </tbody>
         </table>
       </div>
-
-      <h3 className="section-title">Assign a new task</h3>
-      <TaskForm people={people} onCreate={handleCreate} />
 
       <p className="hint">
         You can assign tasks to anyone on your team or to yourself. Team members

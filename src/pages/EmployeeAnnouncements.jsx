@@ -1,25 +1,34 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getAnnouncementsForEmployee, markAnnouncementAsRead } from '../data/store.js'
+import {
+  getAnnouncementsForEmployee,
+  isAnnouncementRead,
+  markAnnouncementAsRead
+} from '../data/store.js'
 import { ANNOUNCEMENT_TYPES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 
 export default function EmployeeAnnouncements() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
-  const [expandedId, setExpandedId] = useState(null)
+  const [openId, setOpenId] = useState(null)
 
   const announcements = useMemo(
     () => getAnnouncementsForEmployee(user.id),
     [user.id, refresh]
   )
 
-  // Mark announcements as read when expanded
-  function toggleExpand(announcementId) {
+  const open = announcements.find((a) => a.id === openId) || null
+
+  function handleOpen(announcementId) {
     markAnnouncementAsRead(user.id, announcementId)
-    setExpandedId(announcementId === expandedId ? null : announcementId)
-    // Trigger custom event to update badge in real-time
+    setOpenId(announcementId)
+    setRefresh((n) => n + 1)
     window.dispatchEvent(new CustomEvent('announcementRead'))
+  }
+
+  function closeModal() {
+    setOpenId(null)
   }
 
   function getTypeLabel(key) {
@@ -41,53 +50,96 @@ export default function EmployeeAnnouncements() {
     <div>
       <div className="page-head">
         <h2>Company Announcements</h2>
-        <span className="muted">{announcements.length} messages</span>
+        <span className="muted">{announcements.length} message(s)</span>
       </div>
 
-      {announcements.length === 0 && (
-        <div className="card">
-          <p className="muted">No announcements for you at this time.</p>
-        </div>
-      )}
+      <div className="card">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {announcements.length === 0 && (
+              <tr><td colSpan={5} className="muted">No announcements for you at this time.</td></tr>
+            )}
+            {announcements.map((announcement) => {
+              const isRead = isAnnouncementRead(user.id, announcement.id)
 
-      {announcements.map((announcement) => {
-        const isExpanded = expandedId === announcement.id
+              return (
+                <tr key={announcement.id}>
+                  <td>
+                    <strong>{announcement.title}</strong>
+                    <div className="muted small">
+                      {announcement.content.length > 60
+                        ? `${announcement.content.substring(0, 60)}...`
+                        : announcement.content}
+                    </div>
+                  </td>
+                  <td>
+                    <span className={`tag ${getTypeClass(announcement.type)}`}>
+                      {getTypeLabel(announcement.type)}
+                    </span>
+                  </td>
+                  <td>{formatDate(announcement.createdOn)}</td>
+                  <td>
+                    {isRead
+                      ? <span className="muted">Read</span>
+                      : <span className="tag tag-medium">New</span>}
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn-tiny btn-light"
+                      onClick={() => handleOpen(announcement.id)}
+                    >
+                      Open
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
 
-        return (
-          <div key={announcement.id} className="card">
-            <div
-              className="page-head"
-              style={{ cursor: 'pointer' }}
-              onClick={() => toggleExpand(announcement.id)}
-            >
-              <div>
-                <h3 style={{ margin: 0 }}>{announcement.title}</h3>
-                <div className="muted small">
-                  {getTypeLabel(announcement.type)} • {formatDate(announcement.createdOn)}
+      {open && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-form">
+              <div className="modal-header">
+                <div>
+                  <h3 className="section-title first" style={{ margin: 0 }}>{open.title}</h3>
+                  <div className="muted small">
+                    {getTypeLabel(open.type)} • {formatDate(open.createdOn)}
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  className="btn btn-tiny btn-light"
+                  onClick={closeModal}
+                >
+                  ✕
+                </button>
               </div>
-              <span className={`tag ${getTypeClass(announcement.type)}`}>
-                {getTypeLabel(announcement.type)}
-              </span>
-            </div>
-
-            {isExpanded && (
               <div className="announcement-content">
-                <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-                  {announcement.content}
+                <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', margin: 0 }}>
+                  {open.content}
                 </p>
               </div>
-            )}
-
-            <button
-              className="btn btn-tiny btn-light"
-              onClick={() => toggleExpand(announcement.id)}
-            >
-              {isExpanded ? 'Show less' : 'Read more'}
-            </button>
+              <div className="button-row">
+                <button type="button" className="btn btn-light" onClick={closeModal}>
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
-        )
-      })}
+        </div>
+      )}
 
       <p className="hint">
         Stay updated with company news, policy changes, events, and internal job postings.

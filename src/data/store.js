@@ -866,3 +866,8 @@ export function markAnnouncementAsRead(employeeId, announcementId) {
     write(KEYS.readAnnouncements, readData)
   }
 }
+
+export function isAnnouncementRead(employeeId, announcementId) {
+  const readData = getReadAnnouncements()
+  return (readData[employeeId] || []).includes(announcementId)
+}
