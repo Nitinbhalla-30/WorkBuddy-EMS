@@ -18,9 +18,12 @@ import {
   SAMPLE_CAB_MESSAGES,
   SAMPLE_IT_ISSUES,
   SAMPLE_IT_STAFF,
-  SAMPLE_ANNOUNCEMENTS
+  SAMPLE_ANNOUNCEMENTS,
+  SAMPLE_REIMBURSEMENTS,
+  SAMPLE_ATTENDANCE_CORRECTIONS
 } from './sampleData.js'
 import { blankProfile } from '../utils/profile.js'
+import { combineDateAndTime } from '../utils/attendance.js'
 
 const KEYS = {
   employees: 'hr_employees',
@@ -40,7 +43,9 @@ const KEYS = {
   itIssues: 'hr_it_issues',
   itStaff: 'hr_it_staff',
   announcements: 'hr_announcements',
-  readAnnouncements: 'hr_read_announcements'
+  readAnnouncements: 'hr_read_announcements',
+  reimbursements: 'hr_reimbursements',
+  attendanceCorrections: 'hr_attendance_corrections'
 }
 
 function read(key, fallback) {
@@ -110,6 +115,12 @@ export function seedIfEmpty() {
   if (localStorage.getItem(KEYS.readAnnouncements) === null) {
     write(KEYS.readAnnouncements, {})
   }
+  if (localStorage.getItem(KEYS.reimbursements) === null) {
+    write(KEYS.reimbursements, SAMPLE_REIMBURSEMENTS)
+  }
+  if (localStorage.getItem(KEYS.attendanceCorrections) === null) {
+    write(KEYS.attendanceCorrections, SAMPLE_ATTENDANCE_CORRECTIONS)
+  }
 }
 
 // Wipe everything and load fresh sample data (handy while testing).
@@ -131,6 +142,8 @@ export function resetToSampleData() {
   write(KEYS.itStaff, SAMPLE_IT_STAFF)
   write(KEYS.announcements, SAMPLE_ANNOUNCEMENTS)
   write(KEYS.readAnnouncements, {})
+  write(KEYS.reimbursements, SAMPLE_REIMBURSEMENTS)
+  write(KEYS.attendanceCorrections, SAMPLE_ATTENDANCE_CORRECTIONS)
 }
 
 // ---- employees ----
@@ -281,6 +294,98 @@ export function upsertRecord(record) {
   return record
 }
 
+// ---- attendance correction requests ----
+export function getAttendanceCorrections() {
+  return read(KEYS.attendanceCorrections, [])
+}
+
+export function getAttendanceCorrectionsForEmployee(employeeId) {
+  return getAttendanceCorrections()
+    .filter((c) => c.employeeId === employeeId)
+    .sort((a, b) => (a.appliedOn < b.appliedOn ? 1 : -1))
+}
+
+export function submitAttendanceCorrection({
+  employeeId,
+  date,
+  issueType,
+  description,
+  suggestedTimeIn = '',
+  suggestedTimeOut = ''
+}) {
+  const all = getAttendanceCorrections()
+  const request = {
+    id: `ACR${Date.now()}`,
+    employeeId,
+    date,
+    issueType,
+    description: description || '',
+    suggestedTimeIn: suggestedTimeIn || '',
+    suggestedTimeOut: suggestedTimeOut || '',
+    status: 'pending',
+    appliedOn: todayKey(),
+    decidedBy: null,
+    decidedOn: null,
+    reviewNote: ''
+  }
+  all.push(request)
+  write(KEYS.attendanceCorrections, all)
+  return request
+}
+
+function findOrCreateAttendanceRecord(employeeId, date) {
+  const all = getAttendance()
+  let rec = all.find((r) => r.employeeId === employeeId && r.date === date)
+  if (rec) return rec
+  rec = {
+    id: `ATT${Date.now()}`,
+    employeeId,
+    date,
+    timeIn: null,
+    timeOut: null,
+    breaks: []
+  }
+  all.push(rec)
+  write(KEYS.attendance, all)
+  return rec
+}
+
+function applyCorrectionToAttendance(correction) {
+  const rec = findOrCreateAttendanceRecord(correction.employeeId, correction.date)
+  const next = { ...rec, breaks: rec.breaks || [] }
+
+  if (correction.suggestedTimeIn) {
+    next.timeIn = combineDateAndTime(correction.date, correction.suggestedTimeIn) || next.timeIn
+  }
+  if (correction.suggestedTimeOut) {
+    next.timeOut = combineDateAndTime(correction.date, correction.suggestedTimeOut) || next.timeOut
+  }
+
+  upsertRecord(next)
+}
+
+export function resolveAttendanceCorrection(id, status, decidedBy, reviewNote = '') {
+  const all = getAttendanceCorrections()
+  const idx = all.findIndex((c) => c.id === id)
+  if (idx < 0) return null
+
+  const correction = all[idx]
+  all[idx] = {
+    ...correction,
+    status,
+    decidedBy: decidedBy || null,
+    decidedOn: todayKey(),
+    reviewNote: reviewNote || ''
+  }
+
+  if (status === 'approved') {
+    applyCorrectionToAttendance(correction)
+  }
+
+  write(KEYS.attendanceCorrections, all)
+  return all[idx]
+}
+
 // ---- leaves ----
 export function getLeaves() {
   return read(KEYS.leaves, [])
@@ -293,7 +398,14 @@ export function getLeavesForEmployee(employeeId) {
 }
 
 // An employee applies for leave. Returns the saved request.
-export function applyLeave({ employeeId, type, fromDate, toDate, reason }) {
+export function applyLeave({
+  employeeId,
+  type,
+  fromDate,
+  toDate,
+  reason,
+  supportingDocuments = []
+}) {
   const all = getLeaves()
   const request = {
     id: `LV${Date.now()}`,
@@ -302,6 +414,9 @@ export function applyLeave({ employeeId, type, fromDate, toDate, reason }) {
     fromDate,
     toDate,
     reason: reason || '',
+    supportingDocuments: Array.isArray(supportingDocuments) ? supportingDocuments : [],
+    messages: [],
+    rejectionReason: '',
     status: 'pending',
     appliedOn: todayKey(),
     decidedBy: null,
@@ -312,8 +427,50 @@ export function applyLeave({ employeeId, type, fromDate, toDate, reason }) {
   return request
 }
 
+// Employee withdraws a pending leave request.
+export function withdrawLeave(leaveId, employeeId) {
+  const all = getLeaves()
+  const idx = all.findIndex((l) => l.id === leaveId)
+  if (idx < 0) return null
+  const leave = all[idx]
+  if (leave.employeeId !== employeeId) return null
+  if (leave.status !== 'pending') return null
+  all[idx] = { ...leave, status: 'withdrawn', withdrawnOn: todayKey() }
+  write(KEYS.leaves, all)
+  return all[idx]
+}
+
+// Employee edits a pending leave request.
+export function updateLeave(leaveId, employeeId, {
+  type,
+  fromDate,
+  toDate,
+  reason,
+  supportingDocuments = []
+}) {
+  const all = getLeaves()
+  const idx = all.findIndex((l) => l.id === leaveId)
+  if (idx < 0) return null
+  const leave = all[idx]
+  if (leave.employeeId !== employeeId) return null
+  if (leave.status !== 'pending') return null
+  all[idx] = {
+    ...leave,
+    type,
+    fromDate,
+    toDate,
+    reason: reason || '',
+    supportingDocuments: Array.isArray(supportingDocuments) ? supportingDocuments : [],
+    rejectionReason: '',
+    decidedBy: null,
+    decidedOn: null
+  }
+  write(KEYS.leaves, all)
+  return all[idx]
+}
+
 // HR/Admin approves or rejects a request. status is 'approved' or 'rejected'.
-export function setLeaveStatus(leaveId, status, decidedBy) {
+export function setLeaveStatus(leaveId, status, decidedBy, rejectionReason = '') {
   const all = getLeaves()
   const idx = all.findIndex((l) => l.id === leaveId)
   if (idx < 0) return null
@@ -321,9 +478,169 @@ export function setLeaveStatus(leaveId, status, decidedBy) {
     ...all[idx],
     status,
     decidedBy: decidedBy || null,
-    decidedOn: todayKey()
+    decidedOn: todayKey(),
+    rejectionReason: status === 'rejected' ? (rejectionReason || '').trim() : ''
   }
   write(KEYS.leaves, all)
+  return all[idx]
+}
+
+export function getLeaveById(leaveId) {
+  return getLeaves().find((l) => l.id === leaveId) || null
+}
+
+// Add a message to a pending leave request thread.
+export function addLeaveMessage(leaveId, { byId, byRole, text }) {
+  const all = getLeaves()
+  const idx = all.findIndex((l) => l.id === leaveId)
+  if (idx < 0) return null
+
+  const leave = all[idx]
+  if (leave.status !== 'pending') return null
+
+  const trimmed = String(text || '').trim()
+  if (!trimmed) return null
+
+  if (byRole === 'employee' && byId !== leave.employeeId) return null
+  if (byRole !== 'employee' && byRole !== 'admin') return null
+
+  all[idx] = {
+    ...leave,
+    messages: [
+      ...(leave.messages || []),
+      {
+        id: `LVM${Date.now()}`,
+        byId,
+        byRole,
+        text: trimmed,
+        on: todayKey()
+      }
+    ]
+  }
+  write(KEYS.leaves, all)
+  return all[idx]
+}
+
+// ---- reimbursements ----
+export function getReimbursements() {
+  return read(KEYS.reimbursements, [])
+}
+
+export function getReimbursementsForEmployee(employeeId) {
+  return getReimbursements()
+    .filter((r) => r.employeeId === employeeId)
+    .sort((a, b) => (a.appliedOn < b.appliedOn ? 1 : -1))
+}
+
+export function submitReimbursementClaim({
+  employeeId,
+  category,
+  expenseDate,
+  amount,
+  description
+}) {
+  const all = getReimbursements()
+  const claim = {
+    id: `RMB${Date.now()}`,
+    employeeId,
+    category,
+    expenseDate,
+    amount,
+    description: description || '',
+    status: 'pending',
+    appliedOn: todayKey(),
+    decidedBy: null,
+    decidedOn: null,
+    paidOn: null,
+    reviewNote: ''
+  }
+  all.push(claim)
+  write(KEYS.reimbursements, all)
+  return claim
+}
+
+// Employee withdraws a pending reimbursement claim.
+export function withdrawReimbursementClaim(claimId, employeeId) {
+  const all = getReimbursements()
+  const idx = all.findIndex((r) => r.id === claimId)
+  if (idx < 0) return null
+  const claim = all[idx]
+  if (claim.employeeId !== employeeId) return null
+  if (claim.status !== 'pending') return null
+  all[idx] = { ...claim, status: 'withdrawn', withdrawnOn: todayKey() }
+  write(KEYS.reimbursements, all)
+  return all[idx]
+}
+
+// Employee edits a pending reimbursement claim.
+export function updateReimbursementClaim(claimId, employeeId, {
+  category,
+  expenseDate,
+  amount,
+  description
+}) {
+  const all = getReimbursements()
+  const idx = all.findIndex((r) => r.id === claimId)
+  if (idx < 0) return null
+  const claim = all[idx]
+  if (claim.employeeId !== employeeId) return null
+  if (claim.status !== 'pending') return null
+  all[idx] = {
+    ...claim,
+    category,
+    expenseDate,
+    amount,
+    description: description || '',
+    reviewNote: '',
+    decidedBy: null,
+    decidedOn: null
+  }
+  write(KEYS.reimbursements, all)
+  return all[idx]
+}
+
+export function approveReimbursementClaim(claimId, decidedBy) {
+  const all = getReimbursements()
+  const idx = all.findIndex((r) => r.id === claimId)
+  if (idx < 0) return null
+  all[idx] = {
+    ...all[idx],
+    status: 'approved_unpaid',
+    decidedBy: decidedBy || null,
+    decidedOn: todayKey(),
+    reviewNote: ''
+  }
+  write(KEYS.reimbursements, all)
+  return all[idx]
+}
+
+export function rejectReimbursementClaim(claimId, decidedBy, reviewNote = '') {
+  const all = getReimbursements()
+  const idx = all.findIndex((r) => r.id === claimId)
+  if (idx < 0) return null
+  all[idx] = {
+    ...all[idx],
+    status: 'rejected',
+    decidedBy: decidedBy || null,
+    decidedOn: todayKey(),
+    reviewNote: reviewNote || '',
+    paidOn: null
+  }
+  write(KEYS.reimbursements, all)
+  return all[idx]
+}
+
+export function markReimbursementPaid(claimId, decidedBy) {
+  const all = getReimbursements()
+  const idx = all.findIndex((r) => r.id === claimId)
+  if (idx < 0 || all[idx].status !== 'approved_unpaid') return null
+  all[idx] = {
+    ...all[idx],
+    status: 'paid',
+    paidOn: todayKey(),
+    decidedBy: decidedBy || all[idx].decidedBy
+  }
+  write(KEYS.reimbursements, all)
   return all[idx]
 }
 
@@ -549,6 +866,48 @@ export function createTicket({ employeeId, kind, category, subject, message, ano
   return ticket
 }
 
+// Employee withdraws an open or in-progress ticket.
+export function withdrawTicket(ticketId, employeeId) {
+  const all = getTickets()
+  const idx = all.findIndex((t) => t.id === ticketId)
+  if (idx < 0) return null
+  const t = all[idx]
+  if (t.employeeId !== employeeId) return null
+  if (!['open', 'inprogress'].includes(t.status)) return null
+  all[idx] = { ...t, status: 'withdrawn', updatedOn: todayKey() }
+  write(KEYS.tickets, all)
+  return all[idx]
+}
+
+// Employee edits an open ticket before HR has started working on it.
+export function updateTicket(ticketId, employeeId, { kind, category, subject, message, anonymous }) {
+  const all = getTickets()
+  const idx = all.findIndex((t) => t.id === ticketId)
+  if (idx < 0) return null
+  const t = all[idx]
+  if (t.employeeId !== employeeId) return null
+  if (t.status !== 'open') return null
+
+  const isGrievance = kind === 'grievance'
+  const messages = [...(t.messages || [])]
+  if (messages.length > 0 && messages[0].byRole === 'employee') {
+    messages[0] = { ...messages[0], text: message || '' }
+  }
+
+  all[idx] = {
+    ...t,
+    kind,
+    category,
+    subject: subject || '',
+    anonymous: isGrievance ? !!anonymous : false,
+    confidential: isGrievance,
+    messages,
+    updatedOn: todayKey()
+  }
+  write(KEYS.tickets, all)
+  return all[idx]
+}
+
 // Add a reply to a ticket. byRole is 'employee' or 'admin'.
 // A reply nudges the status forward: an HR reply on an open ticket makes it
 // "in progress"; an employee reply on a resolved ticket reopens it.
@@ -557,6 +916,7 @@ export function addTicketMessage(ticketId, { byId, byRole, text }) {
   const idx = all.findIndex((t) => t.id === ticketId)
   if (idx < 0) return null
   const t = all[idx]
+  if (t.status === 'withdrawn' || t.status === 'closed') return null
   let status = t.status
   if (byRole === 'admin' && status === 'open') status = 'inprogress'
   if (byRole === 'employee' && status === 'resolved') status = 'inprogress'
@@ -880,6 +1240,38 @@ export function createITIssue({ employeeId, issue, description, priority }) {
   all.push(newIssue)
   write(KEYS.itIssues, all)
   return newIssue
+}
+
+// Employee withdraws an open or in-progress IT issue.
+export function withdrawITIssue(issueId, employeeId) {
+  const all = getITIssues()
+  const idx = all.findIndex((i) => i.id === issueId)
+  if (idx < 0) return null
+  const issue = all[idx]
+  if (issue.employeeId !== employeeId) return null
+  if (!['open', 'inprogress'].includes(issue.status)) return null
+  all[idx] = { ...issue, status: 'withdrawn', updatedOn: todayKey() }
+  write(KEYS.itIssues, all)
+  return all[idx]
+}
+
+// Employee edits an open IT issue that has not been assigned yet.
+export function updateITIssue(issueId, employeeId, { issue, description, priority }) {
+  const all = getITIssues()
+  const idx = all.findIndex((i) => i.id === issueId)
+  if (idx < 0) return null
+  const row = all[idx]
+  if (row.employeeId !== employeeId) return null
+  if (row.status !== 'open' || row.assignedTo) return null
+  all[idx] = {
+    ...row,
+    issue,
+    description: description || '',
+    priority,
+    updatedOn: todayKey()
+  }
+  write(KEYS.itIssues, all)
+  return all[idx]
 }
 
 // Assign an IT issue to a staff member and set estimated time

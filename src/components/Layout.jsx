@@ -66,6 +66,7 @@ export default function Layout() {
               <NavLink to="/me" className="nav-item">My Attendance</NavLink>
               <NavLink to="/my-leaves" className="nav-item">My Leaves</NavLink>
               <NavLink to="/my-salary" className="nav-item">My Salary</NavLink>
+              <NavLink to="/my-reimbursements" className="nav-item">My Reimbursements</NavLink>
               <NavLink to="/my-tasks" className="nav-item">My Tasks</NavLink>
               <NavLink to="/my-team" className="nav-item">My Team</NavLink>
               {user?.isManager && (
@@ -88,6 +89,7 @@ export default function Layout() {
               <NavLink to="/records-profiles" className="nav-item">Employee Records</NavLink>
               <NavLink to="/records" className="nav-item">Attendance Records</NavLink>
               <NavLink to="/leave-requests" className="nav-item">Leave Requests</NavLink>
+              <NavLink to="/reimbursements" className="nav-item">Reimbursements</NavLink>
               <NavLink to="/salary" className="nav-item">Salaries</NavLink>
               <NavLink to="/tasks" className="nav-item">Tasks</NavLink>
               <NavLink to="/cab-management" className="nav-item">Cab Management</NavLink>

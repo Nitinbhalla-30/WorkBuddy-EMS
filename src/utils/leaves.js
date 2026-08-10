@@ -2,6 +2,9 @@
 
 import { LEAVE_TYPES } from '../data/sampleData.js'
 
+export const SICK_LEAVE_DOC_ACCEPT =
+  '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
+
 // Number of working days (Mon-Fri) between two dates, both included.
 // Weekends do not count as leave.
 export function countLeaveDays(fromDate, toDate) {
@@ -67,5 +70,22 @@ export function leaveBalance(leaves, allowance) {
 export function statusTagClass(status) {
   if (status === 'approved') return 'tag-ok'
   if (status === 'rejected') return 'tag-late'
+  if (status === 'withdrawn') return 'tag-absent'
   return 'tag-absent' // pending
+}
+
+export function canEditLeave(leave) {
+  return leave?.status === 'pending'
+}
+
+export function canWithdrawLeave(leave) {
+  return leave?.status === 'pending'
+}
+
+export function leaveSupportingDocuments(leave) {
+  return Array.isArray(leave?.supportingDocuments) ? leave.supportingDocuments : []
+}
+
+export function sickLeaveRequiresDocument(type) {
+  return type === 'sick'
 }

@@ -1,25 +1,38 @@
 export default function TableToolbar({
   search,
   onSearchChange,
+  showSearch = true,
   showing,
   total,
+  startIndex,
+  endIndex,
   placeholder = 'Search table...',
   filters = [],
   onFilterChange,
   children
 }) {
+  const countLabel = (() => {
+    if (!total) return 'No items'
+    if (startIndex != null && endIndex != null) {
+      return `Showing ${startIndex}–${endIndex} of ${total}`
+    }
+    return `Showing ${showing ?? total} of ${total}`
+  })()
+
   return (
     <div className="table-toolbar">
       <div className="table-toolbar-left">
-        <label className="table-toolbar-field table-toolbar-search">
-          <span className="table-toolbar-label">Search</span>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={placeholder}
-          />
-        </label>
+        {showSearch && onSearchChange && (
+          <label className="table-toolbar-field table-toolbar-search">
+            <span className="table-toolbar-label">Search</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder={placeholder}
+            />
+          </label>
+        )}
         {filters.map((f) => (
           <label key={f.key} className="table-toolbar-field table-toolbar-filter">
             <span className="table-toolbar-label">{f.label}</span>
@@ -36,7 +49,7 @@ export default function TableToolbar({
         {children}
       </div>
       <span className="muted small table-toolbar-count">
-        Showing {showing} of {total}
+        {countLabel}
       </span>
     </div>
   )

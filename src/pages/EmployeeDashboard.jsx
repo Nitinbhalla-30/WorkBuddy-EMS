@@ -1,18 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
+  getAttendanceCorrectionsForEmployee,
   getAttendanceForEmployee,
   getSettings,
   getTodayRecord,
+  submitAttendanceCorrection,
   upsertRecord
 } from '../data/store.js'
 import { checkOfficeNetwork } from '../utils/network.js'
 import {
+  ATTENDANCE_STATS_PERIODS,
+  computeAttendanceAverages,
+  correctionIssueLabel,
   currentState,
+  filterRecordsForStatsPeriod,
   formatClock,
   formatDate,
   formatMinutes,
   isLate,
+  monthKey,
+  monthLabel,
+  resolveJoinDate,
+  statsPeriodLabel,
   statusOf,
   totalBreakMinutes,
   workedMinutes
@@ -23,6 +33,7 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
+import AttendanceCorrectionForm from '../components/AttendanceCorrectionForm.jsx'
 import { formatTime12 } from '../utils/cab.js'
 
 // The employee's own screen: live buttons + their history.
@@ -34,22 +45,59 @@ export default function EmployeeDashboard() {
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [showLunchPolicy, setShowLunchPolicy] = useState(false)
-
-  // Refresh worked-time display every minute while working.
-  const [, forceTick] = useState(0)
-  useEffect(() => {
-    const t = setInterval(() => forceTick((n) => n + 1), 60000)
-    return () => clearInterval(t)
-  }, [])
-
-  const state = currentState(today)
-  const history = useMemo(
-    () => getAttendanceForEmployee(user.id).filter((r) => r.date !== today.date),
-    [user.id, today]
+  const [showCorrectionForm, setShowCorrectionForm] = useState(false)
+  const [selectedHistoryMonth, setSelectedHistoryMonth] = useState(() => monthKey())
+  const [statsPeriod, setStatsPeriod] = useState('this-month')
+  const [corrections, setCorrections] = useState(() =>
+    getAttendanceCorrectionsForEmployee(user.id)
   )
+
+  const [, forceTick] = useState(0)
+  const state = currentState(today)
+  const isLive = state === 'working' || state === 'on-break'
+
+  // Refresh worked/break display every second while the day is active.
+  useEffect(() => {
+    if (!isLive) return undefined
+    const t = setInterval(() => forceTick((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [isLive])
+
+  const allRecords = useMemo(() => {
+    const all = getAttendanceForEmployee(user.id)
+    const withoutToday = all.filter((r) => r.date !== today.date)
+    return [...withoutToday, today]
+  }, [user.id, today, isLive])
+
+  const joinDate = useMemo(
+    () => resolveJoinDate(user, allRecords),
+    [user, allRecords]
+  )
+
+  const periodStats = useMemo(() => {
+    const filtered = filterRecordsForStatsPeriod(allRecords, statsPeriod, {
+      joinDate,
+      todayDate: today.date
+    })
+    return computeAttendanceAverages(filtered)
+  }, [allRecords, statsPeriod, joinDate, today.date, isLive])
+
+  const history = useMemo(() => {
+    const all = getAttendanceForEmployee(user.id)
+    return all.filter((r) => r.date.startsWith(selectedHistoryMonth))
+  }, [user.id, selectedHistoryMonth, today])
+
+  const historyMonthOptions = useMemo(() => {
+    const keys = new Set(
+      getAttendanceForEmployee(user.id).map((r) => r.date.slice(0, 7))
+    )
+    keys.add(monthKey())
+    return [...keys]
+      .sort((a, b) => b.localeCompare(a))
+      .map((k) => ({ value: k, label: monthLabel(k) }))
+  }, [user.id, today.date])
+
   const historyTable = useTableControls(history, {
-    getSearchText: (r) =>
-      [r.date, formatClock(r.timeIn), formatClock(r.timeOut), statusOf(r, settings.officeStartTime)].join(' '),
     getSortValue: (r, key) => {
       if (key === 'worked') return workedMinutes(r)
       if (key === 'break') return totalBreakMinutes(r)
@@ -62,6 +110,7 @@ export default function EmployeeDashboard() {
       status: (r, val) => statusOf(r, settings.officeStartTime).toLowerCase() === val.toLowerCase()
     }
   })
+
   const {
     items: historyPage,
     page: historyPageNum,
@@ -79,7 +128,12 @@ export default function EmployeeDashboard() {
     { value: 'Absent', label: 'Absent' }
   ]
 
-  // Every marking first runs the office-internet check.
+  const pendingCorrections = corrections.filter((c) => c.status === 'pending')
+
+  function refreshCorrections() {
+    setCorrections(getAttendanceCorrectionsForEmployee(user.id))
+  }
+
   async function guard(action) {
     setBusy(true)
     setMessage('')
@@ -126,7 +180,6 @@ export default function EmployeeDashboard() {
 
   function markTimeOut() {
     guard(() => {
-      // Close any open break first.
       const breaks = (today.breaks || []).map((b) =>
         b.start && !b.end ? { ...b, end: new Date().toISOString() } : b
       )
@@ -137,12 +190,26 @@ export default function EmployeeDashboard() {
     })
   }
 
+  function handleCorrectionSubmit(data) {
+    submitAttendanceCorrection({ employeeId: user.id, ...data })
+    refreshCorrections()
+    setShowCorrectionForm(false)
+    setMessage('Your attendance correction request was sent to HR.')
+  }
+
   return (
     <div>
       <div className="page-head">
         <h2>My Attendance</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <span className="muted">{formatDate(today.date)}</span>
+          <button
+            type="button"
+            className="btn btn-primary btn-tiny"
+            onClick={() => setShowCorrectionForm(true)}
+          >
+            Request correction
+          </button>
           <button
             type="button"
             className="btn btn-primary btn-tiny"
@@ -153,7 +220,6 @@ export default function EmployeeDashboard() {
         </div>
       </div>
 
-      {/* Live status card with the buttons */}
       <div className="card">
         <div className="status-row">
           <div>
@@ -175,11 +241,11 @@ export default function EmployeeDashboard() {
               <strong>{formatClock(today.timeOut)}</strong>
             </div>
             <div>
-              <div className="muted">Worked</div>
+              <div className="muted">Worked{isLive ? ' (live)' : ''}</div>
               <strong>{formatMinutes(workedMinutes(today))}</strong>
             </div>
             <div>
-              <div className="muted">Break</div>
+              <div className="muted">Break{isLive ? ' (live)' : ''}</div>
               <strong>{formatMinutes(totalBreakMinutes(today))}</strong>
             </div>
           </div>
@@ -219,9 +285,8 @@ export default function EmployeeDashboard() {
         {message && <div className="info-box">{message}</div>}
 
         <p className="hint">
-          Every button first checks that you are on the office internet.
-          In the real office (and later in the phone app) this also uses your
-          fingerprint. Test mode can be turned off by HR/Admin in Settings.
+          Worked and break times update in real time while you are timed in.
+          Use <strong>Request correction</strong> if you forgot to time in or out.
           Before a lunch break, see the{' '}
           <button
             type="button"
@@ -232,6 +297,108 @@ export default function EmployeeDashboard() {
           </button>.
         </p>
       </div>
+
+      <div className="section-head-row">
+        <h3 className="section-title first">Average attendance</h3>
+        <label className="field inline">
+          <span className="muted small">Period</span>
+          <select value={statsPeriod} onChange={(e) => setStatsPeriod(e.target.value)}>
+            {ATTENDANCE_STATS_PERIODS.map((p) => (
+              <option key={p.key} value={p.key}>{p.label}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <p className="muted small stats-period-hint">
+        {statsPeriodLabel(statsPeriod, joinDate)}
+        {periodStats.days > 0
+          ? ` · ${periodStats.days} day${periodStats.days === 1 ? '' : 's'} counted`
+          : ' · no attendance days in this period'}
+      </p>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <div className="stat-num">{periodStats.avgTimeIn}</div>
+          <div className="stat-label">Avg time in</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-num">{periodStats.avgTimeOut}</div>
+          <div className="stat-label">Avg time out</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-num">{periodStats.avgBreak}</div>
+          <div className="stat-label">Avg break</div>
+        </div>
+        <div className="stat-card stat-good">
+          <div className="stat-num">{periodStats.avgWorked}</div>
+          <div className="stat-label">Avg hours worked</div>
+        </div>
+      </div>
+
+      {pendingCorrections.length > 0 && (
+        <div className="info-box">
+          <strong>{pendingCorrections.length} correction request(s) awaiting HR review.</strong>
+        </div>
+      )}
+
+      {corrections.length > 0 && (
+        <>
+          <h3 className="section-title">My correction requests</h3>
+          <div className="card">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Issue</th>
+                  <th>Status</th>
+                  <th>Submitted</th>
+                </tr>
+              </thead>
+              <tbody>
+                {corrections.slice(0, 5).map((c) => (
+                  <tr key={c.id}>
+                    <td>{formatDate(c.date)}</td>
+                    <td>{correctionIssueLabel(c.issueType)}</td>
+                    <td>
+                      <span className={`tag ${c.status === 'approved' ? 'tag-ok' : c.status === 'rejected' ? 'tag-late' : 'tag-absent'}`}>
+                        {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                      </span>
+                      {c.reviewNote && (
+                        <div className="muted small">{c.reviewNote}</div>
+                      )}
+                    </td>
+                    <td>{formatDate(c.appliedOn)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {showCorrectionForm && (
+        <Modal onClose={() => setShowCorrectionForm(false)} title="Request attendance correction">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Request correction</h3>
+              <button
+                type="button"
+                className="btn btn-tiny btn-light"
+                onClick={() => setShowCorrectionForm(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <p className="hint first">
+              Tell HR if you forgot to time in or out, or if your attendance record looks wrong.
+            </p>
+            <AttendanceCorrectionForm
+              defaultDate={today.date}
+              onSubmit={handleCorrectionSubmit}
+              onCancel={() => setShowCorrectionForm(false)}
+            />
+          </div>
+        </Modal>
+      )}
 
       {showLunchPolicy && (
         <Modal onClose={() => setShowLunchPolicy(false)} title="Lunch policy">
@@ -280,22 +447,31 @@ export default function EmployeeDashboard() {
         </Modal>
       )}
 
-      {/* Past days */}
-      <h3 className="section-title">Recent days</h3>
+      <h3 className="section-title">Attendance history</h3>
       <div className="card">
         <TableToolbar
-          search={historyTable.search}
-          onSearchChange={historyTable.setSearch}
-          showing={historyTable.count}
-          total={historyTable.total}
-          placeholder="Search attendance..."
-          filters={[{
-            key: 'status',
-            label: 'Status',
-            value: historyTable.filters.status || 'all',
-            options: ATTENDANCE_STATUS_FILTERS
-          }]}
-          onFilterChange={historyTable.setFilter}
+          showSearch={false}
+          total={historyTotal}
+          startIndex={historyStart}
+          endIndex={historyEnd}
+          filters={[
+            {
+              key: 'month',
+              label: 'Month',
+              value: selectedHistoryMonth,
+              options: historyMonthOptions
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              value: historyTable.filters.status || 'all',
+              options: ATTENDANCE_STATUS_FILTERS
+            }
+          ]}
+          onFilterChange={(key, val) => {
+            if (key === 'month') setSelectedHistoryMonth(val)
+            else historyTable.setFilter(key, val)
+          }}
         />
         <table className="table table-cols-attendance">
           <colgroup>
@@ -318,7 +494,7 @@ export default function EmployeeDashboard() {
           </thead>
           <tbody>
             {historyTable.count === 0 && (
-              <tr><td colSpan="6" className="muted">No records match your filters.</td></tr>
+              <tr><td colSpan="6" className="muted">No attendance records for {monthLabel(selectedHistoryMonth)}.</td></tr>
             )}
             {historyPage.map((r) => (
               <tr key={r.id}>

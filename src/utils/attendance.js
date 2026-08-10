@@ -1,5 +1,7 @@
 // Helpers to turn raw time stamps into useful numbers for the screens.
 
+import { ATTENDANCE_CORRECTION_ISSUES } from '../data/sampleData.js'
+
 function toDate(iso) {
   return iso ? new Date(iso) : null
 }
@@ -12,13 +14,15 @@ function minutesBetween(startIso, endIso) {
   return Math.max(0, Math.round((e - s) / 60000))
 }
 
-// Total break minutes for a record.
-export function totalBreakMinutes(record) {
+// Total break minutes for a record (includes open breaks up to now).
+export function totalBreakMinutes(record, asOfIso = null) {
   if (!record || !record.breaks) return 0
-  return record.breaks.reduce(
-    (sum, b) => sum + minutesBetween(b.start, b.end),
-    0
-  )
+  const now = asOfIso || new Date().toISOString()
+  return record.breaks.reduce((sum, b) => {
+    if (!b.start) return sum
+    const end = b.end || now
+    return sum + minutesBetween(b.start, end)
+  }, 0)
 }
 
 // Worked minutes = (time out - time in) - break time.
@@ -82,4 +86,138 @@ export function currentState(record) {
   if (record.timeOut) return 'done'
   const openBreak = (record.breaks || []).some((b) => b.start && !b.end)
   return openBreak ? 'on-break' : 'working'
+}
+
+function pad(n) {
+  return String(n).padStart(2, '0')
+}
+
+export function monthKey(d = new Date()) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`
+}
+
+export function monthLabel(mKey) {
+  const [y, m] = mKey.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleDateString([], { month: 'long', year: 'numeric' })
+}
+
+export function lastMonthKey(d = new Date()) {
+  const x = new Date(d)
+  x.setMonth(x.getMonth() - 1)
+  return monthKey(x)
+}
+
+export function todayDateKey(d = new Date()) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+export const ATTENDANCE_STATS_PERIODS = [
+  { key: 'this-month', label: 'This month' },
+  { key: 'last-month', label: 'Last month' },
+  { key: 'ytd', label: 'Year to date' },
+  { key: 'since-joining', label: 'Since joining' }
+]
+
+export function statsPeriodLabel(period, joinDate) {
+  switch (period) {
+    case 'this-month':
+      return `${monthLabel(monthKey())} (month to date)`
+    case 'last-month':
+      return monthLabel(lastMonthKey())
+    case 'ytd':
+      return `${new Date().getFullYear()} (year to date)`
+    case 'since-joining':
+      if (joinDate) {
+        const d = new Date(`${joinDate}T00:00:00`)
+        const joined = d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
+        return `Since ${joined}`
+      }
+      return 'Since joining'
+    default:
+      return period
+  }
+}
+
+// Joining date from employee profile, or earliest attendance row as fallback.
+export function resolveJoinDate(employee, records = []) {
+  if (employee?.dateJoined) return employee.dateJoined
+  const dates = records.map((r) => r.date).filter(Boolean).sort()
+  return dates[0] || todayDateKey()
+}
+
+function recordInPeriod(record, period, { joinDate, todayDate }) {
+  const date = record.date
+  if (!date || date > todayDate) return false
+
+  switch (period) {
+    case 'this-month':
+      return date.startsWith(monthKey()) && date <= todayDate
+    case 'last-month':
+      return date.startsWith(lastMonthKey())
+    case 'ytd':
+      return date >= `${todayDate.slice(0, 4)}-01-01` && date <= todayDate
+    case 'since-joining':
+      return date >= joinDate && date <= todayDate
+    default:
+      return true
+  }
+}
+
+// Filter attendance rows for a stats period (this month, last month, YTD, since joining).
+export function filterRecordsForStatsPeriod(records, period, options = {}) {
+  const todayDate = options.todayDate || todayDateKey()
+  const joinDate = options.joinDate || todayDate
+  return records.filter((r) => recordInPeriod(r, period, { joinDate, todayDate }))
+}
+
+function clockMinutesFromIso(iso) {
+  const d = toDate(iso)
+  if (!d) return null
+  return d.getHours() * 60 + d.getMinutes()
+}
+
+function formatAverageClock(avgMinutes) {
+  if (avgMinutes == null || Number.isNaN(avgMinutes)) return '--'
+  const total = Math.round(avgMinutes)
+  const h = Math.floor(total / 60) % 24
+  const m = total % 60
+  const d = new Date()
+  d.setHours(h, m, 0, 0)
+  return formatClock(d.toISOString())
+}
+
+// Averages for a set of attendance rows (time in/out, break, worked).
+export function computeAttendanceAverages(records) {
+  const timeInMins = records.filter((r) => r.timeIn).map((r) => clockMinutesFromIso(r.timeIn))
+  const timeOutMins = records.filter((r) => r.timeOut).map((r) => clockMinutesFromIso(r.timeOut))
+  const breakMins = records.filter((r) => r.timeIn).map((r) => totalBreakMinutes(r))
+  const workedMins = records.filter((r) => r.timeIn).map((r) => workedMinutes(r))
+
+  const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null
+
+  return {
+    days: records.length,
+    avgTimeIn: formatAverageClock(avg(timeInMins)),
+    avgTimeOut: formatAverageClock(avg(timeOutMins)),
+    avgBreak: avg(breakMins) != null ? formatMinutes(avg(breakMins)) : '--',
+    avgWorked: avg(workedMins) != null ? formatMinutes(avg(workedMins)) : '--'
+  }
+}
+
+// Month-to-date averages for an employee's attendance rows.
+export function computeMonthAverages(records, month = monthKey()) {
+  const inMonth = records.filter((r) => r.date && r.date.startsWith(month))
+  return computeAttendanceAverages(inMonth)
+}
+
+export function combineDateAndTime(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null
+  const d = new Date(`${dateStr}T${timeStr}:00`)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString()
+}
+
+export function correctionIssueLabel(key) {
+  const i = ATTENDANCE_CORRECTION_ISSUES.find((x) => x.key === key)
+  return i ? i.label : key
 }

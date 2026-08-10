@@ -17,7 +17,7 @@ export default function TicketThread({
   const [text, setText] = useState('')
 
   const isAdmin = viewerRole === 'admin'
-  const closed = ticket.status === 'closed'
+  const noReply = ticket.status === 'closed' || ticket.status === 'withdrawn'
 
   // Name to show for a message's author.
   function authorName(msg) {
@@ -68,9 +68,13 @@ export default function TicketThread({
       </div>
 
       {/* Reply box (hidden once the ticket is closed) */}
-      {closed ? (
+      {noReply ? (
         <>
-          <p className="hint first">This ticket is closed. No more replies can be added.</p>
+          <p className="hint first">
+            {ticket.status === 'withdrawn'
+              ? 'This ticket was withdrawn. No more replies can be added.'
+              : 'This ticket is closed. No more replies can be added.'}
+          </p>
           {onClose && (
             <div className="button-row">
               <button type="button" className="btn btn-light" onClick={onClose}>

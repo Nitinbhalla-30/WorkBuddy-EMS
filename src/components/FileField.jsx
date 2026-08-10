@@ -8,9 +8,25 @@ import { formatFileSize } from '../utils/profile.js'
 //   multiple     - allow several files
 //   required     - show a small "required" mark
 //   disabled     - lock it (when the form is submitted/verified)
+//   accept       - input accept attribute
+//   addLabel     - button label when adding (multiple)
+//   chooseLabel  - button label when empty (single)
+//   replaceLabel - button label when replacing (single)
 //   files        - array of { name, size, type, uploadedOn }
 //   onChange     - function(nextFiles)
-export default function FileField({ label, hint, multiple, required, disabled, files, onChange }) {
+export default function FileField({
+  label,
+  hint,
+  multiple,
+  required,
+  disabled,
+  accept = '.pdf,application/pdf',
+  addLabel = 'Add PDF',
+  chooseLabel = 'Choose PDF',
+  replaceLabel = 'Replace PDF',
+  files,
+  onChange
+}) {
   const inputRef = useRef(null)
   const list = Array.isArray(files) ? files : []
 
@@ -49,13 +65,13 @@ export default function FileField({ label, hint, multiple, required, disabled, f
             className="btn btn-tiny btn-light"
             onClick={() => inputRef.current && inputRef.current.click()}
           >
-            {multiple ? 'Add PDF' : (list.length ? 'Replace PDF' : 'Choose PDF')}
+            {multiple ? addLabel : (list.length ? replaceLabel : chooseLabel)}
           </button>
         )}
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,application/pdf"
+          accept={accept}
           multiple={multiple}
           style={{ display: 'none' }}
           onChange={handlePick}

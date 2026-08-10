@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addTicketMessage,
   createTicket,
-  getTicketsForEmployee
+  getTicketsForEmployee,
+  updateTicket,
+  withdrawTicket
 } from '../data/store.js'
 import { TICKET_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
-import { categoryLabel, kindLabel, statusLabel, statusTagClass } from '../utils/tickets.js'
+import { categoryLabel, kindLabel, statusLabel, statusTagClass, canEditTicket, canWithdrawTicket } from '../utils/tickets.js'
 import TicketForm from '../components/TicketForm.jsx'
 import TicketThread from '../components/TicketThread.jsx'
 import Modal from '../components/Modal.jsx'
@@ -32,6 +34,8 @@ export default function EmployeeTickets() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
   const [openId, setOpenId] = useState(null)
+  const [editId, setEditId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
   const [showForm, setShowForm] = useState(false)
 
   const tickets = useMemo(
@@ -65,6 +69,7 @@ export default function EmployeeTickets() {
   } = usePagination(table.rows)
 
   const open = tickets.find((t) => t.id === openId) || null
+  const editTicket = tickets.find((t) => t.id === editId) || null
 
   function closeTicket() {
     setOpenId(null)
@@ -81,6 +86,40 @@ export default function EmployeeTickets() {
     setOpenId(t.id)
     setRefresh((n) => n + 1)
   }
+
+  function handleEdit(data) {
+    if (!editTicket) return
+    updateTicket(editTicket.id, user.id, data)
+    setEditId(null)
+    setRefresh((n) => n + 1)
+    setOpenId(editTicket.id)
+  }
+
+  function handleWithdraw(ticketId) {
+    if (!window.confirm('Withdraw this ticket? This cannot be undone.')) return
+    withdrawTicket(ticketId, user.id)
+    if (openId === ticketId) setOpenId(null)
+    if (editId === ticketId) setEditId(null)
+    setRefresh((n) => n + 1)
+  }
+
+  function toggleMenu(ticketId) {
+    setOpenMenuId(openMenuId === ticketId ? null : ticketId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
 
   function handleReply(text) {
     addTicketMessage(open.id, { byId: user.id, byRole: 'employee', text })
@@ -118,13 +157,35 @@ export default function EmployeeTickets() {
         </Modal>
       )}
 
+      {editTicket && (
+        <Modal onClose={() => setEditId(null)} title="Edit ticket">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Edit ticket</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)}>✕</button>
+            </div>
+            <p className="hint first">
+              You can edit details while the ticket is still open and HR has not started working on it.
+            </p>
+            <TicketForm
+              key={editTicket.id}
+              initial={editTicket}
+              submitLabel="Save changes"
+              onCreate={handleEdit}
+              onCancel={() => setEditId(null)}
+            />
+          </div>
+        </Modal>
+      )}
+
       {/* My tickets */}
       <div className="card">
         <TableToolbar
           search={table.search}
           onSearchChange={table.setSearch}
-          showing={table.count}
-          total={table.total}
+          total={ticketsTotal}
+          startIndex={ticketsStart}
+          endIndex={ticketsEnd}
           placeholder="Search tickets..."
           filters={[
             { key: 'kind', label: 'Type', value: table.filters.kind || 'all', options: TICKET_KIND_OPTS },
@@ -140,12 +201,12 @@ export default function EmployeeTickets() {
               <SortableTh label="Category" keyName="category" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Updated" keyName="updatedOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <th></th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={6} className="muted">No tickets match your filters.</td></tr>
+              <tr><td colSpan={7} className="muted">No tickets match your filters.</td></tr>
             )}
             {ticketsPage.map((t) => (
               <tr key={t.id}>
@@ -155,12 +216,53 @@ export default function EmployeeTickets() {
                 <td><span className={`tag ${statusTagClass(t.status)}`}>{statusLabel(t.status)}</span></td>
                 <td>{formatDate(t.updatedOn)}</td>
                 <td>
-                  <button
-                    className="btn btn-tiny btn-light"
-                    onClick={() => handleOpen(t.id)}
-                  >
-                    Open
-                  </button>
+                  <div className="task-menu-container">
+                    <button
+                      type="button"
+                      className="btn btn-tiny btn-light task-menu-button"
+                      onClick={() => toggleMenu(t.id)}
+                      aria-label="Ticket actions"
+                    >
+                      ⋯
+                    </button>
+                    {openMenuId === t.id && (
+                      <div className="task-menu-dropdown">
+                        <button
+                          type="button"
+                          className="task-menu-item"
+                          onClick={() => {
+                            handleOpen(t.id)
+                            closeMenu()
+                          }}
+                        >
+                          Open
+                        </button>
+                        <button
+                          type="button"
+                          className="task-menu-item"
+                          disabled={!canEditTicket(t)}
+                          onClick={() => {
+                            setEditId(t.id)
+                            setOpenId(null)
+                            closeMenu()
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="task-menu-item task-menu-item-danger"
+                          disabled={!canWithdrawTicket(t)}
+                          onClick={() => {
+                            handleWithdraw(t.id)
+                            closeMenu()
+                          }}
+                        >
+                          Withdraw
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -205,6 +307,29 @@ export default function EmployeeTickets() {
               onReply={handleReply}
               onClose={closeTicket}
             />
+
+            {(canEditTicket(open) || canWithdrawTicket(open)) && (
+              <div className="button-row">
+                {canEditTicket(open) && (
+                  <button
+                    type="button"
+                    className="btn btn-light"
+                    onClick={() => { setEditId(open.id); setOpenId(null) }}
+                  >
+                    Edit ticket
+                  </button>
+                )}
+                {canWithdrawTicket(open) && (
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={() => handleWithdraw(open.id)}
+                  >
+                    Withdraw ticket
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </Modal>
       )}

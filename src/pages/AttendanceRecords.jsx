@@ -1,11 +1,15 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useAuth } from '../context/AuthContext.jsx'
 import {
   getAttendance,
+  getAttendanceCorrections,
   getEmployeeById,
   getEmployees,
-  getSettings
+  getSettings,
+  resolveAttendanceCorrection
 } from '../data/store.js'
 import {
+  correctionIssueLabel,
   formatClock,
   formatDate,
   formatMinutes,
@@ -20,8 +24,13 @@ import { useTableControls } from '../hooks/useTableControls.js'
 
 // All attendance records with simple filters by employee and date.
 export default function AttendanceRecords() {
+  const { user } = useAuth()
   const settings = getSettings()
   const employees = getEmployees().filter((e) => e.role === 'employee')
+
+  const [corrections, setCorrections] = useState(() => getAttendanceCorrections())
+  const [rejectId, setRejectId] = useState(null)
+  const [rejectNote, setRejectNote] = useState('')
 
   const employeeFilterOpts = useMemo(() => [
     { value: 'all', label: 'All employees' },
@@ -54,6 +63,25 @@ export default function AttendanceRecords() {
     }
   })
 
+  const pendingCorrections = corrections.filter((c) => c.status === 'pending')
+
+  function refreshCorrections() {
+    setCorrections(getAttendanceCorrections())
+  }
+
+  function approveCorrection(id) {
+    resolveAttendanceCorrection(id, 'approved', user.id, 'Attendance updated as requested.')
+    refreshCorrections()
+  }
+
+  function rejectCorrection(id) {
+    if (!rejectNote.trim()) return
+    resolveAttendanceCorrection(id, 'rejected', user.id, rejectNote.trim())
+    setRejectId(null)
+    setRejectNote('')
+    refreshCorrections()
+  }
+
   const hasDateFilter = table.filters.date && table.filters.date !== 'all'
 
   return (
@@ -63,6 +91,99 @@ export default function AttendanceRecords() {
         <span className="muted">{table.count} records</span>
       </div>
 
+      {pendingCorrections.length > 0 && (
+        <>
+          <h3 className="section-title first">
+            Correction requests
+            <span className="muted small"> · {pendingCorrections.length} pending</span>
+          </h3>
+          <div className="card">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Date</th>
+                  <th>Issue</th>
+                  <th>Details</th>
+                  <th>Suggested</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingCorrections.map((c) => {
+                  const emp = getEmployeeById(c.employeeId)
+                  return (
+                    <tr key={c.id}>
+                      <td>{emp?.name || c.employeeId}</td>
+                      <td>{formatDate(c.date)}</td>
+                      <td>{correctionIssueLabel(c.issueType)}</td>
+                      <td>{c.description}</td>
+                      <td className="small">
+                        {c.suggestedTimeIn && <>In: {c.suggestedTimeIn}<br /></>}
+                        {c.suggestedTimeOut && <>Out: {c.suggestedTimeOut}</>}
+                        {!c.suggestedTimeIn && !c.suggestedTimeOut && <span className="muted">--</span>}
+                      </td>
+                      <td>
+                        <div className="row-actions">
+                          <button
+                            type="button"
+                            className="btn btn-tiny btn-primary"
+                            onClick={() => approveCorrection(c.id)}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-tiny btn-danger"
+                            onClick={() => { setRejectId(c.id); setRejectNote('') }}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {rejectId && (
+            <div className="card">
+              <h3 className="section-title first">Reject correction</h3>
+              <label className="field">
+                <span>Reason for employee</span>
+                <textarea
+                  className="reply-input"
+                  rows={2}
+                  value={rejectNote}
+                  onChange={(e) => setRejectNote(e.target.value)}
+                  placeholder="Explain why this correction cannot be applied"
+                />
+              </label>
+              <div className="button-row">
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  disabled={!rejectNote.trim()}
+                  onClick={() => rejectCorrection(rejectId)}
+                >
+                  Confirm reject
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-light"
+                  onClick={() => { setRejectId(null); setRejectNote('') }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      <h3 className="section-title">All records</h3>
       <div className="card">
         <TableToolbar
           search={table.search}

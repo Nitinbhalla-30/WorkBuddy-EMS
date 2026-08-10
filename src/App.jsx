@@ -13,8 +13,10 @@ import EmployeeITHelpDesk from './pages/EmployeeITHelpDesk.jsx'
 import EmployeeAnnouncements from './pages/EmployeeAnnouncements.jsx'
 import MyCab from './pages/MyCab.jsx'
 import MyTeam from './pages/MyTeam.jsx'
+import EmployeeReimbursements from './pages/EmployeeReimbursements.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import AdminLeaves from './pages/AdminLeaves.jsx'
+import AdminReimbursements from './pages/AdminReimbursements.jsx'
 import AdminSalary from './pages/AdminSalary.jsx'
 import AdminTasks from './pages/AdminTasks.jsx'
 import AdminProfiles from './pages/AdminProfiles.jsx'
@@ -63,6 +65,7 @@ export default function App() {
         <Route path="/me" element={<EmployeeDashboard />} />
         <Route path="/my-leaves" element={<EmployeeLeaves />} />
         <Route path="/my-salary" element={<EmployeeSalary />} />
+        <Route path="/my-reimbursements" element={<EmployeeReimbursements />} />
         <Route path="/my-tasks" element={<EmployeeTasks />} />
         <Route path="/my-team" element={<MyTeam />} />
         <Route path="/team-tasks" element={<TeamTasks />} />
@@ -84,6 +87,14 @@ export default function App() {
           element={
             <Protected adminOnly>
               <AdminLeaves />
+            </Protected>
+          }
+        />
+        <Route
+          path="/reimbursements"
+          element={
+            <Protected adminOnly>
+              <AdminReimbursements />
             </Protected>
           }
         />

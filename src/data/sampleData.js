@@ -53,6 +53,24 @@ export const LEAVE_TYPES = [
   { key: 'unpaid', label: 'Unpaid', paid: false }
 ]
 
+// Expense categories employees can claim for reimbursement.
+export const REIMBURSEMENT_CATEGORIES = [
+  { key: 'conveyance', label: 'Conveyance / local travel' },
+  { key: 'travel', label: 'Travel' },
+  { key: 'meals', label: 'Meals & refreshments' },
+  { key: 'office', label: 'Office supplies' },
+  { key: 'other', label: 'Other' }
+]
+
+// Reimbursement claim workflow statuses.
+export const REIMBURSEMENT_STATUSES = [
+  { key: 'pending', label: 'Pending approval' },
+  { key: 'approved_unpaid', label: 'Approved — yet to be paid' },
+  { key: 'paid', label: 'Approved and paid' },
+  { key: 'rejected', label: 'Rejected' },
+  { key: 'withdrawn', label: 'Withdrawn' }
+]
+
 // Each employee has a salary structure (basic, hra, other, tdsMonthly) and a
 // team link:
 //   isManager  -> true if this person is a Manager / Team Leader.
@@ -62,18 +80,22 @@ export const SAMPLE_EMPLOYEES = [
   { id: 'EMP001', name: 'Aarav Sharma', pin: '1111', role: 'employee', department: 'Sales',
     isManager: true, managerId: null,
     email: 'aarav.sharma@company.com', designation: 'Sales Manager',
+    dateJoined: '2024-08-01',
     salary: { basic: 18000, hra: 9000, other: 5000, tdsMonthly: 1500 } },
   { id: 'EMP002', name: 'Priya Nair', pin: '2222', role: 'employee', department: 'Design',
     isManager: false, managerId: 'EMP001',
     email: 'priya.nair@company.com', designation: 'UI Designer',
+    dateJoined: '2025-03-15',
     salary: { basic: 12000, hra: 5000, other: 3000, tdsMonthly: 0 } },
   { id: 'EMP003', name: 'Rohan Gupta', pin: '3333', role: 'employee', department: 'Support',
     isManager: false, managerId: 'EMP001',
     email: 'rohan.gupta@company.com', designation: 'Support Executive',
+    dateJoined: '2025-01-10',
     salary: { basic: 10000, hra: 4000, other: 2000, tdsMonthly: 0 } },
   { id: 'EMP004', name: 'Sneha Iyer', pin: '4444', role: 'employee', department: 'Sales',
     isManager: false, managerId: 'EMP001',
     email: 'sneha.iyer@company.com', designation: 'Sales Executive',
+    dateJoined: '2024-11-01',
     salary: { basic: 15000, hra: 7000, other: 4000, tdsMonthly: 800 } },
   { id: 'ADM001', name: 'Meera Kapoor', pin: '0000', role: 'admin', department: 'Human Resources',
     isManager: false, managerId: null,
@@ -120,31 +142,39 @@ export const SAMPLE_LEAVES = [
     id: 'LV01', employeeId: 'EMP001', type: 'casual',
     fromDate: dayFromToday(-20), toDate: dayFromToday(-20),
     reason: 'Personal work', status: 'approved',
-    appliedOn: dayFromToday(-25), decidedBy: 'ADM001', decidedOn: dayFromToday(-24)
+    appliedOn: dayFromToday(-25), decidedBy: 'ADM001', decidedOn: dayFromToday(-24),
+    messages: [], rejectionReason: ''
   },
   {
     id: 'LV02', employeeId: 'EMP002', type: 'sick',
     fromDate: dayFromToday(-10), toDate: dayFromToday(-9),
     reason: 'Fever', status: 'approved',
-    appliedOn: dayFromToday(-11), decidedBy: 'ADM001', decidedOn: dayFromToday(-11)
+    appliedOn: dayFromToday(-11), decidedBy: 'ADM001', decidedOn: dayFromToday(-11),
+    supportingDocuments: [
+      { name: 'priya-medical-cert.pdf', size: 145000, type: 'application/pdf', uploadedOn: dayFromToday(-11) }
+    ],
+    messages: [], rejectionReason: ''
   },
   {
     id: 'LV03', employeeId: 'EMP003', type: 'earned',
     fromDate: dayFromToday(5), toDate: dayFromToday(9),
     reason: 'Family function', status: 'pending',
-    appliedOn: dayFromToday(-1), decidedBy: null, decidedOn: null
+    appliedOn: dayFromToday(-1), decidedBy: null, decidedOn: null,
+    messages: [], rejectionReason: ''
   },
   {
     id: 'LV04', employeeId: 'EMP004', type: 'unpaid',
     fromDate: dayFromToday(3), toDate: dayFromToday(3),
     reason: 'Out of station', status: 'pending',
-    appliedOn: dayFromToday(-1), decidedBy: null, decidedOn: null
+    appliedOn: dayFromToday(-1), decidedBy: null, decidedOn: null,
+    messages: [], rejectionReason: ''
   },
   {
     id: 'LV05', employeeId: 'EMP001', type: 'sick',
     fromDate: dayFromToday(-2), toDate: dayFromToday(-2),
     reason: 'Headache', status: 'rejected',
-    appliedOn: dayFromToday(-3), decidedBy: 'ADM001', decidedOn: dayFromToday(-3)
+    appliedOn: dayFromToday(-3), decidedBy: 'ADM001', decidedOn: dayFromToday(-3),
+    messages: [], rejectionReason: 'Medical certificate was not uploaded for sick leave.'
   },
   {
     // Approved UNPAID leave in the past: this creates a real "loss of pay"
@@ -152,7 +182,61 @@ export const SAMPLE_LEAVES = [
     id: 'LV06', employeeId: 'EMP004', type: 'unpaid',
     fromDate: dayFromToday(-6), toDate: dayFromToday(-4),
     reason: 'Personal emergency', status: 'approved',
-    appliedOn: dayFromToday(-8), decidedBy: 'ADM001', decidedOn: dayFromToday(-7)
+    appliedOn: dayFromToday(-8), decidedBy: 'ADM001', decidedOn: dayFromToday(-7),
+    messages: [], rejectionReason: ''
+  },
+  {
+    id: 'LV07', employeeId: 'EMP002', type: 'casual',
+    fromDate: dayFromToday(8), toDate: dayFromToday(9),
+    reason: 'Family visit', status: 'pending',
+    appliedOn: dayFromToday(-2), decidedBy: null, decidedOn: null,
+    messages: [
+      {
+        id: 'LVM01', byId: 'ADM001', byRole: 'admin',
+        text: 'Is this a local visit or out of station? Please confirm.',
+        on: dayFromToday(-1)
+      }
+    ],
+    rejectionReason: ''
+  }
+]
+
+export const SAMPLE_REIMBURSEMENTS = [
+  {
+    id: 'RMB01', employeeId: 'EMP002', category: 'conveyance',
+    expenseDate: dayFromToday(-42), amount: 450,
+    description: 'Cab to client site — Metro station to office',
+    status: 'paid', appliedOn: dayFromToday(-40),
+    decidedBy: 'ADM001', decidedOn: dayFromToday(-38), paidOn: dayFromToday(-35)
+  },
+  {
+    id: 'RMB02', employeeId: 'EMP002', category: 'travel',
+    expenseDate: dayFromToday(-14), amount: 2200,
+    description: 'Client visit — train tickets Delhi to Jaipur',
+    status: 'approved_unpaid', appliedOn: dayFromToday(-12),
+    decidedBy: 'ADM001', decidedOn: dayFromToday(-10), paidOn: null
+  },
+  {
+    id: 'RMB03', employeeId: 'EMP002', category: 'meals',
+    expenseDate: dayFromToday(-4), amount: 680,
+    description: 'Team lunch during off-site workshop',
+    status: 'pending', appliedOn: dayFromToday(-3),
+    decidedBy: null, decidedOn: null, paidOn: null
+  },
+  {
+    id: 'RMB04', employeeId: 'EMP002', category: 'office',
+    expenseDate: dayFromToday(-28), amount: 320,
+    description: 'Printer cartridges for home office',
+    status: 'rejected', appliedOn: dayFromToday(-27),
+    decidedBy: 'ADM001', decidedOn: dayFromToday(-26), paidOn: null,
+    reviewNote: 'Please use the office supply request process instead.'
+  },
+  {
+    id: 'RMB05', employeeId: 'EMP001', category: 'travel',
+    expenseDate: dayFromToday(-6), amount: 1500,
+    description: 'Flight to Mumbai client meeting',
+    status: 'pending', appliedOn: dayFromToday(-5),
+    decidedBy: null, decidedOn: null, paidOn: null
   }
 ]
 
@@ -214,6 +298,31 @@ function buildSampleAttendance() {
 
 export const SAMPLE_ATTENDANCE = buildSampleAttendance()
 
+export const ATTENDANCE_CORRECTION_ISSUES = [
+  { key: 'missed_time_in', label: 'Forgot to time in' },
+  { key: 'missed_time_out', label: 'Forgot to time out' },
+  { key: 'wrong_times', label: 'Wrong time in / time out' },
+  { key: 'wrong_break', label: 'Break recorded incorrectly' },
+  { key: 'other', label: 'Other' }
+]
+
+export const SAMPLE_ATTENDANCE_CORRECTIONS = [
+  {
+    id: 'ACR01',
+    employeeId: 'EMP002',
+    date: dayFromToday(-5),
+    issueType: 'missed_time_out',
+    description: 'Left for a client visit and forgot to time out.',
+    suggestedTimeIn: '09:28',
+    suggestedTimeOut: '18:05',
+    status: 'approved',
+    appliedOn: dayFromToday(-4),
+    decidedBy: 'ADM001',
+    decidedOn: dayFromToday(-3),
+    reviewNote: 'Updated from your suggested times.'
+  }
+]
+
 // ---- tasks (Planner-style) ----
 // The three board columns a task moves through.
 export const TASK_STATUSES = [
@@ -242,7 +351,8 @@ export const IT_ISSUE_STATUSES = [
   { key: 'open',       label: 'Open' },
   { key: 'inprogress', label: 'In progress' },
   { key: 'resolved',   label: 'Resolved' },
-  { key: 'closed',     label: 'Closed' }
+  { key: 'closed',     label: 'Closed' },
+  { key: 'withdrawn',  label: 'Withdrawn' }
 ]
 
 // IT support team members (for assigning issues)
@@ -533,7 +643,8 @@ export const TICKET_STATUSES = [
   { key: 'open',       label: 'Open' },
   { key: 'inprogress', label: 'In progress' },
   { key: 'resolved',   label: 'Resolved' },
-  { key: 'closed',     label: 'Closed' }
+  { key: 'closed',     label: 'Closed' },
+  { key: 'withdrawn',  label: 'Withdrawn' }
 ]
 
 // Sample tickets so HR has something to work with. Each has a small message

@@ -217,8 +217,9 @@ export default function EmployeeTasks() {
         <TableToolbar
           search={table.search}
           onSearchChange={table.setSearch}
-          showing={table.count}
-          total={table.total}
+          total={tasksTotal}
+          startIndex={tasksStart}
+          endIndex={tasksEnd}
           placeholder="Search tasks..."
           filters={[
             {

@@ -101,8 +101,9 @@ export default function EmployeeAnnouncements() {
         <TableToolbar
           search={table.search}
           onSearchChange={table.setSearch}
-          showing={table.count}
-          total={table.total}
+          total={announcementsTotal}
+          startIndex={announcementsStart}
+          endIndex={announcementsEnd}
           placeholder="Search announcements..."
           filters={[
             { key: 'type', label: 'Type', value: table.filters.type || 'all', options: ANNOUNCEMENT_TYPE_OPTS },
@@ -117,7 +118,7 @@ export default function EmployeeAnnouncements() {
               <SortableTh label="Type" keyName="type" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Date" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="read" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <th></th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>

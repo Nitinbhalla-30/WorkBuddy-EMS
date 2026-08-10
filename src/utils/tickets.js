@@ -40,8 +40,17 @@ export function statusTagClass(key) {
     case 'inprogress': return 'tag-low'    // blue: being worked on
     case 'resolved':   return 'tag-ok'     // green: sorted
     case 'closed':     return 'tag-absent' // grey: finished
+    case 'withdrawn':  return 'tag-absent'
     default:           return 'tag-absent'
   }
+}
+
+export function canEditTicket(ticket) {
+  return ticket?.status === 'open'
+}
+
+export function canWithdrawTicket(ticket) {
+  return ticket?.status === 'open' || ticket?.status === 'inprogress'
 }
 
 // Who raised the ticket, as shown to HR. Anonymous grievances hide the name.

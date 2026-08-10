@@ -3,12 +3,14 @@ import { categoriesForKind, isPosh } from '../utils/tickets.js'
 
 // Form to raise a new query or grievance.
 // onCreate({ kind, category, subject, message, anonymous }).
-export default function TicketForm({ onCreate, onCancel }) {
-  const [kind, setKind] = useState('query')
-  const [category, setCategory] = useState('')
-  const [subject, setSubject] = useState('')
-  const [message, setMessage] = useState('')
-  const [anonymous, setAnonymous] = useState(false)
+export default function TicketForm({ onCreate, onCancel, initial = null, submitLabel = 'Submit' }) {
+  const [kind, setKind] = useState(initial?.kind || 'query')
+  const [category, setCategory] = useState(initial?.category || '')
+  const [subject, setSubject] = useState(initial?.subject || '')
+  const [message, setMessage] = useState(
+    initial?.messages?.[0]?.text || ''
+  )
+  const [anonymous, setAnonymous] = useState(initial?.anonymous || false)
   const [error, setError] = useState('')
 
   const categories = useMemo(() => categoriesForKind(kind), [kind])
@@ -34,15 +36,14 @@ export default function TicketForm({ onCreate, onCancel }) {
       anonymous: kind === 'grievance' ? anonymous : false
     })
 
-    // Clear for the next one.
-    setCategory('')
-    setSubject('')
-    setMessage('')
-    setAnonymous(false)
-    setError('')
-    
-    // Call onCancel if provided to close the modal
-    if (onCancel) onCancel()
+    if (!initial) {
+      setCategory('')
+      setSubject('')
+      setMessage('')
+      setAnonymous(false)
+      setError('')
+      if (onCancel) onCancel()
+    }
   }
 
   const poshChosen = isPosh(category)
@@ -114,7 +115,7 @@ export default function TicketForm({ onCreate, onCancel }) {
       )}
 
       <div className="button-row">
-        <button type="submit" className="btn btn-primary">Submit</button>
+        <button type="submit" className="btn btn-primary">{submitLabel}</button>
         {onCancel && <button type="button" className="btn btn-light" onClick={onCancel}>Cancel</button>}
       </div>
     </form>

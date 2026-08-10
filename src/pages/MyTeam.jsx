@@ -46,8 +46,9 @@ export default function MyTeam() {
         <TableToolbar
           search={table.search}
           onSearchChange={table.setSearch}
-          showing={table.count}
-          total={table.total}
+          total={total}
+          startIndex={startIndex}
+          endIndex={endIndex}
           placeholder="Search team members..."
         />
         <table className="table">
