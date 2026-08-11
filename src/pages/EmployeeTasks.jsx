@@ -1,10 +1,31 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { addTask, addTaskMessage, getEmployeeById, getTasksForAssignee, updateTaskStatus } from '../data/store.js'
+import {
+  addTask,
+  addTaskMessage,
+  deleteTaskByAssignee,
+  getEmployeeById,
+  getTasksForAssignee,
+  updateTaskByAssignee,
+  updateTaskStatusByEmployee
+} from '../data/store.js'
 import { TASK_STATUSES, TASK_PRIORITIES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
+import {
+  canEmployeeAskQuestion,
+  canEmployeeDeleteTask,
+  canEmployeeEditTask,
+  closureNotice,
+  employeeStatusOptions,
+  isEmployeeStatusLocked,
+  isOverdue,
+  isSelfAssigned,
+  statusLabel,
+  statusTagClass
+} from '../utils/tasks.js'
 import TaskForm from '../components/TaskForm.jsx'
 import TaskThread from '../components/TaskThread.jsx'
+import { TaskStatusChart } from '../components/tasks/TaskStatusChart.tsx'
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
@@ -21,12 +42,13 @@ const TASK_PRIORITY_FILTER_OPTS = [
   ...TASK_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
 ]
 
-// The employee's own task board. They can add tasks for themselves and move
-// them across the columns.
+// The employee's own task board. Self-created tasks can be edited and deleted;
+// manager-assigned tasks follow a submit-for-closure → manager approval flow.
 export default function EmployeeTasks() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
   const [showForm, setShowForm] = useState(false)
+  const [editTaskId, setEditTaskId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openTaskId, setOpenTaskId] = useState(null)
 
@@ -65,6 +87,7 @@ export default function EmployeeTasks() {
   } = usePagination(table.rows)
 
   const openTask = tasks.find((t) => t.id === openTaskId) || null
+  const editTask = tasks.find((t) => t.id === editTaskId) || null
 
   function nameOf(id) {
     if (id === user.id) return user.name
@@ -77,21 +100,37 @@ export default function EmployeeTasks() {
     return nameOf(task.createdById)
   }
 
+  function bump() {
+    setRefresh((n) => n + 1)
+  }
+
   function handleCreate(data) {
     addTask({ ...data, createdById: user.id })
-    setRefresh((n) => n + 1)
+    bump()
     setShowForm(false)
   }
 
+  function handleEdit(data) {
+    if (!editTask) return
+    updateTaskByAssignee(editTask.id, user.id, data)
+    bump()
+    setEditTaskId(null)
+  }
+
   function move(id, status) {
-    updateTaskStatus(id, status)
-    setRefresh((n) => n + 1)
+    updateTaskStatusByEmployee(id, user.id, status)
+    bump()
+  }
+
+  function handleDelete(id) {
+    deleteTaskByAssignee(id, user.id)
+    bump()
   }
 
   function handleTaskReply(text) {
     if (!openTask) return
     addTaskMessage(openTask.id, { byId: user.id, text })
-    setRefresh((n) => n + 1)
+    bump()
   }
 
   function getPriorityLabel(key) {
@@ -108,20 +147,6 @@ export default function EmployeeTasks() {
     }
   }
 
-  function getStatusLabel(status) {
-    switch (status) {
-      case 'todo': return 'To do'
-      case 'inprogress': return 'In progress'
-      case 'done': return 'Done'
-      default: return status
-    }
-  }
-
-  function isOverdue(task) {
-    if (!task.dueDate || task.status === 'done') return false
-    return new Date(task.dueDate) < new Date()
-  }
-
   function toggleMenu(taskId) {
     setOpenMenuId(openMenuId === taskId ? null : taskId)
   }
@@ -130,7 +155,40 @@ export default function EmployeeTasks() {
     setOpenMenuId(null)
   }
 
-  // Close menu when clicking outside
+  function statusCell(task) {
+    const options = employeeStatusOptions(task)
+
+    if (isEmployeeStatusLocked(task)) {
+      return (
+        <div>
+          <span className={`tag ${statusTagClass(task.status)}`}>
+            {statusLabel(task.status)}
+          </span>
+          {closureNotice(task, nameOf) && (
+            <div className="muted small">{closureNotice(task, nameOf)}</div>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <div>
+        <select
+          value={task.status}
+          onChange={(e) => move(task.id, e.target.value)}
+          className="btn-tiny"
+        >
+          {options.map((s) => (
+            <option key={s.key} value={s.key}>{s.label}</option>
+          ))}
+        </select>
+        {closureNotice(task, nameOf) && (
+          <div className="muted small">{closureNotice(task, nameOf)}</div>
+        )}
+      </div>
+    )
+  }
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (openMenuId && !event.target.closest('.task-menu-container')) {
@@ -155,6 +213,8 @@ export default function EmployeeTasks() {
           </button>
         </div>
       </div>
+
+      <TaskStatusChart tasks={tasks} />
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Add a task for myself">
@@ -181,6 +241,30 @@ export default function EmployeeTasks() {
         </Modal>
       )}
 
+      {editTask && (
+        <Modal onClose={() => setEditTaskId(null)} title="Edit task">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Edit task</h3>
+              <button
+                type="button"
+                className="btn btn-tiny btn-light"
+                onClick={() => setEditTaskId(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <TaskForm
+              defaultAssigneeId={user.id}
+              initial={editTask}
+              submitLabel="Save changes"
+              onCreate={handleEdit}
+              onCancel={() => setEditTaskId(null)}
+            />
+          </div>
+        </Modal>
+      )}
+
       {openTask && (
         <Modal onClose={() => setOpenTaskId(null)} title={openTask.title}>
           <div className="modal-form">
@@ -201,6 +285,9 @@ export default function EmployeeTasks() {
             </div>
             {openTask.description && (
               <p className="hint first">{openTask.description}</p>
+            )}
+            {closureNotice(openTask, nameOf) && (
+              <p className="hint">{closureNotice(openTask, nameOf)}</p>
             )}
             <TaskThread
               task={openTask}
@@ -267,17 +354,7 @@ export default function EmployeeTasks() {
                     {getPriorityLabel(task.priority)}
                   </span>
                 </td>
-                <td>
-                  <select
-                    value={task.status}
-                    onChange={(e) => move(task.id, e.target.value)}
-                    className="btn-tiny"
-                  >
-                    {TASK_STATUSES.map((s) => (
-                      <option key={s.key} value={s.key}>{s.label}</option>
-                    ))}
-                  </select>
-                </td>
+                <td>{statusCell(task)}</td>
                 <td className={isOverdue(task) ? 'text-bad' : ''}>
                   {task.dueDate ? formatDate(task.dueDate) : <span className="muted">--</span>}
                   {isOverdue(task) && <span className="muted small"> (Overdue)</span>}
@@ -292,25 +369,40 @@ export default function EmployeeTasks() {
                     </button>
                     {openMenuId === task.id && (
                       <div className="task-menu-dropdown">
-                        <button
-                          className="task-menu-item"
-                          onClick={() => {
-                            setOpenTaskId(task.id)
-                            closeMenu()
-                          }}
-                        >
-                          Ask question
-                        </button>
-                        <button
-                          className="task-menu-item"
-                          onClick={() => {
-                            move(task.id, 'done')
-                            closeMenu()
-                          }}
-                          disabled={task.status === 'done'}
-                        >
-                          Mark Done
-                        </button>
+                        {!isSelfAssigned(task) && (
+                          <button
+                            className="task-menu-item"
+                            onClick={() => {
+                              setOpenTaskId(task.id)
+                              closeMenu()
+                            }}
+                            disabled={!canEmployeeAskQuestion(task)}
+                          >
+                            Ask question
+                          </button>
+                        )}
+                        {canEmployeeEditTask(task, user.id) && (
+                          <button
+                            className="task-menu-item"
+                            onClick={() => {
+                              setEditTaskId(task.id)
+                              closeMenu()
+                            }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {canEmployeeDeleteTask(task, user.id) && (
+                          <button
+                            className="task-menu-item"
+                            onClick={() => {
+                              handleDelete(task.id)
+                              closeMenu()
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -330,9 +422,10 @@ export default function EmployeeTasks() {
       </div>
 
       <p className="hint">
-        Change the status dropdown to move tasks between To do, In progress, and Done.
-        Use the <strong>⋯</strong> menu and choose <strong>Ask question</strong> to request clarifications,
-        access details, or anything else you need from the person who assigned the task.
+        Tasks you create for yourself can be edited, deleted, and marked done from the status dropdown.
+        Tasks from your manager can be marked done from the status dropdown when finished, and changed back to To do or In progress if needed.
+        Your manager must approve before the task is closed.
+        Use the <strong>⋯</strong> menu on manager-assigned tasks to ask questions while the task is still open.
       </p>
     </div>
   )

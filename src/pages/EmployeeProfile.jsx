@@ -77,7 +77,7 @@ export default function EmployeeProfile() {
         <>
           {profile.status === 'draft' && (
             <p className="hint first">
-              Welcome! Please fill in your details and upload your documents. You
+              Welcome! Please fill in your details, upload your profile picture, and upload your documents. You
               can save a draft and finish later. Submit when everything is ready.
             </p>
           )}

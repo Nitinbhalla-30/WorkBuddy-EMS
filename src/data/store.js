@@ -45,7 +45,8 @@ const KEYS = {
   announcements: 'hr_announcements',
   readAnnouncements: 'hr_read_announcements',
   reimbursements: 'hr_reimbursements',
-  attendanceCorrections: 'hr_attendance_corrections'
+  attendanceCorrections: 'hr_attendance_corrections',
+  notificationReads: 'hr_notification_reads'
 }
 
 function read(key, fallback) {
@@ -121,6 +122,9 @@ export function seedIfEmpty() {
   if (localStorage.getItem(KEYS.attendanceCorrections) === null) {
     write(KEYS.attendanceCorrections, SAMPLE_ATTENDANCE_CORRECTIONS)
   }
+  if (localStorage.getItem(KEYS.notificationReads) === null) {
+    write(KEYS.notificationReads, {})
+  }
 }
 
 // Wipe everything and load fresh sample data (handy while testing).
@@ -144,6 +148,7 @@ export function resetToSampleData() {
   write(KEYS.readAnnouncements, {})
   write(KEYS.reimbursements, SAMPLE_REIMBURSEMENTS)
   write(KEYS.attendanceCorrections, SAMPLE_ATTENDANCE_CORRECTIONS)
+  write(KEYS.notificationReads, {})
 }
 
 // ---- employees ----
@@ -209,6 +214,7 @@ export function getMyTeamDirectory(employeeId) {
     return {
       id: e.id,
       name: e.name,
+      photoUrl: profile?.personal?.photo?.dataUrl || '',
       mobile: profile?.personal?.contactNumber || '',
       email: e.email || '',
       designation: e.designation || e.department || '',
@@ -326,11 +332,90 @@ export function submitAttendanceCorrection({
     appliedOn: todayKey(),
     decidedBy: null,
     decidedOn: null,
-    reviewNote: ''
+    reviewNote: '',
+    messages: []
   }
   all.push(request)
   write(KEYS.attendanceCorrections, all)
   return request
+}
+
+export function getAttendanceCorrectionById(id) {
+  return getAttendanceCorrections().find((c) => c.id === id) || null
+}
+
+// Employee edits a pending correction request.
+export function updateAttendanceCorrection(id, employeeId, {
+  date,
+  issueType,
+  description,
+  suggestedTimeIn = '',
+  suggestedTimeOut = ''
+}) {
+  const all = getAttendanceCorrections()
+  const idx = all.findIndex((c) => c.id === id)
+  if (idx < 0) return null
+  const correction = all[idx]
+  if (correction.employeeId !== employeeId) return null
+  if (correction.status !== 'pending') return null
+  all[idx] = {
+    ...correction,
+    date,
+    issueType,
+    description: description || '',
+    suggestedTimeIn: suggestedTimeIn || '',
+    suggestedTimeOut: suggestedTimeOut || '',
+    reviewNote: '',
+    decidedBy: null,
+    decidedOn: null
+  }
+  write(KEYS.attendanceCorrections, all)
+  return all[idx]
+}
+
+// Employee withdraws a pending correction request.
+export function withdrawAttendanceCorrection(id, employeeId) {
+  const all = getAttendanceCorrections()
+  const idx = all.findIndex((c) => c.id === id)
+  if (idx < 0) return null
+  const correction = all[idx]
+  if (correction.employeeId !== employeeId) return null
+  if (correction.status !== 'pending') return null
+  all[idx] = { ...correction, status: 'withdrawn', withdrawnOn: todayKey() }
+  write(KEYS.attendanceCorrections, all)
+  return all[idx]
+}
+
+// Q&A on a pending correction (employee or HR/Admin).
+export function addAttendanceCorrectionMessage(id, { byId, byRole, text }) {
+  const all = getAttendanceCorrections()
+  const idx = all.findIndex((c) => c.id === id)
+  if (idx < 0) return null
+
+  const correction = all[idx]
+  if (correction.status !== 'pending') return null
+
+  const trimmed = String(text || '').trim()
+  if (!trimmed) return null
+
+  if (byRole === 'employee' && byId !== correction.employeeId) return null
+  if (byRole !== 'employee' && byRole !== 'admin') return null
+
+  all[idx] = {
+    ...correction,
+    messages: [
+      ...(correction.messages || []),
+      {
+        id: `ACM${Date.now()}`,
+        byId,
+        byRole,
+        text: trimmed,
+        on: todayKey()
+      }
+    ]
+  }
+  write(KEYS.attendanceCorrections, all)
+  return all[idx]
 }
 
 function findOrCreateAttendanceRecord(employeeId, date) {
@@ -676,7 +761,7 @@ export function addTask({ title, description, assigneeId, createdById, dueDate, 
   return task
 }
 
-// Move a task to a new status ('todo' | 'inprogress' | 'done').
+// Move a task to a new status (internal / admin use).
 export function updateTaskStatus(taskId, status) {
   const all = getTasks()
   const idx = all.findIndex((t) => t.id === taskId)
@@ -686,10 +771,106 @@ export function updateTaskStatus(taskId, status) {
   return all[idx]
 }
 
+export function isSelfAssignedTask(task) {
+  return task.createdById === task.assigneeId
+}
+
+// Edit a self-created task (assignee only).
+export function updateTaskByAssignee(taskId, employeeId, { title, description, dueDate, priority }) {
+  const all = getTasks()
+  const idx = all.findIndex((t) => t.id === taskId)
+  if (idx < 0) return null
+  const task = all[idx]
+  if (task.assigneeId !== employeeId) return null
+  if (!isSelfAssignedTask(task)) return null
+  if (task.status === 'closed') return null
+  all[idx] = {
+    ...task,
+    title: title?.trim() || task.title,
+    description: description !== undefined ? description : task.description,
+    dueDate: dueDate !== undefined ? dueDate : task.dueDate,
+    priority: priority || task.priority
+  }
+  write(KEYS.tasks, all)
+  return all[idx]
+}
+
 // Remove a task.
 export function deleteTask(taskId) {
   const all = getTasks().filter((t) => t.id !== taskId)
   write(KEYS.tasks, all)
+}
+
+// Delete only self-created tasks for the assignee.
+export function deleteTaskByAssignee(taskId, employeeId) {
+  const task = getTaskById(taskId)
+  if (!task || task.assigneeId !== employeeId) return false
+  if (!isSelfAssignedTask(task)) return false
+  deleteTask(taskId)
+  return true
+}
+
+// Employee status change with self vs manager-assigned rules.
+export function updateTaskStatusByEmployee(taskId, employeeId, status) {
+  const task = getTaskById(taskId)
+  if (!task || task.assigneeId !== employeeId) return null
+
+  if (isSelfAssignedTask(task)) {
+    if (!['todo', 'inprogress', 'done'].includes(status)) return null
+    return updateTaskStatus(taskId, status)
+  }
+
+  if (task.status === 'closed') return null
+  if (!['todo', 'inprogress', 'done'].includes(status)) return null
+
+  const all = getTasks()
+  const idx = all.findIndex((t) => t.id === taskId)
+  if (idx < 0) return null
+  all[idx] = {
+    ...task,
+    status,
+    completedOn: status === 'done' ? todayKey() : ''
+  }
+  write(KEYS.tasks, all)
+  return all[idx]
+}
+
+// Manager approves after the employee marked a team task as done.
+export function approveTaskClosure(taskId, managerId) {
+  const all = getTasks()
+  const idx = all.findIndex((t) => t.id === taskId)
+  if (idx < 0) return null
+  const task = all[idx]
+  if (task.status !== 'done') return null
+  if (isSelfAssignedTask(task)) return null
+  if (task.createdById !== managerId) return null
+  all[idx] = {
+    ...task,
+    status: 'closed',
+    closedBy: managerId,
+    closedOn: todayKey()
+  }
+  write(KEYS.tasks, all)
+  return all[idx]
+}
+
+// Manager status change (team tasks they assigned, or their own self-tasks).
+export function updateTaskStatusByManager(taskId, managerId, status) {
+  const task = getTaskById(taskId)
+  if (!task) return null
+
+  if (isSelfAssignedTask(task) && task.assigneeId === managerId) {
+    if (!['todo', 'inprogress', 'done'].includes(status)) return null
+    return updateTaskStatus(taskId, status)
+  }
+
+  if (task.createdById === managerId && !isSelfAssignedTask(task)) {
+    if (task.status === 'done' || task.status === 'closed') return null
+    if (!['todo', 'inprogress'].includes(status)) return null
+    return updateTaskStatus(taskId, status)
+  }
+
+  return null
 }
 
 export function getTaskById(taskId) {
@@ -1373,4 +1554,29 @@ export function markAnnouncementAsRead(employeeId, announcementId) {
 export function isAnnouncementRead(employeeId, announcementId) {
   const readData = getReadAnnouncements()
   return (readData[employeeId] || []).includes(announcementId)
+}
+
+// ---- employee notification reads ----
+function getNotificationReadsMap() {
+  return read(KEYS.notificationReads, {})
+}
+
+export function getReadNotificationIds(employeeId) {
+  return getNotificationReadsMap()[employeeId] || []
+}
+
+export function markNotificationRead(employeeId, notificationId) {
+  const all = getNotificationReadsMap()
+  const list = all[employeeId] || []
+  if (list.includes(notificationId)) return
+  all[employeeId] = [...list, notificationId]
+  write(KEYS.notificationReads, all)
+}
+
+export function markAllNotificationsRead(employeeId, notificationIds) {
+  const all = getNotificationReadsMap()
+  const existing = new Set(all[employeeId] || [])
+  for (const id of notificationIds) existing.add(id)
+  all[employeeId] = [...existing]
+  write(KEYS.notificationReads, all)
 }

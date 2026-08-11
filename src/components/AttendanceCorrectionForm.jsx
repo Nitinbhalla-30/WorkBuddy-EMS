@@ -1,13 +1,21 @@
 import { useState } from 'react'
 import { ATTENDANCE_CORRECTION_ISSUES } from '../data/sampleData.js'
 
-// Request HR to fix a wrong attendance record.
-export default function AttendanceCorrectionForm({ onSubmit, onCancel, defaultDate = '' }) {
-  const [date, setDate] = useState(defaultDate)
-  const [issueType, setIssueType] = useState('missed_time_in')
-  const [description, setDescription] = useState('')
-  const [suggestedTimeIn, setSuggestedTimeIn] = useState('')
-  const [suggestedTimeOut, setSuggestedTimeOut] = useState('')
+// Request HR to fix a wrong attendance record (create or edit).
+export default function AttendanceCorrectionForm({
+  onSubmit,
+  onCancel,
+  defaultDate = '',
+  initial = null,
+  submitLabel = 'Submit request'
+}) {
+  const isEdit = Boolean(initial)
+
+  const [date, setDate] = useState(initial?.date || defaultDate)
+  const [issueType, setIssueType] = useState(initial?.issueType || 'missed_time_in')
+  const [description, setDescription] = useState(initial?.description || '')
+  const [suggestedTimeIn, setSuggestedTimeIn] = useState(initial?.suggestedTimeIn || '')
+  const [suggestedTimeOut, setSuggestedTimeOut] = useState(initial?.suggestedTimeOut || '')
   const [error, setError] = useState('')
 
   const showTimeIn = issueType === 'missed_time_in' || issueType === 'wrong_times'
@@ -34,12 +42,14 @@ export default function AttendanceCorrectionForm({ onSubmit, onCancel, defaultDa
       suggestedTimeOut: showTimeOut ? suggestedTimeOut : ''
     })
 
-    setDate(defaultDate)
-    setIssueType('missed_time_in')
-    setDescription('')
-    setSuggestedTimeIn('')
-    setSuggestedTimeOut('')
-    setError('')
+    if (!isEdit) {
+      setDate(defaultDate)
+      setIssueType('missed_time_in')
+      setDescription('')
+      setSuggestedTimeIn('')
+      setSuggestedTimeOut('')
+      setError('')
+    }
   }
 
   return (
@@ -99,7 +109,7 @@ export default function AttendanceCorrectionForm({ onSubmit, onCancel, defaultDa
       </p>
 
       <div className="button-row">
-        <button type="submit" className="btn btn-primary">Submit request</button>
+        <button type="submit" className="btn btn-primary">{submitLabel}</button>
         {onCancel && (
           <button type="button" className="btn btn-light" onClick={onCancel}>Cancel</button>
         )}

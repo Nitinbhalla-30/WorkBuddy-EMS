@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
+  addAttendanceCorrectionMessage,
   getAttendance,
   getAttendanceCorrections,
   getEmployeeById,
@@ -18,9 +19,13 @@ import {
   totalBreakMinutes,
   workedMinutes
 } from '../utils/attendance.js'
+import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import Modal from '../components/Modal.jsx'
+import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
 
 // All attendance records with simple filters by employee and date.
 export default function AttendanceRecords() {
@@ -29,7 +34,9 @@ export default function AttendanceRecords() {
   const employees = getEmployees().filter((e) => e.role === 'employee')
 
   const [corrections, setCorrections] = useState(() => getAttendanceCorrections())
-  const [rejectId, setRejectId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [openId, setOpenId] = useState(null)
+  const [rejectMode, setRejectMode] = useState(false)
   const [rejectNote, setRejectNote] = useState('')
 
   const employeeFilterOpts = useMemo(() => [
@@ -63,24 +70,103 @@ export default function AttendanceRecords() {
     }
   })
 
-  const pendingCorrections = corrections.filter((c) => c.status === 'pending')
+  const pendingCount = corrections.filter((c) => c.status === 'pending').length
+
+  const correctionsTable = useTableControls(corrections, {
+    getSortValue: (c, key) => {
+      if (key === 'employee') return getEmployeeById(c.employeeId)?.name || c.employeeId
+      if (key === 'issue') return correctionIssueLabel(c.issueType)
+      return c[key]
+    },
+    initialSortKey: 'appliedOn',
+    initialSortDir: 'desc'
+  })
+  const {
+    items: correctionsPage,
+    page: correctionsPageNum,
+    totalPages: correctionsTotalPages,
+    total: correctionsTotal,
+    startIndex: correctionsStart,
+    endIndex: correctionsEnd,
+    setPage: setCorrectionsPage
+  } = usePagination(correctionsTable.rows)
+
+  const openCorrection = corrections.find((c) => c.id === openId) || null
+
+  function nameOf(id) {
+    if (!id) return ''
+    if (id === user.id) return user.name
+    return getEmployeeById(id)?.name || id
+  }
 
   function refreshCorrections() {
     setCorrections(getAttendanceCorrections())
   }
 
+  function openReview(id, startReject = false) {
+    setOpenId(id)
+    setRejectMode(startReject)
+    setRejectNote('')
+    setOpenMenuId(null)
+  }
+
+  function closeReview() {
+    setOpenId(null)
+    setRejectMode(false)
+    setRejectNote('')
+  }
+
   function approveCorrection(id) {
     resolveAttendanceCorrection(id, 'approved', user.id, 'Attendance updated as requested.')
     refreshCorrections()
+    closeReview()
   }
 
   function rejectCorrection(id) {
     if (!rejectNote.trim()) return
     resolveAttendanceCorrection(id, 'rejected', user.id, rejectNote.trim())
-    setRejectId(null)
-    setRejectNote('')
+    refreshCorrections()
+    closeReview()
+  }
+
+  function handleReply(text) {
+    if (!openCorrection) return
+    addAttendanceCorrectionMessage(openCorrection.id, {
+      byId: user.id,
+      byRole: 'admin',
+      text
+    })
     refreshCorrections()
   }
+
+  function toggleMenu(id) {
+    setOpenMenuId(openMenuId === id ? null : id)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  function statusLabel(status) {
+    return status.charAt(0).toUpperCase() + status.slice(1)
+  }
+
+  function statusClass(status) {
+    if (status === 'approved') return 'tag-ok'
+    if (status === 'rejected') return 'tag-late'
+    if (status === 'withdrawn') return 'tag-absent'
+    return 'tag-absent'
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
 
   const hasDateFilter = table.filters.date && table.filters.date !== 'all'
 
@@ -91,96 +177,216 @@ export default function AttendanceRecords() {
         <span className="muted">{table.count} records</span>
       </div>
 
-      {pendingCorrections.length > 0 && (
-        <>
-          <h3 className="section-title first">
-            Correction requests
-            <span className="muted small"> · {pendingCorrections.length} pending</span>
-          </h3>
-          <div className="card">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Date</th>
-                  <th>Issue</th>
-                  <th>Details</th>
-                  <th>Suggested</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingCorrections.map((c) => {
-                  const emp = getEmployeeById(c.employeeId)
-                  return (
-                    <tr key={c.id}>
-                      <td>{emp?.name || c.employeeId}</td>
-                      <td>{formatDate(c.date)}</td>
-                      <td>{correctionIssueLabel(c.issueType)}</td>
-                      <td>{c.description}</td>
-                      <td className="small">
-                        {c.suggestedTimeIn && <>In: {c.suggestedTimeIn}<br /></>}
-                        {c.suggestedTimeOut && <>Out: {c.suggestedTimeOut}</>}
-                        {!c.suggestedTimeIn && !c.suggestedTimeOut && <span className="muted">--</span>}
-                      </td>
-                      <td>
-                        <div className="row-actions">
+      <h3 className="section-title first">
+        Correction requests
+        {pendingCount > 0 && (
+          <span className="muted small"> · {pendingCount} pending</span>
+        )}
+      </h3>
+
+      <div className="card">
+        <table className="table">
+          <thead>
+            <tr>
+              <SortableTh label="Employee" keyName="employee" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
+              <SortableTh label="Date" keyName="date" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
+              <SortableTh label="Issue" keyName="issue" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
+              <th>Details</th>
+              <th>Suggested</th>
+              <SortableTh label="Status" keyName="status" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {correctionsTotal === 0 && (
+              <tr>
+                <td colSpan={7} className="muted">No correction requests yet.</td>
+              </tr>
+            )}
+            {correctionsPage.map((c) => {
+              const emp = getEmployeeById(c.employeeId)
+              return (
+                <tr key={c.id}>
+                  <td>{emp?.name || c.employeeId}</td>
+                  <td>{formatDate(c.date)}</td>
+                  <td>{correctionIssueLabel(c.issueType)}</td>
+                  <td>{c.description || <span className="muted">--</span>}</td>
+                  <td className="small">
+                    {c.suggestedTimeIn && <>In: {c.suggestedTimeIn}<br /></>}
+                    {c.suggestedTimeOut && <>Out: {c.suggestedTimeOut}</>}
+                    {!c.suggestedTimeIn && !c.suggestedTimeOut && <span className="muted">--</span>}
+                  </td>
+                  <td>
+                    <span className={`tag ${statusClass(c.status)}`}>
+                      {statusLabel(c.status)}
+                    </span>
+                    {c.decidedBy && (
+                      <div className="muted small">By {nameOf(c.decidedBy)}</div>
+                    )}
+                    {c.status === 'rejected' && c.reviewNote && (
+                      <div className="muted small">Reason: {c.reviewNote}</div>
+                    )}
+                    {(c.messages || []).length > 0 && (
+                      <div className="muted small">
+                        {(c.messages || []).length} message(s)
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <div className="task-menu-container">
+                      <button
+                        type="button"
+                        className="btn btn-tiny btn-light task-menu-button"
+                        onClick={() => toggleMenu(c.id)}
+                        aria-label="Correction actions"
+                      >
+                        ⋯
+                      </button>
+                      {openMenuId === c.id && (
+                        <div className="task-menu-dropdown">
                           <button
                             type="button"
-                            className="btn btn-tiny btn-primary"
-                            onClick={() => approveCorrection(c.id)}
+                            className="task-menu-item"
+                            onClick={() => openReview(c.id, false)}
+                          >
+                            {c.status === 'pending' ? 'Ask question' : 'View thread'}
+                          </button>
+                          <button
+                            type="button"
+                            className="task-menu-item"
+                            disabled={c.status !== 'pending'}
+                            onClick={() => {
+                              approveCorrection(c.id)
+                              closeMenu()
+                            }}
                           >
                             Approve
                           </button>
                           <button
                             type="button"
-                            className="btn btn-tiny btn-danger"
-                            onClick={() => { setRejectId(c.id); setRejectNote('') }}
+                            className="task-menu-item task-menu-item-danger"
+                            disabled={c.status !== 'pending'}
+                            onClick={() => openReview(c.id, true)}
                           >
                             Reject
                           </button>
                         </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+        <Pagination
+          page={correctionsPageNum}
+          totalPages={correctionsTotalPages}
+          total={correctionsTotal}
+          startIndex={correctionsStart}
+          endIndex={correctionsEnd}
+          onPageChange={setCorrectionsPage}
+        />
+      </div>
 
-          {rejectId && (
-            <div className="card">
-              <h3 className="section-title first">Reject correction</h3>
-              <label className="field">
-                <span>Reason for employee</span>
-                <textarea
-                  className="reply-input"
-                  rows={2}
-                  value={rejectNote}
-                  onChange={(e) => setRejectNote(e.target.value)}
-                  placeholder="Explain why this correction cannot be applied"
-                />
-              </label>
-              <div className="button-row">
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  disabled={!rejectNote.trim()}
-                  onClick={() => rejectCorrection(rejectId)}
-                >
-                  Confirm reject
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-light"
-                  onClick={() => { setRejectId(null); setRejectNote('') }}
-                >
-                  Cancel
+      {openCorrection && (
+        <Modal onClose={closeReview} title="Review correction request">
+          <div className="modal-form">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>
+                  {nameOf(openCorrection.employeeId)}
+                </h3>
+                <div className="muted small">
+                  {correctionIssueLabel(openCorrection.issueType)} · {formatDate(openCorrection.date)}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={`tag ${statusClass(openCorrection.status)}`}>
+                  {statusLabel(openCorrection.status)}
+                </span>
+                <button type="button" className="btn btn-tiny btn-light" onClick={closeReview}>
+                  ✕
                 </button>
               </div>
             </div>
-          )}
-        </>
+
+            {openCorrection.description && (
+              <p className="hint first"><strong>Details:</strong> {openCorrection.description}</p>
+            )}
+            {(openCorrection.suggestedTimeIn || openCorrection.suggestedTimeOut) && (
+              <p className="muted small">
+                Suggested
+                {openCorrection.suggestedTimeIn && <> in: {openCorrection.suggestedTimeIn}</>}
+                {openCorrection.suggestedTimeOut && <> out: {openCorrection.suggestedTimeOut}</>}
+              </p>
+            )}
+
+            {openCorrection.status === 'rejected' && openCorrection.reviewNote && (
+              <div className="info-box">Reason: {openCorrection.reviewNote}</div>
+            )}
+
+            {openCorrection.status === 'pending' && !rejectMode && (
+              <div className="button-row first">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => approveCorrection(openCorrection.id)}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => setRejectMode(true)}
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+
+            {openCorrection.status === 'pending' && rejectMode && (
+              <div className="first">
+                <label className="field">
+                  <span>Reason for employee</span>
+                  <textarea
+                    className="reply-input"
+                    rows={2}
+                    value={rejectNote}
+                    onChange={(e) => setRejectNote(e.target.value)}
+                    placeholder="Explain why this correction cannot be applied"
+                  />
+                </label>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={!rejectNote.trim()}
+                    onClick={() => rejectCorrection(openCorrection.id)}
+                  >
+                    Confirm reject
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-light"
+                    onClick={() => { setRejectMode(false); setRejectNote('') }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <AttendanceCorrectionThread
+              correction={openCorrection}
+              viewerRole="admin"
+              viewerId={user.id}
+              nameOf={nameOf}
+              onReply={handleReply}
+              onClose={closeReview}
+            />
+          </div>
+        </Modal>
       )}
 
       <h3 className="section-title">All records</h3>

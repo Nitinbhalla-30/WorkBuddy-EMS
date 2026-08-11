@@ -30,7 +30,8 @@ export function blankProfile(employeeId) {
       homeGate: '',
       pickupPoint: null,        // { lat, lng } map point for cab pickup
       dropPoint: null,          // { lat, lng } map point for cab drop
-      dropSameAsPickup: true    // drop point is same as pickup by default
+      dropSameAsPickup: true,   // drop point is same as pickup by default
+      photo: null               // { name, size, type, uploadedOn, dataUrl }
     },
     bank: {
       accountNumber: '',
@@ -87,6 +88,7 @@ export function validateForSubmit(profile) {
   if (!isValidPhone(p.emergencyContact)) problems.push('Emergency contact number must be 10 digits.')
   if (!isValidAadhaar(p.aadhaar)) problems.push('Aadhaar must be 12 digits.')
   if (!isValidPan(p.pan)) problems.push('PAN must look like ABCDE1234F.')
+  if (!p.photo?.dataUrl) problems.push('Profile picture is required.')
 
   const b = profile.bank
   if (!b.accountNumber.trim()) problems.push('Bank account number is required.')
@@ -103,6 +105,12 @@ export function validateForSubmit(profile) {
   }
 
   return problems
+}
+
+// Data URL for a stored profile photo, or empty string if none.
+export function profilePhotoUrl(profile) {
+  const photo = profile?.personal?.photo
+  return photo?.dataUrl || ''
 }
 
 // ---- status display ----

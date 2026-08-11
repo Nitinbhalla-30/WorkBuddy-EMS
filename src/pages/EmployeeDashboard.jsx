@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
+  addAttendanceCorrectionMessage,
   getAttendanceCorrectionsForEmployee,
   getAttendanceForEmployee,
+  getEmployeeById,
   getSettings,
   getTodayRecord,
   submitAttendanceCorrection,
-  upsertRecord
+  updateAttendanceCorrection,
+  upsertRecord,
+  withdrawAttendanceCorrection
 } from '../data/store.js'
 import { checkOfficeNetwork } from '../utils/network.js'
 import {
@@ -34,6 +38,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
 import AttendanceCorrectionForm from '../components/AttendanceCorrectionForm.jsx'
+import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
 import { formatTime12 } from '../utils/cab.js'
 
 // The employee's own screen: live buttons + their history.
@@ -46,6 +51,9 @@ export default function EmployeeDashboard() {
   const [busy, setBusy] = useState(false)
   const [showLunchPolicy, setShowLunchPolicy] = useState(false)
   const [showCorrectionForm, setShowCorrectionForm] = useState(false)
+  const [editCorrectionId, setEditCorrectionId] = useState(null)
+  const [openCorrectionId, setOpenCorrectionId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
   const [selectedHistoryMonth, setSelectedHistoryMonth] = useState(() => monthKey())
   const [statsPeriod, setStatsPeriod] = useState('this-month')
   const [corrections, setCorrections] = useState(() =>
@@ -130,6 +138,25 @@ export default function EmployeeDashboard() {
 
   const pendingCorrections = corrections.filter((c) => c.status === 'pending')
 
+  const correctionsTable = useTableControls(corrections, {
+    getSortValue: (c, key) => {
+      if (key === 'issue') return correctionIssueLabel(c.issueType)
+      if (key === 'approver') return c.decidedBy ? (getEmployeeById(c.decidedBy)?.name || c.decidedBy) : ''
+      return c[key]
+    },
+    initialSortKey: 'appliedOn',
+    initialSortDir: 'desc'
+  })
+  const {
+    items: correctionsPage,
+    page: correctionsPageNum,
+    totalPages: correctionsTotalPages,
+    total: correctionsTotal,
+    startIndex: correctionsStart,
+    endIndex: correctionsEnd,
+    setPage: setCorrectionsPage
+  } = usePagination(correctionsTable.rows)
+
   function refreshCorrections() {
     setCorrections(getAttendanceCorrectionsForEmployee(user.id))
   }
@@ -196,6 +223,69 @@ export default function EmployeeDashboard() {
     setShowCorrectionForm(false)
     setMessage('Your attendance correction request was sent to HR.')
   }
+
+  function handleCorrectionEdit(data) {
+    if (!editCorrectionId) return
+    updateAttendanceCorrection(editCorrectionId, user.id, data)
+    refreshCorrections()
+    setEditCorrectionId(null)
+    setMessage('Your correction request was updated.')
+  }
+
+  function handleCorrectionWithdraw(id) {
+    withdrawAttendanceCorrection(id, user.id)
+    refreshCorrections()
+    setOpenMenuId(null)
+    setMessage('Your correction request was withdrawn.')
+  }
+
+  function handleCorrectionReply(text) {
+    if (!openCorrection) return
+    addAttendanceCorrectionMessage(openCorrection.id, {
+      byId: user.id,
+      byRole: 'employee',
+      text
+    })
+    refreshCorrections()
+  }
+
+  function nameOf(id) {
+    if (!id) return ''
+    if (id === user.id) return user.name
+    return getEmployeeById(id)?.name || id
+  }
+
+  function correctionStatusLabel(status) {
+    return status.charAt(0).toUpperCase() + status.slice(1)
+  }
+
+  function correctionStatusClass(status) {
+    if (status === 'approved') return 'tag-ok'
+    if (status === 'rejected') return 'tag-late'
+    if (status === 'withdrawn') return 'tag-absent'
+    return 'tag-absent'
+  }
+
+  function toggleMenu(id) {
+    setOpenMenuId(openMenuId === id ? null : id)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  const editCorrection = corrections.find((c) => c.id === editCorrectionId) || null
+  const openCorrection = corrections.find((c) => c.id === openCorrectionId) || null
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
 
   return (
     <div>
@@ -347,30 +437,101 @@ export default function EmployeeDashboard() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Issue</th>
-                  <th>Status</th>
-                  <th>Submitted</th>
+                  <SortableTh label="Date" keyName="date" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
+                  <SortableTh label="Issue" keyName="issue" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
+                  <SortableTh label="Status" keyName="status" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
+                  <SortableTh label="Approver" keyName="approver" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
+                  <SortableTh label="Submitted" keyName="appliedOn" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {corrections.slice(0, 5).map((c) => (
+                {correctionsPage.length === 0 && (
+                  <tr><td colSpan={6} className="muted">No correction requests.</td></tr>
+                )}
+                {correctionsPage.map((c) => (
                   <tr key={c.id}>
                     <td>{formatDate(c.date)}</td>
                     <td>{correctionIssueLabel(c.issueType)}</td>
                     <td>
-                      <span className={`tag ${c.status === 'approved' ? 'tag-ok' : c.status === 'rejected' ? 'tag-late' : 'tag-absent'}`}>
-                        {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                      <span className={`tag ${correctionStatusClass(c.status)}`}>
+                        {correctionStatusLabel(c.status)}
                       </span>
-                      {c.reviewNote && (
+                      {c.status === 'rejected' && c.reviewNote && (
+                        <div className="muted small">Reason: {c.reviewNote}</div>
+                      )}
+                      {c.status === 'approved' && c.reviewNote && (
                         <div className="muted small">{c.reviewNote}</div>
                       )}
+                      {(c.messages || []).length > 0 && c.status === 'pending' && (
+                        <div className="muted small">
+                          {(c.messages || []).length} message(s) in thread
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {c.decidedBy
+                        ? nameOf(c.decidedBy)
+                        : <span className="muted">--</span>}
                     </td>
                     <td>{formatDate(c.appliedOn)}</td>
+                    <td>
+                      <div className="task-menu-container">
+                        <button
+                          type="button"
+                          className="btn btn-tiny btn-light task-menu-button"
+                          onClick={() => toggleMenu(c.id)}
+                          aria-label="Correction actions"
+                        >
+                          ⋯
+                        </button>
+                        {openMenuId === c.id && (
+                          <div className="task-menu-dropdown">
+                            <button
+                              type="button"
+                              className="task-menu-item"
+                              onClick={() => {
+                                setOpenCorrectionId(c.id)
+                                closeMenu()
+                              }}
+                            >
+                              {c.status === 'pending' ? 'Open / reply' : 'View thread'}
+                            </button>
+                            <button
+                              type="button"
+                              className="task-menu-item"
+                              disabled={c.status !== 'pending'}
+                              onClick={() => {
+                                setEditCorrectionId(c.id)
+                                closeMenu()
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="task-menu-item task-menu-item-danger"
+                              disabled={c.status !== 'pending'}
+                              onClick={() => handleCorrectionWithdraw(c.id)}
+                            >
+                              Withdraw
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            <Pagination
+              page={correctionsPageNum}
+              totalPages={correctionsTotalPages}
+              total={correctionsTotal}
+              startIndex={correctionsStart}
+              endIndex={correctionsEnd}
+              onPageChange={setCorrectionsPage}
+            />
           </div>
         </>
       )}
@@ -395,6 +556,81 @@ export default function EmployeeDashboard() {
               defaultDate={today.date}
               onSubmit={handleCorrectionSubmit}
               onCancel={() => setShowCorrectionForm(false)}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {editCorrection && (
+        <Modal onClose={() => setEditCorrectionId(null)} title="Edit correction request">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Edit correction request</h3>
+              <button
+                type="button"
+                className="btn btn-tiny btn-light"
+                onClick={() => setEditCorrectionId(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <p className="hint first">
+              You can update this request while it is still pending HR review.
+            </p>
+            <AttendanceCorrectionForm
+              key={editCorrection.id}
+              initial={editCorrection}
+              submitLabel="Save changes"
+              onSubmit={handleCorrectionEdit}
+              onCancel={() => setEditCorrectionId(null)}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {openCorrection && (
+        <Modal onClose={() => setOpenCorrectionId(null)} title="Correction request">
+          <div className="modal-form">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>
+                  {correctionIssueLabel(openCorrection.issueType)}
+                </h3>
+                <div className="muted small">
+                  {formatDate(openCorrection.date)} · {correctionStatusLabel(openCorrection.status)}
+                  {openCorrection.decidedBy && (
+                    <> · Reviewed by {nameOf(openCorrection.decidedBy)}</>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-tiny btn-light"
+                onClick={() => setOpenCorrectionId(null)}
+              >
+                ✕
+              </button>
+            </div>
+            {openCorrection.description && (
+              <p className="hint first">{openCorrection.description}</p>
+            )}
+            {(openCorrection.suggestedTimeIn || openCorrection.suggestedTimeOut) && (
+              <p className="muted small">
+                Suggested
+                {openCorrection.suggestedTimeIn && <> in: {openCorrection.suggestedTimeIn}</>}
+                {openCorrection.suggestedTimeOut && <> out: {openCorrection.suggestedTimeOut}</>}
+              </p>
+            )}
+            {openCorrection.status === 'rejected' && openCorrection.reviewNote && (
+              <div className="info-box">Reason: {openCorrection.reviewNote}</div>
+            )}
+            <AttendanceCorrectionThread
+              correction={openCorrection}
+              viewerRole="employee"
+              viewerId={user.id}
+              nameOf={nameOf}
+              onReply={handleCorrectionReply}
+              onClose={() => setOpenCorrectionId(null)}
             />
           </div>
         </Modal>

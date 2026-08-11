@@ -3,14 +3,25 @@ import { useAuth } from '../context/AuthContext.jsx'
 import {
   addTask,
   addTaskMessage,
+  approveTaskClosure,
   deleteTask,
   getEmployeeById,
   getTasks,
   getTeamMembers,
-  updateTaskStatus
+  updateTaskStatusByManager
 } from '../data/store.js'
 import { TASK_STATUSES, TASK_PRIORITIES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
+import {
+  canManagerApproveDone,
+  canManagerChangeStatus,
+  closureNotice,
+  isOverdue,
+  isSelfAssigned,
+  managerStatusOptions,
+  statusLabel,
+  statusTagClass
+} from '../utils/tasks.js'
 import TaskForm from '../components/TaskForm.jsx'
 import TaskThread from '../components/TaskThread.jsx'
 import Modal from '../components/Modal.jsx'
@@ -30,7 +41,7 @@ const TASK_PRIORITY_FILTER_OPTS = [
 ]
 
 // A manager's board: tasks for the whole team (and the manager). The manager
-// can create tasks for any team member or themselves, move them, and remove them.
+// can create tasks for any team member, see closure submissions, and approve closure.
 export default function TeamTasks() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
@@ -38,7 +49,6 @@ export default function TeamTasks() {
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openTaskId, setOpenTaskId] = useState(null)
 
-  // The team plus the manager themselves (they can own tasks too).
   const people = useMemo(() => {
     const members = getTeamMembers(user.id)
     return [{ id: user.id, name: `${user.name} (me)` }, ...members]
@@ -87,26 +97,35 @@ export default function TeamTasks() {
     return emp?.name || id
   }
 
+  function bump() {
+    setRefresh((n) => n + 1)
+  }
+
   function handleCreate(data) {
     addTask({ ...data, createdById: user.id })
-    setRefresh((n) => n + 1)
+    bump()
     setShowForm(false)
   }
 
   function move(id, status) {
-    updateTaskStatus(id, status)
-    setRefresh((n) => n + 1)
+    updateTaskStatusByManager(id, user.id, status)
+    bump()
+  }
+
+  function handleApproveClosure(id) {
+    approveTaskClosure(id, user.id)
+    bump()
   }
 
   function handleTaskReply(text) {
     if (!openTask) return
     addTaskMessage(openTask.id, { byId: user.id, text })
-    setRefresh((n) => n + 1)
+    bump()
   }
 
   function remove(id) {
     deleteTask(id)
-    setRefresh((n) => n + 1)
+    bump()
   }
 
   function getPriorityLabel(key) {
@@ -123,11 +142,6 @@ export default function TeamTasks() {
     }
   }
 
-  function isOverdue(task) {
-    if (!task.dueDate || task.status === 'done') return false
-    return new Date(task.dueDate) < new Date()
-  }
-
   function toggleMenu(taskId) {
     setOpenMenuId(openMenuId === taskId ? null : taskId)
   }
@@ -136,7 +150,45 @@ export default function TeamTasks() {
     setOpenMenuId(null)
   }
 
-  // Close menu when clicking outside
+  function canDeleteTask(task) {
+    return task.createdById === user.id
+  }
+
+  function statusCell(task) {
+    const canChange = canManagerChangeStatus(task, user.id)
+    const options = managerStatusOptions(task, user.id)
+
+    if (!canChange) {
+      return (
+        <div>
+          <span className={`tag ${statusTagClass(task.status)}`}>
+            {statusLabel(task.status)}
+          </span>
+          {task.status === 'done' && !isSelfAssigned(task) && task.completedOn && (
+            <div className="muted small">
+              Employee marked done on {formatDate(task.completedOn)}
+            </div>
+          )}
+          {closureNotice(task, nameOf) && task.status === 'closed' && (
+            <div className="muted small">{closureNotice(task, nameOf)}</div>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <select
+        value={task.status}
+        onChange={(e) => move(task.id, e.target.value)}
+        className="btn-tiny"
+      >
+        {options.map((s) => (
+          <option key={s.key} value={s.key}>{s.label}</option>
+        ))}
+      </select>
+    )
+  }
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (openMenuId && !event.target.closest('.task-menu-container')) {
@@ -147,7 +199,6 @@ export default function TeamTasks() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [openMenuId])
 
-  // Only managers should reach this page.
   if (!user.isManager) {
     return (
       <div>
@@ -225,6 +276,14 @@ export default function TeamTasks() {
             {openTask.description && (
               <p className="hint first">{openTask.description}</p>
             )}
+            {openTask.status === 'done' && !isSelfAssigned(openTask) && openTask.completedOn && (
+              <p className="hint">
+                {nameOf(openTask.assigneeId)} marked this task done on {formatDate(openTask.completedOn)}.
+              </p>
+            )}
+            {closureNotice(openTask, nameOf) && openTask.status === 'closed' && (
+              <p className="hint">{closureNotice(openTask, nameOf)}</p>
+            )}
             <TaskThread
               task={openTask}
               viewerId={user.id}
@@ -286,17 +345,7 @@ export default function TeamTasks() {
                     {getPriorityLabel(task.priority)}
                   </span>
                 </td>
-                <td>
-                  <select
-                    value={task.status}
-                    onChange={(e) => move(task.id, e.target.value)}
-                    className="btn-tiny"
-                  >
-                    {TASK_STATUSES.map((s) => (
-                      <option key={s.key} value={s.key}>{s.label}</option>
-                    ))}
-                  </select>
-                </td>
+                <td>{statusCell(task)}</td>
                 <td className={isOverdue(task) ? 'text-bad' : ''}>
                   {task.dueDate ? formatDate(task.dueDate) : <span className="muted">--</span>}
                   {isOverdue(task) && <span className="muted small"> (Overdue)</span>}
@@ -320,25 +369,40 @@ export default function TeamTasks() {
                         >
                           Ask question
                         </button>
-                        <button
-                          className="task-menu-item"
-                          onClick={() => {
-                            move(task.id, 'done')
-                            closeMenu()
-                          }}
-                          disabled={task.status === 'done'}
-                        >
-                          Mark Done
-                        </button>
-                        <button
-                          className="task-menu-item"
-                          onClick={() => {
-                            remove(task.id)
-                            closeMenu()
-                          }}
-                        >
-                          Delete
-                        </button>
+                        {canManagerApproveDone(task, user.id) && (
+                          <button
+                            className="task-menu-item"
+                            onClick={() => {
+                              handleApproveClosure(task.id)
+                              closeMenu()
+                            }}
+                          >
+                            Approve closure
+                          </button>
+                        )}
+                        {isSelfAssigned(task) && task.assigneeId === user.id && (
+                          <button
+                            className="task-menu-item"
+                            onClick={() => {
+                              move(task.id, 'done')
+                              closeMenu()
+                            }}
+                            disabled={task.status === 'done'}
+                          >
+                            Mark done
+                          </button>
+                        )}
+                        {canDeleteTask(task) && (
+                          <button
+                            className="task-menu-item"
+                            onClick={() => {
+                              remove(task.id)
+                              closeMenu()
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -358,9 +422,9 @@ export default function TeamTasks() {
       </div>
 
       <p className="hint">
-        You can assign tasks to anyone on your team or to yourself. Team members
-        see their own tasks under &ldquo;My Tasks&rdquo; and can ask questions there.
-        Open <strong>Questions</strong> on a task to reply with clarifications or access details.
+        Assign tasks to your team from here. When an employee marks a task done,
+        you will see <strong>Done</strong> with the completion date and can approve closure from the <strong>⋯</strong> menu.
+        The task becomes <strong>Closed</strong> for the employee only after you approve.
       </p>
     </div>
   )

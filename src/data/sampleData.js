@@ -135,6 +135,25 @@ function dayFromToday(offset) {
   return dateKey(d)
 }
 
+// Sample profile photo as an SVG data URL (initials on a coloured circle).
+function samplePhoto(name, bg, uploadedOn) {
+  const initials = String(name)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="64" fill="${bg}"/><text x="64" y="64" dy="0.35em" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="44" font-weight="700" fill="#ffffff">${initials}</text></svg>`
+  return {
+    name: `${initials.toLowerCase()}-photo.svg`,
+    size: svg.length,
+    type: 'image/svg+xml',
+    uploadedOn,
+    dataUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+  }
+}
+
 // ---- sample leave requests ----
 // Defined before attendance so attendance can skip approved-leave days.
 export const SAMPLE_LEAVES = [
@@ -198,6 +217,45 @@ export const SAMPLE_LEAVES = [
       }
     ],
     rejectionReason: ''
+  },
+  {
+    id: 'LV08', employeeId: 'EMP002', type: 'earned',
+    fromDate: dayFromToday(12), toDate: dayFromToday(14),
+    reason: 'Short break after project delivery', status: 'pending',
+    appliedOn: dayFromToday(-1), decidedBy: null, decidedOn: null,
+    messages: [], rejectionReason: ''
+  },
+  {
+    id: 'LV09', employeeId: 'EMP002', type: 'casual',
+    fromDate: dayFromToday(-18), toDate: dayFromToday(-18),
+    reason: 'Doctor appointment', status: 'rejected',
+    appliedOn: dayFromToday(-20), decidedBy: 'ADM001', decidedOn: dayFromToday(-19),
+    messages: [], rejectionReason: 'Please apply as sick leave with a medical certificate.'
+  },
+  {
+    id: 'LV10', employeeId: 'EMP002', type: 'unpaid',
+    fromDate: dayFromToday(20), toDate: dayFromToday(21),
+    reason: 'Personal travel', status: 'withdrawn',
+    appliedOn: dayFromToday(-4), withdrawnOn: dayFromToday(-3),
+    decidedBy: null, decidedOn: null,
+    messages: [], rejectionReason: ''
+  },
+  {
+    id: 'LV11', employeeId: 'EMP002', type: 'sick',
+    fromDate: dayFromToday(-1), toDate: dayFromToday(0),
+    reason: 'Migraine', status: 'pending',
+    appliedOn: dayFromToday(-2), decidedBy: null, decidedOn: null,
+    supportingDocuments: [
+      { name: 'priya-clinic-note.pdf', size: 98000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }
+    ],
+    messages: [
+      {
+        id: 'LVM02', byId: 'EMP002', byRole: 'employee',
+        text: 'I have uploaded the clinic note. Please approve for today and tomorrow.',
+        on: dayFromToday(-1)
+      }
+    ],
+    rejectionReason: ''
   }
 ]
 
@@ -230,6 +288,20 @@ export const SAMPLE_REIMBURSEMENTS = [
     status: 'rejected', appliedOn: dayFromToday(-27),
     decidedBy: 'ADM001', decidedOn: dayFromToday(-26), paidOn: null,
     reviewNote: 'Please use the office supply request process instead.'
+  },
+  {
+    id: 'RMB06', employeeId: 'EMP002', category: 'conveyance',
+    expenseDate: dayFromToday(-2), amount: 380,
+    description: 'Auto fare — client meeting at Indiranagar',
+    status: 'pending', appliedOn: dayFromToday(-1),
+    decidedBy: null, decidedOn: null, paidOn: null, reviewNote: ''
+  },
+  {
+    id: 'RMB07', employeeId: 'EMP002', category: 'other',
+    expenseDate: dayFromToday(-7), amount: 1250,
+    description: 'Design software plugin subscription (project expense)',
+    status: 'pending', appliedOn: dayFromToday(-6),
+    decidedBy: null, decidedOn: null, paidOn: null, reviewNote: ''
   },
   {
     id: 'RMB05', employeeId: 'EMP001', category: 'travel',
@@ -267,9 +339,9 @@ function buildSampleAttendance() {
     EMP004: { inH: 9, inM: 32, outH: 18, outM: 0,  bs: [13, 15], be: [13, 45] }
   }
 
-  // ~35 calendar days back yields ~25 weekdays for pagination testing.
+  // ~70 calendar days back yields more months for attendance history testing.
   const d = new Date(today)
-  d.setDate(d.getDate() - 35)
+  d.setDate(d.getDate() - 70)
   while (dateKey(d) < todayStr) {
     const dow = d.getDay()
     if (dow !== 0 && dow !== 6) {
@@ -319,16 +391,275 @@ export const SAMPLE_ATTENDANCE_CORRECTIONS = [
     appliedOn: dayFromToday(-4),
     decidedBy: 'ADM001',
     decidedOn: dayFromToday(-3),
-    reviewNote: 'Updated from your suggested times.'
+    reviewNote: 'Updated from your suggested times.',
+    messages: [
+      {
+        id: 'ACM01',
+        byId: 'ADM001',
+        byRole: 'admin',
+        text: 'Was this after the client visit on the south campus?',
+        on: dayFromToday(-4)
+      },
+      {
+        id: 'ACM02',
+        byId: 'EMP002',
+        byRole: 'employee',
+        text: 'Yes — I timed out mentally when I left but forgot to punch.',
+        on: dayFromToday(-4)
+      }
+    ]
+  },
+  {
+    id: 'ACR02',
+    employeeId: 'EMP002',
+    date: dayFromToday(-2),
+    issueType: 'missed_time_in',
+    description: 'Reached office early but forgot to time in after the team stand-up.',
+    suggestedTimeIn: '09:15',
+    suggestedTimeOut: null,
+    status: 'pending',
+    appliedOn: dayFromToday(-1),
+    decidedBy: null,
+    decidedOn: null,
+    reviewNote: '',
+    messages: [
+      {
+        id: 'ACM03',
+        byId: 'ADM001',
+        byRole: 'admin',
+        text: 'Can you confirm you were at your desk by 9:15?',
+        on: dayFromToday(-1)
+      }
+    ]
+  },
+  {
+    id: 'ACR03',
+    employeeId: 'EMP002',
+    date: dayFromToday(-8),
+    issueType: 'wrong_times',
+    description: 'System showed a late time in; I actually arrived on time.',
+    suggestedTimeIn: '09:00',
+    suggestedTimeOut: '18:00',
+    status: 'rejected',
+    appliedOn: dayFromToday(-7),
+    decidedBy: 'ADM001',
+    decidedOn: dayFromToday(-6),
+    reviewNote: 'No supporting badge or visitor log for that morning. Please request again with evidence if available.',
+    messages: []
+  },
+  {
+    id: 'ACR04',
+    employeeId: 'EMP002',
+    date: dayFromToday(-10),
+    issueType: 'missed_time_out',
+    description: 'Laptop battery died before I could time out.',
+    suggestedTimeIn: null,
+    suggestedTimeOut: '17:45',
+    status: 'approved',
+    appliedOn: dayFromToday(-9),
+    decidedBy: 'ADM001',
+    decidedOn: dayFromToday(-9),
+    reviewNote: 'Approved. Attendance updated.',
+    messages: []
+  },
+  {
+    id: 'ACR05',
+    employeeId: 'EMP002',
+    date: dayFromToday(-12),
+    issueType: 'wrong_break',
+    description: 'Break was recorded as 45 minutes but I was only away for 20.',
+    suggestedTimeIn: null,
+    suggestedTimeOut: null,
+    status: 'pending',
+    appliedOn: dayFromToday(-11),
+    decidedBy: null,
+    decidedOn: null,
+    reviewNote: '',
+    messages: []
+  },
+  {
+    id: 'ACR06',
+    employeeId: 'EMP002',
+    date: dayFromToday(-14),
+    issueType: 'missed_time_in',
+    description: 'Security gate queue delayed me; punched in late after I reached my desk.',
+    suggestedTimeIn: '09:32',
+    suggestedTimeOut: null,
+    status: 'approved',
+    appliedOn: dayFromToday(-13),
+    decidedBy: 'ADM001',
+    decidedOn: dayFromToday(-12),
+    reviewNote: 'Confirmed with reception log.',
+    messages: []
+  },
+  {
+    id: 'ACR07',
+    employeeId: 'EMP002',
+    date: dayFromToday(-16),
+    issueType: 'other',
+    description: 'Worked from meeting room all morning; punch machine did not sync.',
+    suggestedTimeIn: '09:25',
+    suggestedTimeOut: '18:10',
+    status: 'rejected',
+    appliedOn: dayFromToday(-15),
+    decidedBy: 'ADM001',
+    decidedOn: dayFromToday(-14),
+    reviewNote: 'Please attach the meeting calendar invite or room booking next time.',
+    messages: [
+      {
+        id: 'ACM04',
+        byId: 'ADM001',
+        byRole: 'admin',
+        text: 'Which meeting room were you in?',
+        on: dayFromToday(-15)
+      },
+      {
+        id: 'ACM05',
+        byId: 'EMP002',
+        byRole: 'employee',
+        text: 'Room 3B for the branding sync from 9:30 to 11:00.',
+        on: dayFromToday(-15)
+      }
+    ]
+  },
+  {
+    id: 'ACR08',
+    employeeId: 'EMP002',
+    date: dayFromToday(-18),
+    issueType: 'missed_time_out',
+    description: 'Left for an offsite workshop and forgot to punch out.',
+    suggestedTimeIn: null,
+    suggestedTimeOut: '16:30',
+    status: 'withdrawn',
+    appliedOn: dayFromToday(-17),
+    decidedBy: null,
+    decidedOn: null,
+    reviewNote: '',
+    withdrawnOn: dayFromToday(-16),
+    messages: []
+  },
+  {
+    id: 'ACR09',
+    employeeId: 'EMP002',
+    date: dayFromToday(-20),
+    issueType: 'wrong_times',
+    description: 'Time out shows 15:00 but I stayed until 18:00 for a release.',
+    suggestedTimeIn: '09:30',
+    suggestedTimeOut: '18:00',
+    status: 'approved',
+    appliedOn: dayFromToday(-19),
+    decidedBy: 'ADM001',
+    decidedOn: dayFromToday(-18),
+    reviewNote: 'Updated based on Slack activity log.',
+    messages: []
+  },
+  {
+    id: 'ACR10',
+    employeeId: 'EMP002',
+    date: dayFromToday(-22),
+    issueType: 'missed_time_in',
+    description: 'Forgot to time in after returning from leave.',
+    suggestedTimeIn: '10:00',
+    suggestedTimeOut: null,
+    status: 'pending',
+    appliedOn: dayFromToday(-21),
+    decidedBy: null,
+    decidedOn: null,
+    reviewNote: '',
+    messages: []
+  },
+  {
+    id: 'ACR11',
+    employeeId: 'EMP002',
+    date: dayFromToday(-24),
+    issueType: 'wrong_break',
+    description: 'Lunch break end was not recorded; system still shows me on break.',
+    suggestedTimeIn: null,
+    suggestedTimeOut: null,
+    status: 'approved',
+    appliedOn: dayFromToday(-23),
+    decidedBy: 'ADM001',
+    decidedOn: dayFromToday(-23),
+    reviewNote: 'Break closed at 13:15 as requested.',
+    messages: []
+  },
+  {
+    id: 'ACR12',
+    employeeId: 'EMP002',
+    date: dayFromToday(-26),
+    issueType: 'missed_time_out',
+    description: 'App crashed while timing out.',
+    suggestedTimeIn: null,
+    suggestedTimeOut: '18:20',
+    status: 'rejected',
+    appliedOn: dayFromToday(-25),
+    decidedBy: 'ADM001',
+    decidedOn: dayFromToday(-24),
+    reviewNote: 'VPN logs show disconnect at 17:10. Please clarify with your manager.',
+    messages: []
+  },
+  {
+    id: 'ACR13',
+    employeeId: 'EMP002',
+    date: dayFromToday(-28),
+    issueType: 'wrong_times',
+    description: 'Swapped time in/out with a colleague by mistake on shared kiosk.',
+    suggestedTimeIn: '09:20',
+    suggestedTimeOut: '17:55',
+    status: 'approved',
+    appliedOn: dayFromToday(-27),
+    decidedBy: 'ADM001',
+    decidedOn: dayFromToday(-26),
+    reviewNote: 'Corrected after manager confirmation.',
+    messages: []
+  },
+  {
+    id: 'ACR14',
+    employeeId: 'EMP002',
+    date: dayFromToday(-30),
+    issueType: 'other',
+    description: 'Half-day training at vendor office; attendance not captured.',
+    suggestedTimeIn: '09:30',
+    suggestedTimeOut: '13:30',
+    status: 'pending',
+    appliedOn: dayFromToday(-29),
+    decidedBy: null,
+    decidedOn: null,
+    reviewNote: '',
+    messages: [
+      {
+        id: 'ACM06',
+        byId: 'ADM001',
+        byRole: 'admin',
+        text: 'Please share the vendor training invitation for our records.',
+        on: dayFromToday(-29)
+      }
+    ]
+  },
+  {
+    id: 'ACR15',
+    employeeId: 'EMP002',
+    date: dayFromToday(-32),
+    issueType: 'missed_time_in',
+    description: 'Building access card issue; entered late and forgot to punch.',
+    suggestedTimeIn: '09:40',
+    suggestedTimeOut: null,
+    status: 'approved',
+    appliedOn: dayFromToday(-31),
+    decidedBy: 'ADM001',
+    decidedOn: dayFromToday(-30),
+    reviewNote: 'Aligned with access-control entry time.',
+    messages: []
   }
 ]
 
 // ---- tasks (Planner-style) ----
-// The three board columns a task moves through.
+// Task lifecycle statuses (self-assigned: done is final; manager-assigned: done → manager approves → closed).
 export const TASK_STATUSES = [
   { key: 'todo',       label: 'To do' },
   { key: 'inprogress', label: 'In progress' },
-  { key: 'done',       label: 'Done' }
+  { key: 'done',       label: 'Done' },
+  { key: 'closed',     label: 'Closed' }
 ]
 
 // Task priority levels.
@@ -387,6 +718,30 @@ export const SAMPLE_IT_ISSUES = [
     estimatedTime: null,
     createdOn: dayFromToday(0),
     updatedOn: dayFromToday(0)
+  },
+  {
+    id: 'ITI05',
+    employeeId: 'EMP002',
+    issue: 'Adobe Creative Cloud login failing',
+    description: 'Cannot sign in to Creative Cloud since the password reset yesterday.',
+    priority: 'high',
+    status: 'inprogress',
+    assignedTo: 'IT002',
+    estimatedTime: '30 minutes',
+    createdOn: dayFromToday(-3),
+    updatedOn: dayFromToday(-1)
+  },
+  {
+    id: 'ITI06',
+    employeeId: 'EMP002',
+    issue: 'Keyboard keys sticking',
+    description: 'Several keys on my keyboard are sticking and need cleaning or replacement.',
+    priority: 'low',
+    status: 'open',
+    assignedTo: null,
+    estimatedTime: null,
+    createdOn: dayFromToday(-1),
+    updatedOn: dayFromToday(-1)
   },
   {
     id: 'ITI03',
@@ -503,7 +858,37 @@ export const SAMPLE_TASKS = [
   { id: 'TSK06', title: 'Submit expense sheet',
     description: 'My own travel expenses for last week.',
     assigneeId: 'EMP004', createdById: 'EMP004',
-    dueDate: dayFromToday(0), priority: 'low', status: 'done', createdOn: dayFromToday(-2) }
+    dueDate: dayFromToday(0), priority: 'low', status: 'done', createdOn: dayFromToday(-2) },
+  { id: 'TSK07', title: 'Prepare client presentation deck',
+    description: 'Slides for Friday review with the branding team.',
+    assigneeId: 'EMP002', createdById: 'EMP001',
+    dueDate: dayFromToday(1), priority: 'high', status: 'inprogress', createdOn: dayFromToday(-4),
+    messages: [
+      { id: 'TSM03', byId: 'EMP001', text: 'Include the Q2 metrics slide from the shared folder.', on: dayFromToday(-2) }
+    ] },
+  { id: 'TSK08', title: 'Upload final UI assets',
+    description: 'Export icons and hand off to the dev team.',
+    assigneeId: 'EMP002', createdById: 'EMP001',
+    dueDate: dayFromToday(-2), priority: 'medium', status: 'done',
+    createdOn: dayFromToday(-8), completedOn: dayFromToday(-1) },
+  { id: 'TSK09', title: 'Organise design file library',
+    description: 'Sort Figma files and archive old campaign work.',
+    assigneeId: 'EMP002', createdById: 'EMP002',
+    dueDate: dayFromToday(5), priority: 'low', status: 'todo', createdOn: dayFromToday(-1) },
+  { id: 'TSK10', title: 'Review accessibility checklist',
+    description: 'Run through the new component library against WCAG notes.',
+    assigneeId: 'EMP002', createdById: 'EMP002',
+    dueDate: dayFromToday(3), priority: 'medium', status: 'inprogress', createdOn: dayFromToday(-3) },
+  { id: 'TSK11', title: 'Send weekly design status',
+    description: 'Email the team with progress on homepage redesign.',
+    assigneeId: 'EMP002', createdById: 'EMP001',
+    dueDate: dayFromToday(-4), priority: 'low', status: 'closed',
+    createdOn: dayFromToday(-10), completedOn: dayFromToday(-5),
+    closedBy: 'EMP001', closedOn: dayFromToday(-4) },
+  { id: 'TSK12', title: 'Prototype mobile nav',
+    description: 'Interactive prototype for the mobile navigation refresh.',
+    assigneeId: 'EMP002', createdById: 'EMP001',
+    dueDate: dayFromToday(6), priority: 'medium', status: 'todo', createdOn: dayFromToday(0) }
 ]
 
 // ---- employee onboarding profile ----
@@ -533,7 +918,8 @@ export const SAMPLE_PROFILES = [
       address: '12 MG Road, New Delhi 110001', contactNumber: '9810012345',
       emergencyName: 'Ravi Sharma', emergencyRelation: 'Father', emergencyContact: '9810099999',
       aadhaar: '123456789012', pan: 'ABCPS1234K', homeGate: 'Gate 3',
-      pickupPoint: { lat: 28.5921, lng: 77.229 }, dropPoint: null, dropSameAsPickup: true
+      pickupPoint: { lat: 28.5921, lng: 77.229 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Aarav Sharma', '#2f6fed', dayFromToday(-32))
     },
     bank: { accountNumber: '50100123456789', ifsc: 'HDFC0001234', bankName: 'HDFC Bank' },
     statutory: {
@@ -558,7 +944,8 @@ export const SAMPLE_PROFILES = [
       address: '44 Residency Road, Bengaluru 560025', contactNumber: '9900011122',
       emergencyName: 'Anita Nair', emergencyRelation: 'Mother', emergencyContact: '9900099888',
       aadhaar: '987654321098', pan: 'AXNPN5678L', homeGate: 'Gate B',
-      pickupPoint: { lat: 12.9716, lng: 77.5946 }, dropPoint: null, dropSameAsPickup: true
+      pickupPoint: { lat: 12.9716, lng: 77.5946 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Priya Nair', '#0f9d7a', dayFromToday(-2))
     },
     bank: { accountNumber: '000123456789', ifsc: 'ICIC0000456', bankName: 'ICICI Bank' },
     statutory: {
@@ -586,7 +973,8 @@ export const SAMPLE_PROFILES = [
       address: '8 Sector 18, Noida 201301', contactNumber: '9811122233',
       emergencyName: 'Kiran Gupta', emergencyRelation: 'Spouse', emergencyContact: '9811144455',
       aadhaar: '112233445566', pan: 'ROHPG1234M', homeGate: 'Gate 1',
-      pickupPoint: { lat: 28.5355, lng: 77.3910 }, dropPoint: null, dropSameAsPickup: true
+      pickupPoint: { lat: 28.5355, lng: 77.3910 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Rohan Gupta', '#d97706', dayFromToday(-18))
     },
     bank: { accountNumber: '30099887766', ifsc: 'SBIN0001234', bankName: 'State Bank of India' },
     statutory: {
@@ -604,7 +992,8 @@ export const SAMPLE_PROFILES = [
       address: '22 Anna Salai, Chennai 600002', contactNumber: '9840055666',
       emergencyName: 'Lakshmi Iyer', emergencyRelation: 'Mother', emergencyContact: '9840077888',
       aadhaar: '998877665544', pan: 'SNHPI5678N', homeGate: 'Gate 2',
-      pickupPoint: { lat: 13.0827, lng: 80.2707 }, dropPoint: null, dropSameAsPickup: true
+      pickupPoint: { lat: 13.0827, lng: 80.2707 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Sneha Iyer', '#7c3aed', dayFromToday(-14))
     },
     bank: { accountNumber: '40055667788', ifsc: 'AXIS0000456', bankName: 'Axis Bank' },
     statutory: {
@@ -699,6 +1088,26 @@ export const SAMPLE_TICKETS = [
     messages: [
       { id: 'MSG0501', byId: 'EMP002', byRole: 'employee',
         text: 'I want to report inappropriate behaviour by a colleague. I would prefer to stay anonymous for now.', on: dayFromToday(-1) }
+    ]
+  },
+  {
+    id: 'TKT06', kind: 'query', category: 'leave', subject: 'Casual leave balance check',
+    status: 'open', employeeId: 'EMP002', anonymous: false, confidential: false,
+    createdOn: dayFromToday(0), updatedOn: dayFromToday(0),
+    messages: [
+      { id: 'MSG0601', byId: 'EMP002', byRole: 'employee',
+        text: 'How many casual days do I still have after my recent applications?', on: dayFromToday(0) }
+    ]
+  },
+  {
+    id: 'TKT07', kind: 'query', category: 'itasset', subject: 'Request second monitor',
+    status: 'inprogress', employeeId: 'EMP002', anonymous: false, confidential: false,
+    createdOn: dayFromToday(-4), updatedOn: dayFromToday(-2),
+    messages: [
+      { id: 'MSG0701', byId: 'EMP002', byRole: 'employee',
+        text: 'I need a second monitor for the design work. Current screen is too small.', on: dayFromToday(-4) },
+      { id: 'MSG0702', byId: 'ADM001', byRole: 'admin',
+        text: 'IT will check stock and confirm by tomorrow.', on: dayFromToday(-2) }
     ]
   }
 ]

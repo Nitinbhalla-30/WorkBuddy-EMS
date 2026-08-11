@@ -1,6 +1,9 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getSettings, getUnreadAnnouncementCount } from '../data/store.js'
+import { getProfileForEmployee, getSettings, getUnreadAnnouncementCount } from '../data/store.js'
+import { profilePhotoUrl } from '../utils/profile.js'
+import Avatar from './Avatar.jsx'
+import NotificationBell from './NotificationBell.jsx'
 import CinematicThemeSwitcher from './ui/cinematic-theme-switcher.tsx'
 import { useState, useEffect } from 'react'
 
@@ -41,6 +44,8 @@ export default function Layout() {
     navigate('/login', { replace: true })
   }
 
+  const photoUrl = user ? profilePhotoUrl(getProfileForEmployee(user.id)) : ''
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -50,8 +55,14 @@ export default function Layout() {
             <CinematicThemeSwitcher />
           </div>
           <span className="who">
-            {user?.name} <small>({isAdmin ? (isIT ? 'IT Support' : 'HR / Admin') : 'Employee'})</small>
+            <Avatar src={photoUrl} name={user?.name || ''} size={32} />
+            <span className="who-text">
+              {user?.name} <small>({isAdmin ? (isIT ? 'IT Support' : 'HR / Admin') : 'Employee'})</small>
+            </span>
           </span>
+          {user?.role === 'employee' && (
+            <NotificationBell employeeId={user.id} />
+          )}
           <button className="btn btn-light" onClick={handleLogout}>
             Log out
           </button>

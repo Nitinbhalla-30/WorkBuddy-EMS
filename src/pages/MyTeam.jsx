@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getMyTeamDirectory } from '../data/store.js'
+import Avatar from '../components/Avatar.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
@@ -101,7 +102,12 @@ export default function MyTeam() {
             )}
             {pageRows.map((m) => (
               <tr key={m.id}>
-                <td>{m.id === user.id ? `${m.name} (me)` : m.name}</td>
+                <td>
+                  <div className="person-cell">
+                    <Avatar src={m.photoUrl} name={m.name} size={34} />
+                    <span>{m.id === user.id ? `${m.name} (me)` : m.name}</span>
+                  </div>
+                </td>
                 <td>
                   {m.mobile
                     ? <a href={`tel:${m.mobile}`} className="phone-link">{m.mobile}</a>

@@ -3,6 +3,7 @@ import { DOCUMENT_TYPES } from '../data/sampleData.js'
 import { validateForSubmit } from '../utils/profile.js'
 import FileField from './FileField.jsx'
 import MapPicker from './MapPicker.jsx'
+import PhotoField from './PhotoField.jsx'
 import ProfileView from './ProfileView.jsx'
 
 const STEPS = ['Personal', 'Documents', 'Bank', 'Statutory', 'Review']
@@ -14,7 +15,12 @@ const STEPS = ['Personal', 'Documents', 'Bank', 'Statutory', 'Review']
 //   onSubmit     - function(formData) -> submit for review
 export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
   const [step, setStep] = useState(0)
-  const [form, setForm] = useState(() => JSON.parse(JSON.stringify(profile)))
+  const [form, setForm] = useState(() => {
+    const copy = JSON.parse(JSON.stringify(profile))
+    if (!copy.personal) copy.personal = {}
+    if (copy.personal.photo === undefined) copy.personal.photo = null
+    return copy
+  })
   const [problems, setProblems] = useState([])
   const [savedNote, setSavedNote] = useState('')
 
@@ -75,6 +81,12 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
       {step === 0 && (
         <div className="card">
           <h3 className="section-title first">Personal &amp; identity details</h3>
+
+          <PhotoField
+            photo={p.photo}
+            onChange={(photo) => setPersonal('photo', photo)}
+          />
+
           <label className="field">
             <span>Full name *</span>
             <input value={p.fullName} onChange={(e) => setPersonal('fullName', e.target.value)} />

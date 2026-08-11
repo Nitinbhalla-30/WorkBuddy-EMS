@@ -1,20 +1,32 @@
 import { useState } from 'react'
 import { TASK_PRIORITIES } from '../data/sampleData.js'
 
-// A form to create a task.
+// A form to create or edit a task.
 // Props:
 //   people    - list of { id, name } who can be picked as assignee.
 //               If null/empty, the task is assigned to defaultAssigneeId (self).
 //   defaultAssigneeId - who to assign to when there is no picker.
+//   initial   - optional existing task fields for edit mode.
+//   submitLabel - button label (default "Add task").
 //   onCreate  - function({ title, description, assigneeId, dueDate, priority })
-export default function TaskForm({ people, defaultAssigneeId, onCreate, onCancel }) {
+export default function TaskForm({
+  people,
+  defaultAssigneeId,
+  initial,
+  submitLabel = 'Add task',
+  onCreate,
+  onCancel
+}) {
   const hasPicker = Array.isArray(people) && people.length > 0
+  const isEdit = Boolean(initial)
 
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [assigneeId, setAssigneeId] = useState(defaultAssigneeId || (hasPicker ? people[0].id : ''))
-  const [dueDate, setDueDate] = useState('')
-  const [priority, setPriority] = useState('medium')
+  const [title, setTitle] = useState(initial?.title || '')
+  const [description, setDescription] = useState(initial?.description || '')
+  const [assigneeId, setAssigneeId] = useState(
+    initial?.assigneeId || defaultAssigneeId || (hasPicker ? people[0].id : '')
+  )
+  const [dueDate, setDueDate] = useState(initial?.dueDate || '')
+  const [priority, setPriority] = useState(initial?.priority || 'medium')
   const [error, setError] = useState('')
 
   function handleSubmit(e) {
@@ -31,10 +43,12 @@ export default function TaskForm({ people, defaultAssigneeId, onCreate, onCancel
       dueDate,
       priority
     })
-    setTitle('')
-    setDescription('')
-    setDueDate('')
-    setPriority('medium')
+    if (!isEdit) {
+      setTitle('')
+      setDescription('')
+      setDueDate('')
+      setPriority('medium')
+    }
   }
 
   return (
@@ -50,7 +64,7 @@ export default function TaskForm({ people, defaultAssigneeId, onCreate, onCancel
             placeholder="e.g. Prepare monthly report"
           />
         </label>
-        {hasPicker && (
+        {hasPicker && !isEdit && (
           <label className="field">
             <span>Assign to</span>
             <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
@@ -87,7 +101,7 @@ export default function TaskForm({ people, defaultAssigneeId, onCreate, onCancel
       </div>
 
       <div className="button-row">
-        <button className="btn btn-primary" type="submit">Add task</button>
+        <button className="btn btn-primary" type="submit">{submitLabel}</button>
         {onCancel && (
           <button type="button" className="btn btn-light" onClick={onCancel}>Cancel</button>
         )}

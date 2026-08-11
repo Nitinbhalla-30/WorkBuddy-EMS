@@ -1,7 +1,8 @@
 import { DOCUMENT_TYPES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
-import { formatFileSize } from '../utils/profile.js'
+import { formatFileSize, profilePhotoUrl } from '../utils/profile.js'
 import { googleMapsUrl } from '../utils/cab.js'
+import Avatar from './Avatar.jsx'
 
 // A small labelled value row.
 function Row({ label, value }) {
@@ -23,6 +24,13 @@ export default function ProfileView({ profile }) {
   return (
     <div className="profile-view">
       <h3 className="section-title first">Personal &amp; identity</h3>
+      <div className="profile-photo-heading">
+        <Avatar src={profilePhotoUrl(profile)} name={p.fullName} size={72} />
+        <div>
+          <div className="muted small">Profile picture</div>
+          <strong>{p.fullName || 'Employee'}</strong>
+        </div>
+      </div>
       <div className="info-grid">
         <Row label="Full name" value={p.fullName} />
         <Row label="Address" value={p.address} />
