@@ -51,6 +51,7 @@ export default function EmployeeTasks() {
   const [editTaskId, setEditTaskId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openTaskId, setOpenTaskId] = useState(null)
+  const [deleteId, setDeleteId] = useState(null)
 
   const tasks = useMemo(
     () => getTasksForAssignee(user.id),
@@ -123,8 +124,19 @@ export default function EmployeeTasks() {
   }
 
   function handleDelete(id) {
-    deleteTaskByAssignee(id, user.id)
-    bump()
+    setDeleteId(id)
+  }
+
+  function confirmDelete() {
+    if (deleteId) {
+      deleteTaskByAssignee(deleteId, user.id)
+      setDeleteId(null)
+      bump()
+    }
+  }
+
+  function cancelDelete() {
+    setDeleteId(null)
   }
 
   function handleTaskReply(text) {
@@ -397,7 +409,6 @@ export default function EmployeeTasks() {
                             className="task-menu-item"
                             onClick={() => {
                               handleDelete(task.id)
-                              closeMenu()
                             }}
                           >
                             Delete
@@ -420,6 +431,28 @@ export default function EmployeeTasks() {
           onPageChange={setTasksPage}
         />
       </div>
+
+      {deleteId && (
+        <Modal onClose={cancelDelete} title="Confirm Delete">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Delete</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete}>✕</button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to delete this task? This action cannot be undone.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>
+                Delete
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelDelete}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <p className="hint">
         Tasks you create for yourself can be edited, deleted, and marked done from the status dropdown.

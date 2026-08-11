@@ -55,6 +55,7 @@ export default function EmployeeLeaves() {
   const [openId, setOpenId] = useState(null)
   const [editId, setEditId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [withdrawId, setWithdrawId] = useState(null)
   const [message, setMessage] = useState('')
 
   const currentYear = new Date().getFullYear()
@@ -119,12 +120,22 @@ export default function EmployeeLeaves() {
   }
 
   function handleWithdraw(leaveId) {
-    if (!window.confirm('Withdraw this leave request? This cannot be undone.')) return
-    withdrawLeave(leaveId, user.id)
-    refreshLeaves()
-    if (openId === leaveId) setOpenId(null)
-    if (editId === leaveId) setEditId(null)
-    setMessage('Your leave request was withdrawn.')
+    setWithdrawId(leaveId)
+  }
+
+  function confirmWithdraw() {
+    if (withdrawId) {
+      withdrawLeave(withdrawId, user.id)
+      refreshLeaves()
+      if (openId === withdrawId) setOpenId(null)
+      if (editId === withdrawId) setEditId(null)
+      setWithdrawId(null)
+      setMessage('Your leave request was withdrawn.')
+    }
+  }
+
+  function cancelWithdraw() {
+    setWithdrawId(null)
   }
 
   function handleLeaveReply(text) {
@@ -399,7 +410,6 @@ export default function EmployeeLeaves() {
                           disabled={!canWithdrawLeave(lv)}
                           onClick={() => {
                             handleWithdraw(lv.id)
-                            closeMenu()
                           }}
                         >
                           Withdraw
@@ -498,6 +508,28 @@ export default function EmployeeLeaves() {
                 )}
               </div>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {withdrawId && (
+        <Modal onClose={cancelWithdraw} title="Confirm Withdraw">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Withdraw</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw}>✕</button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to withdraw this leave request? This action cannot be undone.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmWithdraw}>
+                Withdraw
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelWithdraw}>
+                Cancel
+              </button>
+            </div>
           </div>
         </Modal>
       )}

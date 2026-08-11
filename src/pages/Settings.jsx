@@ -5,6 +5,7 @@ import {
   saveSettings
 } from '../data/store.js'
 import { fetchPublicIp } from '../utils/network.js'
+import Modal from '../components/Modal.jsx'
 
 // HR/Admin settings: branding, timing rules, and the office-internet check.
 export default function Settings() {
@@ -12,6 +13,7 @@ export default function Settings() {
   const [saved, setSaved] = useState(false)
   const [detectedIp, setDetectedIp] = useState('')
   const [detecting, setDetecting] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -79,12 +81,16 @@ export default function Settings() {
   }
 
   function handleReset() {
-    const ok = window.confirm(
-      'This will erase all changes and load the sample data again. Continue?'
-    )
-    if (!ok) return
+    setShowResetConfirm(true)
+  }
+
+  function confirmReset() {
     resetToSampleData()
     window.location.reload()
+  }
+
+  function cancelReset() {
+    setShowResetConfirm(false)
   }
 
   return (
@@ -376,6 +382,28 @@ export default function Settings() {
           Reset to sample data
         </button>
       </div>
+
+      {showResetConfirm && (
+        <Modal onClose={cancelReset} title="Confirm Reset">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Reset</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelReset}>✕</button>
+            </div>
+            <p className="hint first">
+              This will erase all changes and load the sample data again. Continue?
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmReset}>
+                Reset
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelReset}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

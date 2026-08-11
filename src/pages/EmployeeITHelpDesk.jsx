@@ -83,6 +83,7 @@ export default function EmployeeITHelpDesk() {
   const [editId, setEditId] = useState(null)
   const [openId, setOpenId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [withdrawId, setWithdrawId] = useState(null)
   const [formData, setFormData] = useState(BLANK_FORM)
 
   const issues = useMemo(
@@ -164,11 +165,21 @@ export default function EmployeeITHelpDesk() {
   }
 
   function handleWithdraw(issueId) {
-    if (!window.confirm('Withdraw this IT issue? This cannot be undone.')) return
-    withdrawITIssue(issueId, user.id)
-    if (editId === issueId) setEditId(null)
-    if (openId === issueId) setOpenId(null)
-    setRefresh((n) => n + 1)
+    setWithdrawId(issueId)
+  }
+
+  function confirmWithdraw() {
+    if (withdrawId) {
+      withdrawITIssue(withdrawId, user.id)
+      if (editId === withdrawId) setEditId(null)
+      if (openId === withdrawId) setOpenId(null)
+      setWithdrawId(null)
+      setRefresh((n) => n + 1)
+    }
+  }
+
+  function cancelWithdraw() {
+    setWithdrawId(null)
   }
 
   function toggleMenu(issueId) {
@@ -424,7 +435,6 @@ export default function EmployeeITHelpDesk() {
                             disabled={!canWithdrawITIssue(issue)}
                             onClick={() => {
                               handleWithdraw(issue.id)
-                              closeMenu()
                             }}
                           >
                             Withdraw
@@ -447,6 +457,28 @@ export default function EmployeeITHelpDesk() {
           onPageChange={setIssuesPage}
         />
       </div>
+
+      {withdrawId && (
+        <Modal onClose={cancelWithdraw} title="Confirm Withdraw">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Withdraw</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw}>✕</button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to withdraw this IT issue? This action cannot be undone.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmWithdraw}>
+                Withdraw
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelWithdraw}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <p className="hint">
         Report computer-related issues here. You can edit or withdraw a request while it is

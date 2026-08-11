@@ -1,16 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   createAnnouncement,
   deleteAnnouncement,
-  getAnnouncements,
-  getEmployees
+  getAnnouncements
 } from '../data/store.js'
 import { ANNOUNCEMENT_TYPES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { useTableControls } from '../hooks/useTableControls.js'
+import Modal from '../components/Modal.jsx'
 
 const ANNOUNCEMENT_TYPE_OPTS = [
   { value: 'all', label: 'All types' },
@@ -21,20 +21,22 @@ export default function AdminAnnouncements() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
   const [showForm, setShowForm] = useState(false)
+  const [openId, setOpenId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [deleteId, setDeleteId] = useState(null)
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    type: 'general',
-    excludedEmployees: []
+    type: 'general'
   })
 
   const announcements = useMemo(() => getAnnouncements(), [refresh])
+  const open = announcements.find((a) => a.id === openId) || null
 
   const table = useTableControls(announcements, {
     getSearchText: (a) => [a.title, a.content, a.type, a.createdOn].join(' '),
     getSortValue: (a, key) => {
       if (key === 'type') return a.type
-      if (key === 'excluded') return a.excludedEmployees?.length || 0
       return a[key]
     },
     initialSortKey: 'createdOn',
@@ -44,10 +46,6 @@ export default function AdminAnnouncements() {
     }
   })
 
-  const employees = useMemo(() => {
-    return getEmployees().filter((e) => e.role === 'employee' || e.role === 'it')
-  }, [])
-
   function handleSubmit(e) {
     e.preventDefault()
     if (!formData.title.trim()) return
@@ -56,29 +54,28 @@ export default function AdminAnnouncements() {
       title: formData.title,
       content: formData.content,
       type: formData.type,
-      createdBy: user.id,
-      excludedEmployees: formData.excludedEmployees
+      createdBy: user.id
     })
 
-    setFormData({ title: '', content: '', type: 'general', excludedEmployees: [] })
+    setFormData({ title: '', content: '', type: 'general' })
     setShowForm(false)
     setRefresh((n) => n + 1)
   }
 
   function handleDelete(announcementId) {
-    if (confirm('Are you sure you want to delete this announcement?')) {
-      deleteAnnouncement(announcementId)
+    setDeleteId(announcementId)
+  }
+
+  function confirmDelete() {
+    if (deleteId) {
+      deleteAnnouncement(deleteId)
+      setDeleteId(null)
       setRefresh((n) => n + 1)
     }
   }
 
-  function handleExcludedToggle(employeeId) {
-    setFormData((prev) => {
-      const excluded = prev.excludedEmployees.includes(employeeId)
-        ? prev.excludedEmployees.filter((id) => id !== employeeId)
-        : [...prev.excludedEmployees, employeeId]
-      return { ...prev, excludedEmployees: excluded }
-    })
+  function cancelDelete() {
+    setDeleteId(null)
   }
 
   function getTypeLabel(key) {
@@ -96,14 +93,33 @@ export default function AdminAnnouncements() {
     }
   }
 
-  function getExcludedCount(announcement) {
-    return announcement.excludedEmployees?.length || 0
+  function handleOpen(announcementId) {
+    setOpenId(announcementId)
   }
+
+  function toggleMenu(announcementId) {
+    setOpenMenuId(openMenuId === announcementId ? null : announcementId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
 
   return (
     <div>
       <div className="page-head">
-        <h2>Company Announcements</h2>
+        <h2>Announcements</h2>
         <button
           className="btn btn-primary btn-tiny"
           onClick={() => setShowForm((s) => !s)}
@@ -113,67 +129,51 @@ export default function AdminAnnouncements() {
       </div>
 
       {showForm && (
-        <div className="card">
-          <form onSubmit={handleSubmit}>
-            <div className="field">
-              <label>Title *</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="e.g., Office closure for Diwali"
-                required
-              />
+        <Modal onClose={() => setShowForm(false)} title="New Announcement">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">New Announcement</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)}>✕</button>
             </div>
-            <div className="field">
-              <label>Content *</label>
-              <textarea
-                value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="Enter the announcement details..."
-                rows={5}
-                required
-              />
-            </div>
-            <div className="field">
-              <label>Type</label>
-              <select
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              >
-                {ANNOUNCEMENT_TYPES.map((t) => (
-                  <option key={t.key} value={t.key}>{t.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>Exclude Employees (optional)</label>
-              <div className="employee-selector">
-                {employees.length === 0 && (
-                  <p className="muted small">No employees available</p>
-                )}
-                {employees.map((emp) => (
-                  <label key={emp.id} className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={formData.excludedEmployees.includes(emp.id)}
-                      onChange={() => handleExcludedToggle(emp.id)}
-                    />
-                    <span>{emp.name} ({emp.id})</span>
-                  </label>
-                ))}
+            <form onSubmit={handleSubmit}>
+              <div className="field">
+                <label>Title *</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="e.g., Office closure for Diwali"
+                  required
+                />
               </div>
-              {formData.excludedEmployees.length > 0 && (
-                <p className="muted small">
-                  {formData.excludedEmployees.length} employee(s) will not receive this announcement
-                </p>
-              )}
-            </div>
-            <button type="submit" className="btn btn-primary">
-              Send Announcement
-            </button>
-          </form>
-        </div>
+              <div className="field">
+                <label>Type</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                >
+                  {ANNOUNCEMENT_TYPES.map((t) => (
+                    <option key={t.key} value={t.key}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>Content *</label>
+                <textarea
+                  value={formData.content}
+                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                  placeholder="Enter the announcement details..."
+                  rows={5}
+                  required
+                />
+              </div>
+              <div className="button-row">
+                <button type="submit" className="btn btn-primary">Send Announcement</button>
+                <button type="button" className="btn btn-light" onClick={() => setShowForm(false)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </Modal>
       )}
 
       {/* All Announcements */}
@@ -198,13 +198,12 @@ export default function AdminAnnouncements() {
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Type" keyName="type" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Created On" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Excluded" keyName="excluded" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={5} className="muted">No announcements match your filters.</td></tr>
+              <tr><td colSpan={4} className="muted">No announcements match your filters.</td></tr>
             )}
             {table.rows.map((announcement) => (
               <tr key={announcement.id}>
@@ -221,19 +220,39 @@ export default function AdminAnnouncements() {
                 </td>
                 <td>{formatDate(announcement.createdOn)}</td>
                 <td>
-                  {getExcludedCount(announcement) > 0 ? (
-                    <span className="muted">{getExcludedCount(announcement)} employee(s)</span>
-                  ) : (
-                    <span className="muted">None</span>
-                  )}
-                </td>
-                <td>
-                  <button
-                    className="btn btn-tiny btn-light"
-                    onClick={() => handleDelete(announcement.id)}
-                  >
-                    Delete
-                  </button>
+                  <div className="task-menu-container">
+                    <button
+                      type="button"
+                      className="btn btn-tiny btn-light task-menu-button"
+                      onClick={() => toggleMenu(announcement.id)}
+                      aria-label="Announcement actions"
+                    >
+                      ⋯
+                    </button>
+                    {openMenuId === announcement.id && (
+                      <div className="task-menu-dropdown">
+                        <button
+                          type="button"
+                          className="task-menu-item"
+                          onClick={() => {
+                            handleOpen(announcement.id)
+                            closeMenu()
+                          }}
+                        >
+                          Open
+                        </button>
+                        <button
+                          type="button"
+                          className="task-menu-item task-menu-item-danger"
+                          onClick={() => {
+                            handleDelete(announcement.id)
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -241,9 +260,63 @@ export default function AdminAnnouncements() {
         </table>
       </div>
 
+      {open && (
+        <Modal onClose={() => setOpenId(null)} title={open.title}>
+          <div className="modal-form">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>{open.title}</h3>
+                <div className="muted small">
+                  {getTypeLabel(open.type)} • {formatDate(open.createdOn)}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-tiny btn-light"
+                onClick={() => setOpenId(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="announcement-content">
+              <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', margin: 0 }}>
+                {open.content}
+              </p>
+            </div>
+            <div className="button-row">
+              <button type="button" className="btn btn-light" onClick={() => setOpenId(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteId && (
+        <Modal onClose={cancelDelete} title="Confirm Delete">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Delete</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete}>✕</button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to delete this announcement? This action cannot be undone.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>
+                Delete
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelDelete}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <p className="hint">
-        Send company-wide announcements. You can exclude specific employees from receiving
-        certain messages if they are not relevant to them.
+        Send company-wide announcements to keep employees informed about important updates,
+        events, and policy changes.
       </p>
     </div>
   )

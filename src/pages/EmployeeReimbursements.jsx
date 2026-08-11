@@ -40,6 +40,7 @@ export default function EmployeeReimbursements() {
   const [openId, setOpenId] = useState(null)
   const [editId, setEditId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [withdrawId, setWithdrawId] = useState(null)
   const [message, setMessage] = useState('')
 
   const summary = useMemo(() => reimbursementSummary(claims), [claims])
@@ -92,12 +93,22 @@ export default function EmployeeReimbursements() {
   }
 
   function handleWithdraw(claimId) {
-    if (!window.confirm('Withdraw this reimbursement claim? This cannot be undone.')) return
-    withdrawReimbursementClaim(claimId, user.id)
-    refreshClaims()
-    if (openId === claimId) setOpenId(null)
-    if (editId === claimId) setEditId(null)
-    setMessage('Your reimbursement claim was withdrawn.')
+    setWithdrawId(claimId)
+  }
+
+  function confirmWithdraw() {
+    if (withdrawId) {
+      withdrawReimbursementClaim(withdrawId, user.id)
+      refreshClaims()
+      if (openId === withdrawId) setOpenId(null)
+      if (editId === withdrawId) setEditId(null)
+      setWithdrawId(null)
+      setMessage('Your reimbursement claim was withdrawn.')
+    }
+  }
+
+  function cancelWithdraw() {
+    setWithdrawId(null)
   }
 
   function toggleMenu(claimId) {
@@ -360,7 +371,6 @@ export default function EmployeeReimbursements() {
                           disabled={!canWithdrawReimbursement(c)}
                           onClick={() => {
                             handleWithdraw(c.id)
-                            closeMenu()
                           }}
                         >
                           Withdraw
@@ -382,6 +392,28 @@ export default function EmployeeReimbursements() {
           onPageChange={setPage}
         />
       </div>
+
+      {withdrawId && (
+        <Modal onClose={cancelWithdraw} title="Confirm Withdraw">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Withdraw</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw}>✕</button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to withdraw this reimbursement claim? This action cannot be undone.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmWithdraw}>
+                Withdraw
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelWithdraw}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <p className="hint">
         Approved claims are paid through salary or bank transfer. You can edit or withdraw

@@ -93,7 +93,7 @@ export default function EmployeeAnnouncements() {
   return (
     <div>
       <div className="page-head">
-        <h2>Company Announcements</h2>
+        <h2>Announcements</h2>
         <span className="muted">{announcements.length} message(s)</span>
       </div>
 

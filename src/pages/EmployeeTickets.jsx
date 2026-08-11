@@ -37,6 +37,7 @@ export default function EmployeeTickets() {
   const [editId, setEditId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [withdrawId, setWithdrawId] = useState(null)
 
   const tickets = useMemo(
     () => getTicketsForEmployee(user.id),
@@ -96,11 +97,21 @@ export default function EmployeeTickets() {
   }
 
   function handleWithdraw(ticketId) {
-    if (!window.confirm('Withdraw this ticket? This cannot be undone.')) return
-    withdrawTicket(ticketId, user.id)
-    if (openId === ticketId) setOpenId(null)
-    if (editId === ticketId) setEditId(null)
-    setRefresh((n) => n + 1)
+    setWithdrawId(ticketId)
+  }
+
+  function confirmWithdraw() {
+    if (withdrawId) {
+      withdrawTicket(withdrawId, user.id)
+      if (openId === withdrawId) setOpenId(null)
+      if (editId === withdrawId) setEditId(null)
+      setWithdrawId(null)
+      setRefresh((n) => n + 1)
+    }
+  }
+
+  function cancelWithdraw() {
+    setWithdrawId(null)
   }
 
   function toggleMenu(ticketId) {
@@ -255,7 +266,6 @@ export default function EmployeeTickets() {
                           disabled={!canWithdrawTicket(t)}
                           onClick={() => {
                             handleWithdraw(t.id)
-                            closeMenu()
                           }}
                         >
                           Withdraw
@@ -307,29 +317,30 @@ export default function EmployeeTickets() {
               onReply={handleReply}
               onClose={closeTicket}
             />
+          </div>
+        </Modal>
+      )}
 
-            {(canEditTicket(open) || canWithdrawTicket(open)) && (
-              <div className="button-row">
-                {canEditTicket(open) && (
-                  <button
-                    type="button"
-                    className="btn btn-light"
-                    onClick={() => { setEditId(open.id); setOpenId(null) }}
-                  >
-                    Edit ticket
-                  </button>
-                )}
-                {canWithdrawTicket(open) && (
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={() => handleWithdraw(open.id)}
-                  >
-                    Withdraw ticket
-                  </button>
-                )}
-              </div>
-            )}
+      {withdrawId && (
+        <Modal onClose={cancelWithdraw} title="Confirm Withdraw">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Withdraw</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw}>✕</button>
+            </div>
+            <p className="hint first">
+              {withdrawTicket?.kind === 'grievance'
+                ? 'Are you sure you want to withdraw this grievance? This action cannot be undone.'
+                : 'Are you sure you want to withdraw this query? This action cannot be undone.'}
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmWithdraw}>
+                Withdraw
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelWithdraw}>
+                Cancel
+              </button>
+            </div>
           </div>
         </Modal>
       )}
