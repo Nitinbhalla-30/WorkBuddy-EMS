@@ -922,6 +922,24 @@ textarea::placeholder {
 }
 
 /* ---------- Task status donut chart ---------- */
+.dashboard-attendance-overview {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.dashboard-attendance-stat-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 0;
+  min-width: 0;
+}
+.dashboard-attendance-overview .task-status-donut-wrap {
+  flex: 0 0 auto;
+}
 .task-status-overview {
   display: flex;
   align-items: stretch;
@@ -999,6 +1017,12 @@ textarea::placeholder {
   color: var(--ink);
 }
 @media (max-width: 720px) {
+  .dashboard-attendance-overview {
+    flex-wrap: nowrap;
+  }
+  .dashboard-attendance-stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
   .task-status-overview {
     flex-direction: column;
   }
@@ -1007,6 +1031,9 @@ textarea::placeholder {
   }
   .task-status-donut-wrap {
     align-self: center;
+  }
+  .dashboard-attendance-overview .task-status-donut-wrap {
+    align-self: stretch;
   }
 }
 

@@ -82,7 +82,7 @@ export default function AdminSalary() {
   return (
     <div>
       <div className="page-head">
-        <h2>Salary</h2>
+        <h2>Salaries</h2>
         <label className="field inline">
           <select value={selected} onChange={(e) => setSelected(e.target.value)}>
             {months.map((m) => (

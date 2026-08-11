@@ -11,9 +11,7 @@ export default function Pagination({
   return (
     <div className="pagination-bar">
       <span className="muted small">
-        {totalPages > 1
-          ? `Showing ${startIndex}–${endIndex} of ${total}`
-          : `${total} item(s)`}
+        Showing {startIndex}–{endIndex} of {total}
       </span>
       {totalPages > 1 && (
         <div className="pagination-controls">

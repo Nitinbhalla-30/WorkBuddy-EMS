@@ -2,23 +2,11 @@ export default function TableToolbar({
   search,
   onSearchChange,
   showSearch = true,
-  showing,
-  total,
-  startIndex,
-  endIndex,
   placeholder = 'Search table...',
   filters = [],
   onFilterChange,
   children
 }) {
-  const countLabel = (() => {
-    if (!total) return 'No items'
-    if (startIndex != null && endIndex != null) {
-      return `Showing ${startIndex}–${endIndex} of ${total}`
-    }
-    return `Showing ${showing ?? total} of ${total}`
-  })()
-
   return (
     <div className="table-toolbar">
       <div className="table-toolbar-left">
@@ -48,9 +36,6 @@ export default function TableToolbar({
         ))}
         {children}
       </div>
-      <span className="muted small table-toolbar-count">
-        {countLabel}
-      </span>
     </div>
   )
 }

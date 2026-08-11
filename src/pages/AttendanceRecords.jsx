@@ -11,11 +11,14 @@ import {
 } from '../data/store.js'
 import {
   correctionIssueLabel,
+  filterRecordsForStatsPeriod,
   formatClock,
   formatDate,
   formatMinutes,
   isLate,
+  resolveJoinDate,
   statusOf,
+  todayDateKey,
   totalBreakMinutes,
   workedMinutes
 } from '../utils/attendance.js'
@@ -26,12 +29,21 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
 import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
+import { downloadExcelCsv } from '../utils/exportExcel.js'
 
-// All attendance records with simple filters by employee and date.
+const PERIOD_FILTER_OPTS = [
+  { value: 'all', label: 'All period' },
+  { value: 'this-month', label: 'This month' },
+  { value: 'last-month', label: 'Last month' },
+  { value: 'ytd', label: 'Year to date' }
+]
+
+// All attendance records with filters by employee, period, department, and manager.
 export default function AttendanceRecords() {
   const { user } = useAuth()
   const settings = getSettings()
   const employees = getEmployees().filter((e) => e.role === 'employee')
+  const today = todayDateKey()
 
   const [corrections, setCorrections] = useState(() => getAttendanceCorrections())
   const [openMenuId, setOpenMenuId] = useState(null)
@@ -44,33 +56,82 @@ export default function AttendanceRecords() {
     ...employees.map((e) => ({ value: e.id, label: e.name }))
   ], [employees])
 
+  const departmentFilterOpts = useMemo(() => {
+    const departments = [...new Set(employees.map((e) => e.department).filter(Boolean))].sort()
+    return [
+      { value: 'all', label: 'All departments' },
+      ...departments.map((d) => ({ value: d, label: d }))
+    ]
+  }, [employees])
+
+  const reportsToFilterOpts = useMemo(() => {
+    const managerIds = [...new Set(employees.map((e) => e.managerId).filter(Boolean))]
+    const named = managerIds
+      .map((id) => {
+        const m = getEmployeeById(id)
+        return m ? { value: id, label: m.name } : null
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.label.localeCompare(b.label))
+    return [
+      { value: 'all', label: 'All managers' },
+      { value: 'none', label: 'None' },
+      ...named
+    ]
+  }, [employees])
+
   const allRecords = useMemo(() => getAttendance(), [])
+
+  const joinDateByEmployee = useMemo(() => {
+    const map = {}
+    for (const emp of employees) {
+      map[emp.id] = resolveJoinDate(
+        emp,
+        allRecords.filter((r) => r.employeeId === emp.id)
+      )
+    }
+    return map
+  }, [employees, allRecords])
 
   const table = useTableControls(allRecords, {
     getSearchText: (r) => {
       const emp = getEmployeeById(r.employeeId)
+      const manager = emp?.managerId ? getEmployeeById(emp.managerId) : null
       return [
-        r.date, emp?.name, emp?.department,
+        r.date, emp?.name, emp?.department, manager?.name,
         formatClock(r.timeIn), formatClock(r.timeOut),
-        statusOf(r, settings.officeStartTime)
+        statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)
       ].join(' ')
     },
     getSortValue: (r, key) => {
-      if (key === 'employee') return getEmployeeById(r.employeeId)?.name || r.employeeId
+      const emp = getEmployeeById(r.employeeId)
+      if (key === 'employee') return emp?.name || r.employeeId
+      if (key === 'department') return emp?.department || ''
+      if (key === 'reportsTo') {
+        return emp?.managerId ? (getEmployeeById(emp.managerId)?.name || '') : ''
+      }
       if (key === 'worked') return workedMinutes(r)
       if (key === 'break') return totalBreakMinutes(r)
-      if (key === 'status') return statusOf(r, settings.officeStartTime)
+      if (key === 'status') return statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)
       return r[key]
     },
     initialSortKey: 'date',
     initialSortDir: 'desc',
     filterFns: {
       employeeId: (r, val) => r.employeeId === val,
-      date: (r, val) => r.date === val
-    }
+      period: (r, val) => filterRecordsForStatsPeriod([r], val, {
+        joinDate: joinDateByEmployee[r.employeeId] || today,
+        todayDate: today
+      }).length > 0,
+      department: (r, val) => getEmployeeById(r.employeeId)?.department === val,
+      reportsTo: (r, val) => {
+        const managerId = getEmployeeById(r.employeeId)?.managerId
+        if (val === 'none') return !managerId
+        return managerId === val
+      }
+    },
+    initialFilters: { period: 'all' }
   })
-
-  const pendingCount = corrections.filter((c) => c.status === 'pending').length
 
   const correctionsTable = useTableControls(corrections, {
     getSortValue: (c, key) => {
@@ -89,7 +150,17 @@ export default function AttendanceRecords() {
     startIndex: correctionsStart,
     endIndex: correctionsEnd,
     setPage: setCorrectionsPage
-  } = usePagination(correctionsTable.rows)
+  } = usePagination(correctionsTable.rows, 5)
+
+  const {
+    items: recordsPage,
+    page: recordsPageNum,
+    totalPages: recordsTotalPages,
+    total: recordsTotal,
+    startIndex: recordsStart,
+    endIndex: recordsEnd,
+    setPage: setRecordsPage
+  } = usePagination(table.rows, 10)
 
   const openCorrection = corrections.find((c) => c.id === openId) || null
 
@@ -168,7 +239,41 @@ export default function AttendanceRecords() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [openMenuId])
 
-  const hasDateFilter = table.filters.date && table.filters.date !== 'all'
+  function exportAttendanceExcel() {
+    const headers = [
+      'Date',
+      'Employee',
+      'Department',
+      'Reports to',
+      'Time In',
+      'Time Out',
+      'Worked',
+      'Break',
+      'Status'
+    ]
+    const rows = table.rows.map((r) => {
+      const emp = getEmployeeById(r.employeeId)
+      const manager = emp?.managerId ? getEmployeeById(emp.managerId) : null
+      return [
+        r.date,
+        emp?.name || r.employeeId,
+        emp?.department || '',
+        manager?.name || 'None',
+        formatClock(r.timeIn),
+        formatClock(r.timeOut),
+        formatMinutes(workedMinutes(r)),
+        formatMinutes(totalBreakMinutes(r)),
+        statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)
+      ]
+    })
+    downloadExcelCsv(`attendance-records-${today}`, headers, rows)
+  }
+
+  const hasActiveFilters =
+    (table.filters.employeeId && table.filters.employeeId !== 'all') ||
+    (table.filters.department && table.filters.department !== 'all') ||
+    (table.filters.reportsTo && table.filters.reportsTo !== 'all') ||
+    (table.filters.period && table.filters.period !== 'all')
 
   return (
     <div>
@@ -177,11 +282,116 @@ export default function AttendanceRecords() {
         <span className="muted">{table.count} records</span>
       </div>
 
-      <h3 className="section-title first">
+      <h3 className="section-title first">All records</h3>
+      <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          placeholder="Search records..."
+          filters={[
+            {
+              key: 'employeeId',
+              label: 'Employee',
+              value: table.filters.employeeId || 'all',
+              options: employeeFilterOpts
+            },
+            {
+              key: 'period',
+              label: 'Period',
+              value: table.filters.period || 'all',
+              options: PERIOD_FILTER_OPTS
+            },
+            {
+              key: 'department',
+              label: 'Department',
+              value: table.filters.department || 'all',
+              options: departmentFilterOpts
+            },
+            {
+              key: 'reportsTo',
+              label: 'Reports to',
+              value: table.filters.reportsTo || 'all',
+              options: reportsToFilterOpts
+            }
+          ]}
+          onFilterChange={table.setFilter}
+        >
+          <button
+            type="button"
+            className="btn btn-light btn-tiny table-toolbar-action"
+            onClick={exportAttendanceExcel}
+            disabled={table.rows.length === 0}
+          >
+            Export to Excel
+          </button>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              className="btn btn-light btn-tiny table-toolbar-action"
+              onClick={() => {
+                table.setFilter('employeeId', 'all')
+                table.setFilter('period', 'all')
+                table.setFilter('department', 'all')
+                table.setFilter('reportsTo', 'all')
+              }}
+            >
+              Clear filters
+            </button>
+          )}
+        </TableToolbar>
+        <table className="table">
+          <thead>
+            <tr>
+              <SortableTh label="Date" keyName="date" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Department" keyName="department" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Reports to" keyName="reportsTo" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Time In" keyName="timeIn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Time Out" keyName="timeOut" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Worked" keyName="worked" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Break" keyName="break" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+            </tr>
+          </thead>
+          <tbody>
+            {recordsTotal === 0 && (
+              <tr><td colSpan="9" className="muted">No records match your filters.</td></tr>
+            )}
+            {recordsPage.map((r) => {
+              const emp = getEmployeeById(r.employeeId)
+              const manager = emp?.managerId ? getEmployeeById(emp.managerId) : null
+              return (
+                <tr key={r.id}>
+                  <td>{formatDate(r.date)}</td>
+                  <td>{emp ? emp.name : r.employeeId}</td>
+                  <td>{emp?.department || <span className="muted">--</span>}</td>
+                  <td>{manager?.name || <span className="muted">None</span>}</td>
+                  <td>{formatClock(r.timeIn)}</td>
+                  <td>{formatClock(r.timeOut)}</td>
+                  <td>{formatMinutes(workedMinutes(r))}</td>
+                  <td>{formatMinutes(totalBreakMinutes(r))}</td>
+                  <td>
+                    <span className={`tag ${isLate(r, settings.officeStartTime, settings.lateGraceMinutes) ? 'tag-late' : 'tag-ok'}`}>
+                      {statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+        <Pagination
+          page={recordsPageNum}
+          totalPages={recordsTotalPages}
+          total={recordsTotal}
+          startIndex={recordsStart}
+          endIndex={recordsEnd}
+          onPageChange={setRecordsPage}
+        />
+      </div>
+
+      <h3 className="section-title">
         Correction requests
-        {pendingCount > 0 && (
-          <span className="muted small"> · {pendingCount} pending</span>
-        )}
       </h3>
 
       <div className="card">
@@ -388,81 +598,6 @@ export default function AttendanceRecords() {
           </div>
         </Modal>
       )}
-
-      <h3 className="section-title">All records</h3>
-      <div className="card">
-        <TableToolbar
-          search={table.search}
-          onSearchChange={table.setSearch}
-          showing={table.count}
-          total={table.total}
-          placeholder="Search records..."
-          filters={[{
-            key: 'employeeId',
-            label: 'Employee',
-            value: table.filters.employeeId || 'all',
-            options: employeeFilterOpts
-          }]}
-          onFilterChange={table.setFilter}
-        >
-          <label className="table-toolbar-field table-toolbar-filter">
-            <span className="table-toolbar-label">Date</span>
-            <input
-              type="date"
-              value={hasDateFilter ? table.filters.date : ''}
-              onChange={(e) => table.setFilter('date', e.target.value || 'all')}
-            />
-          </label>
-          {(table.filters.employeeId && table.filters.employeeId !== 'all' || hasDateFilter) && (
-            <button
-              type="button"
-              className="btn btn-light btn-tiny table-toolbar-action"
-              onClick={() => {
-                table.setFilter('employeeId', 'all')
-                table.setFilter('date', 'all')
-              }}
-            >
-              Clear filters
-            </button>
-          )}
-        </TableToolbar>
-        <table className="table">
-          <thead>
-            <tr>
-              <SortableTh label="Date" keyName="date" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Time In" keyName="timeIn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Time Out" keyName="timeOut" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Worked" keyName="worked" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Break" keyName="break" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-            </tr>
-          </thead>
-          <tbody>
-            {table.count === 0 && (
-              <tr><td colSpan="7" className="muted">No records match your filters.</td></tr>
-            )}
-            {table.rows.map((r) => {
-              const emp = getEmployeeById(r.employeeId)
-              return (
-                <tr key={r.id}>
-                  <td>{formatDate(r.date)}</td>
-                  <td>{emp ? emp.name : r.employeeId}</td>
-                  <td>{formatClock(r.timeIn)}</td>
-                  <td>{formatClock(r.timeOut)}</td>
-                  <td>{formatMinutes(workedMinutes(r))}</td>
-                  <td>{formatMinutes(totalBreakMinutes(r))}</td>
-                  <td>
-                    <span className={`tag ${isLate(r, settings.officeStartTime) ? 'tag-late' : 'tag-ok'}`}>
-                      {statusOf(r, settings.officeStartTime)}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
     </div>
   )
 }

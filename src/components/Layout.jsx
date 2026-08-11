@@ -60,8 +60,8 @@ export default function Layout() {
               {user?.name} <small>({isAdmin ? (isIT ? 'IT Support' : 'HR / Admin') : 'Employee'})</small>
             </span>
           </span>
-          {user?.role === 'employee' && (
-            <NotificationBell employeeId={user.id} />
+          {user && (user.role === 'employee' || user.role === 'admin') && (
+            <NotificationBell employeeId={user.id} viewerRole={user.role} />
           )}
           <button className="btn btn-light" onClick={handleLogout}>
             Log out

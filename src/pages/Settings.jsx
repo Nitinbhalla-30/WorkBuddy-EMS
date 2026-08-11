@@ -106,13 +106,29 @@ export default function Settings() {
         <h3 className="section-title">Work timing rules</h3>
         <div className="two-col">
           <label className="field">
-            <span>Office start time (after this = Late)</span>
+            <span>Office start time (shift start)</span>
             <input
               type="time"
               value={form.officeStartTime}
               onChange={(e) => update('officeStartTime', e.target.value)}
             />
           </label>
+          <label className="field">
+            <span>Late grace period (minutes)</span>
+            <input
+              type="number"
+              min="0"
+              max="180"
+              value={form.lateGraceMinutes ?? 0}
+              onChange={(e) => update('lateGraceMinutes', Number(e.target.value))}
+            />
+          </label>
+        </div>
+        <p className="hint">
+          Employees are on time until office start plus the grace period. Example:
+          start 10:30 with 20 minutes grace → late only after 10:50.
+        </p>
+        <div className="two-col">
           <label className="field">
             <span>Standard work hours per day</span>
             <input
@@ -123,6 +139,7 @@ export default function Settings() {
               onChange={(e) => update('standardWorkHours', Number(e.target.value))}
             />
           </label>
+          <div />
         </div>
 
         <h3 className="section-title">Cab timing rules</h3>

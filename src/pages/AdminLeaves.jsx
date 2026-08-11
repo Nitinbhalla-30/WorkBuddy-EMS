@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addLeaveMessage,
   getEmployeeById,
+  getEmployees,
   getLeaves,
   setLeaveStatus
 } from '../data/store.js'
@@ -14,48 +15,101 @@ import {
   statusTagClass
 } from '../utils/leaves.js'
 import { leaveDecisionText, leaveStatusLabel } from '../utils/leaveReview.js'
+import { LEAVE_TYPES } from '../data/sampleData.js'
+import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import LeaveDocumentList from '../components/LeaveDocumentList.jsx'
 import LeaveThread from '../components/LeaveThread.jsx'
 import Modal from '../components/Modal.jsx'
+import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+
+const STATUS_FILTER_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'withdrawn', label: 'Withdrawn' }
+]
+
+const TYPE_FILTER_OPTS = [
+  { value: 'all', label: 'All types' },
+  ...LEAVE_TYPES.map((t) => ({ value: t.key, label: t.label }))
+]
 
 // HR/Admin leave screen: review requests, ask questions, approve or reject.
 export default function AdminLeaves() {
   const { user } = useAuth()
   const [leaves, setLeaves] = useState(() => getLeaves())
-  const [filter, setFilter] = useState('pending')
   const [openId, setOpenId] = useState(null)
   const [rejectMode, setRejectMode] = useState(false)
   const [rejectNote, setRejectNote] = useState('')
+  const [openMenuId, setOpenMenuId] = useState(null)
 
-  const tabFiltered = useMemo(() => {
-    let list = [...leaves]
-    if (filter !== 'all') list = list.filter((l) => l.status === filter)
-    return list
-  }, [leaves, filter])
+  const employees = useMemo(
+    () => getEmployees().filter((e) => e.role === 'employee'),
+    []
+  )
 
-  const table = useTableControls(tabFiltered, {
+  const employeeFilterOpts = useMemo(() => [
+    { value: 'all', label: 'All employees' },
+    ...employees
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((e) => ({ value: e.id, label: e.name }))
+  ], [employees])
+
+  const reasonFilterOpts = useMemo(() => {
+    const reasons = [...new Set(
+      leaves.map((l) => (l.reason || '').trim()).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b))
+    return [
+      { value: 'all', label: 'All reasons' },
+      { value: 'none', label: 'No reason' },
+      ...reasons.map((r) => ({ value: r, label: r }))
+    ]
+  }, [leaves])
+
+  const table = useTableControls(leaves, {
     getSearchText: (lv) => {
       const emp = getEmployeeById(lv.employeeId)
       return [
         emp?.name, emp?.department, leaveTypeLabel(lv.type),
-        lv.fromDate, lv.toDate, lv.reason, lv.status
+        lv.fromDate, lv.toDate, lv.reason, leaveStatusLabel(lv.status)
       ].join(' ')
     },
     getSortValue: (lv, key) => {
       if (key === 'employee') return getEmployeeById(lv.employeeId)?.name || lv.employeeId
       if (key === 'type') return leaveTypeLabel(lv.type)
       if (key === 'days') return countLeaveDays(lv.fromDate, lv.toDate)
-      if (key === 'status') return lv.status
+      if (key === 'status') return leaveStatusLabel(lv.status)
       return lv[key]
     },
     initialSortKey: 'appliedOn',
-    initialSortDir: 'desc'
+    initialSortDir: 'desc',
+    filterFns: {
+      employeeId: (lv, val) => lv.employeeId === val,
+      type: (lv, val) => lv.type === val,
+      reason: (lv, val) => {
+        const reason = (lv.reason || '').trim()
+        if (val === 'none') return !reason
+        return reason === val
+      },
+      status: (lv, val) => lv.status === val
+    }
   })
 
-  const pendingCount = leaves.filter((l) => l.status === 'pending').length
+  const {
+    items: leavesPage,
+    page: leavesPageNum,
+    totalPages: leavesTotalPages,
+    total: leavesTotal,
+    startIndex: leavesStart,
+    endIndex: leavesEnd,
+    setPage: setLeavesPage
+  } = usePagination(table.rows, 10)
+
   const openLeave = leaves.find((l) => l.id === openId) || null
 
   function nameOf(id) {
@@ -66,10 +120,19 @@ export default function AdminLeaves() {
     setLeaves(getLeaves())
   }
 
-  function openReview(id) {
+  function toggleMenu(id) {
+    setOpenMenuId(openMenuId === id ? null : id)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  function openReview(id, startReject = false) {
     setOpenId(id)
-    setRejectMode(false)
+    setRejectMode(startReject)
     setRejectNote('')
+    closeMenu()
   }
 
   function closeReview() {
@@ -78,11 +141,12 @@ export default function AdminLeaves() {
     setRejectNote('')
   }
 
-  function handleApprove() {
-    if (!openLeave) return
-    setLeaveStatus(openLeave.id, 'approved', user.id, '')
+  function handleApprove(id = openLeave?.id) {
+    if (!id) return
+    setLeaveStatus(id, 'approved', user.id, '')
     refresh()
     closeReview()
+    closeMenu()
   }
 
   function handleReject() {
@@ -98,12 +162,15 @@ export default function AdminLeaves() {
     refresh()
   }
 
-  const tabs = [
-    { key: 'pending', label: `Pending (${pendingCount})` },
-    { key: 'approved', label: 'Approved' },
-    { key: 'rejected', label: 'Rejected' },
-    { key: 'all', label: 'All' }
-  ]
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
 
   return (
     <div>
@@ -112,25 +179,38 @@ export default function AdminLeaves() {
         <span className="muted">{table.count} shown</span>
       </div>
 
-      <div className="tabs">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            className={`tab ${filter === t.key ? 'tab-active' : ''}`}
-            onClick={() => setFilter(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
       <div className="card">
         <TableToolbar
           search={table.search}
           onSearchChange={table.setSearch}
-          showing={table.count}
-          total={table.total}
           placeholder="Search leave requests..."
+          filters={[
+            {
+              key: 'employeeId',
+              label: 'Employee',
+              value: table.filters.employeeId || 'all',
+              options: employeeFilterOpts
+            },
+            {
+              key: 'type',
+              label: 'Type',
+              value: table.filters.type || 'all',
+              options: TYPE_FILTER_OPTS
+            },
+            {
+              key: 'reason',
+              label: 'Reason',
+              value: table.filters.reason || 'all',
+              options: reasonFilterOpts
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              value: table.filters.status || 'all',
+              options: STATUS_FILTER_OPTS
+            }
+          ]}
+          onFilterChange={table.setFilter}
         />
         <table className="table">
           <thead>
@@ -147,10 +227,10 @@ export default function AdminLeaves() {
             </tr>
           </thead>
           <tbody>
-            {table.count === 0 && (
+            {leavesTotal === 0 && (
               <tr><td colSpan={9} className="muted">No requests match your filters.</td></tr>
             )}
-            {table.rows.map((lv) => {
+            {leavesPage.map((lv) => {
               const emp = getEmployeeById(lv.employeeId)
               const decision = leaveDecisionText(lv, nameOf)
               return (
@@ -178,19 +258,57 @@ export default function AdminLeaves() {
                     )}
                   </td>
                   <td>
-                    <button
-                      type="button"
-                      className="btn btn-tiny btn-light"
-                      onClick={() => openReview(lv.id)}
-                    >
-                      Review
-                    </button>
+                    <div className="task-menu-container">
+                      <button
+                        type="button"
+                        className="btn btn-tiny btn-light task-menu-button"
+                        onClick={() => toggleMenu(lv.id)}
+                        aria-label="Leave actions"
+                      >
+                        ⋯
+                      </button>
+                      {openMenuId === lv.id && (
+                        <div className="task-menu-dropdown">
+                          <button
+                            type="button"
+                            className="task-menu-item"
+                            onClick={() => openReview(lv.id, false)}
+                          >
+                            Review
+                          </button>
+                          <button
+                            type="button"
+                            className="task-menu-item"
+                            disabled={lv.status !== 'pending'}
+                            onClick={() => handleApprove(lv.id)}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="task-menu-item task-menu-item-danger"
+                            disabled={lv.status !== 'pending'}
+                            onClick={() => openReview(lv.id, true)}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )
             })}
           </tbody>
         </table>
+        <Pagination
+          page={leavesPageNum}
+          totalPages={leavesTotalPages}
+          total={leavesTotal}
+          startIndex={leavesStart}
+          endIndex={leavesEnd}
+          onPageChange={setLeavesPage}
+        />
       </div>
 
       {openLeave && (
@@ -247,52 +365,36 @@ export default function AdminLeaves() {
               onClose={openLeave.status === 'pending' ? undefined : closeReview}
             />
 
-            {openLeave.status === 'pending' && (
-              <>
-                {rejectMode ? (
-                  <div className="first">
-                    <label className="field">
-                      <span>Rejection reason (required)</span>
-                      <textarea
-                        className="reply-input"
-                        rows={3}
-                        value={rejectNote}
-                        onChange={(e) => setRejectNote(e.target.value)}
-                        placeholder="Explain why this leave request is being rejected"
-                      />
-                    </label>
-                    <div className="button-row">
-                      <button
-                        type="button"
-                        className="btn btn-danger"
-                        disabled={!rejectNote.trim()}
-                        onClick={handleReject}
-                      >
-                        Confirm reject
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-light"
-                        onClick={() => { setRejectMode(false); setRejectNote('') }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="button-row">
-                    <button type="button" className="btn btn-primary" onClick={handleApprove}>
-                      Approve
-                    </button>
-                    <button type="button" className="btn btn-danger" onClick={() => setRejectMode(true)}>
-                      Reject
-                    </button>
-                    <button type="button" className="btn btn-light" onClick={closeReview}>
-                      Close
-                    </button>
-                  </div>
-                )}
-              </>
+            {openLeave.status === 'pending' && rejectMode && (
+              <div className="first">
+                <label className="field">
+                  <span>Rejection reason (required)</span>
+                  <textarea
+                    className="reply-input"
+                    rows={3}
+                    value={rejectNote}
+                    onChange={(e) => setRejectNote(e.target.value)}
+                    placeholder="Explain why this leave request is being rejected"
+                  />
+                </label>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={!rejectNote.trim()}
+                    onClick={handleReject}
+                  >
+                    Confirm reject
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-light"
+                    onClick={closeReview}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </Modal>

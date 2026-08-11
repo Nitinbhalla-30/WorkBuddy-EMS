@@ -6,7 +6,9 @@
 
 export const DEFAULT_SETTINGS = {
   companyName: 'Your Company',       // your company name (change in Settings)
-  officeStartTime: '09:30',          // used to decide "Late"
+  officeStartTime: '09:30',          // shift start time
+  // Minutes after office start before arrival counts as Late (e.g. 20 → start 09:30, late after 09:50).
+  lateGraceMinutes: 20,
   standardWorkHours: 8,              // used to show a target per day
   officeIp: '',                      // office internet address (set by admin)
   cabWaitingTime: 20,                // max wait time in minutes for cabs

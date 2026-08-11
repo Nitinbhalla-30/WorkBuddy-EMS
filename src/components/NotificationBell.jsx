@@ -6,18 +6,18 @@ import {
   markNotificationRead
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
-import { getEmployeeNotificationFeed } from '../utils/notifications.js'
+import { getNotificationFeed } from '../utils/notifications.js'
 
-// Top-bar notification bell for employees.
-export default function NotificationBell({ employeeId }) {
+// Top-bar notification bell for employees and HR/Admin.
+export default function NotificationBell({ employeeId, viewerRole = 'employee' }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [tick, setTick] = useState(0)
 
   const feed = useMemo(
-    () => getEmployeeNotificationFeed(employeeId),
+    () => getNotificationFeed(employeeId, viewerRole),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [employeeId, tick, open]
+    [employeeId, viewerRole, tick, open]
   )
 
   function refresh() {

@@ -11,6 +11,8 @@ function getFocusableElements(container) {
 
 export default function Modal({ onClose, children, title }) {
   const contentRef = useRef(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     const root = contentRef.current
@@ -22,6 +24,7 @@ export default function Modal({ onClose, children, title }) {
       return getFocusableElements(root)
     }
 
+    // Focus the first control only when the modal opens — not on every parent re-render.
     const timer = window.setTimeout(() => {
       const els = focusables()
       if (els.length > 0) {
@@ -34,7 +37,7 @@ export default function Modal({ onClose, children, title }) {
     function onKeyDown(e) {
       if (e.key === 'Escape') {
         e.preventDefault()
-        onClose()
+        onCloseRef.current?.()
         return
       }
 
@@ -75,10 +78,10 @@ export default function Modal({ onClose, children, title }) {
         previousFocus.focus()
       }
     }
-  }, [onClose])
+  }, [])
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={() => onCloseRef.current?.()}>
       <div
         className="modal-content"
         ref={contentRef}

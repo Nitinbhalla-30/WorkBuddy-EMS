@@ -61,22 +61,24 @@ export function formatDate(dateKey) {
   })
 }
 
-// Was the person late? Compares time-in against the office start time.
-// officeStartTime is a string like "09:30".
-export function isLate(record, officeStartTime) {
+// Was the person late? Compares time-in against office start + grace period.
+// officeStartTime is a string like "09:30". lateGraceMinutes is minutes after that
+// when arrival is still on time (e.g. start 09:30 + 20 min → late only after 09:50).
+export function isLate(record, officeStartTime, lateGraceMinutes = 0) {
   if (!record || !record.timeIn || !officeStartTime) return false
   const [h, m] = officeStartTime.split(':').map((n) => parseInt(n, 10))
+  const grace = Math.max(0, Number(lateGraceMinutes) || 0)
   const timeIn = toDate(record.timeIn)
   const limit = new Date(timeIn)
-  limit.setHours(h, m, 0, 0)
+  limit.setHours(h, m + grace, 0, 0)
   return timeIn.getTime() > limit.getTime()
 }
 
 // A short status word for a record.
-export function statusOf(record, officeStartTime) {
+export function statusOf(record, officeStartTime, lateGraceMinutes = 0) {
   if (!record || !record.timeIn) return 'Absent'
   if (record.timeIn && !record.timeOut) return 'Present'
-  return isLate(record, officeStartTime) ? 'Late' : 'On time'
+  return isLate(record, officeStartTime, lateGraceMinutes) ? 'Late' : 'On time'
 }
 
 // What is the employee doing right now (for the live buttons)?

@@ -7,13 +7,14 @@ export function useTableControls(items, options = {}) {
     getSortValue = (item, key) => item[key],
     initialSortKey = null,
     initialSortDir = 'desc',
-    filterFns = {}
+    filterFns = {},
+    initialFilters = {}
   } = options
 
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState(initialSortKey)
   const [sortDir, setSortDir] = useState(initialSortDir)
-  const [filters, setFilters] = useState({})
+  const [filters, setFilters] = useState(initialFilters)
 
   function setFilter(key, value) {
     setFilters((prev) => ({ ...prev, [key]: value }))

@@ -109,13 +109,13 @@ export default function EmployeeDashboard() {
     getSortValue: (r, key) => {
       if (key === 'worked') return workedMinutes(r)
       if (key === 'break') return totalBreakMinutes(r)
-      if (key === 'status') return statusOf(r, settings.officeStartTime)
+      if (key === 'status') return statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)
       return r[key]
     },
     initialSortKey: 'date',
     initialSortDir: 'desc',
     filterFns: {
-      status: (r, val) => statusOf(r, settings.officeStartTime).toLowerCase() === val.toLowerCase()
+      status: (r, val) => statusOf(r, settings.officeStartTime, settings.lateGraceMinutes).toLowerCase() === val.toLowerCase()
     }
   })
 
@@ -740,8 +740,8 @@ export default function EmployeeDashboard() {
                 <td>{formatMinutes(workedMinutes(r))}</td>
                 <td>{formatMinutes(totalBreakMinutes(r))}</td>
                 <td>
-                  <span className={`tag ${isLate(r, settings.officeStartTime) ? 'tag-late' : 'tag-ok'}`}>
-                    {statusOf(r, settings.officeStartTime)}
+                  <span className={`tag ${isLate(r, settings.officeStartTime, settings.lateGraceMinutes) ? 'tag-late' : 'tag-ok'}`}>
+                    {statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)}
                   </span>
                 </td>
               </tr>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   getAttendanceForEmployee,
@@ -10,6 +10,7 @@ import {
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
 import { profileStatusLabel, profileStatusTagClass } from '../utils/profile.js'
+import Modal from '../components/Modal.jsx'
 import ProfileView from '../components/ProfileView.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
@@ -19,6 +20,17 @@ const ROLE_FILTER_OPTS = [
   { value: 'all', label: 'All roles' },
   { value: 'employee', label: 'Employee' },
   { value: 'admin', label: 'HR / Admin' }
+]
+
+const RECORD_FILTER_OPTS = [
+  { value: 'all', label: 'All records' },
+  { value: 'draft', label: 'Not submitted' },
+  { value: 'submitted', label: 'Submitted (awaiting review)' },
+  { value: 'verified', label: 'Verified' },
+  { value: 'returned', label: 'Returned for correction' },
+  { value: 'update_requested', label: 'Update requested (awaiting HR)' },
+  { value: 'update_approved', label: 'Update approved — please edit' },
+  { value: 'none', label: 'No record' }
 ]
 
 // Combined "Employee Records" page. It shows the staff directory with team
@@ -36,7 +48,33 @@ export default function EmployeeRecords() {
   const [openId, setOpenId] = useState(null)
   const [note, setNote] = useState('')
 
+  const [openMenuId, setOpenMenuId] = useState(null)
+
   const employees = useMemo(() => getEmployees(), [refresh])
+
+  const departmentFilterOpts = useMemo(() => {
+    const departments = [...new Set(employees.map((e) => e.department).filter(Boolean))].sort()
+    return [
+      { value: 'all', label: 'All departments' },
+      ...departments.map((d) => ({ value: d, label: d }))
+    ]
+  }, [employees])
+
+  const reportsToFilterOpts = useMemo(() => {
+    const managerIds = [...new Set(employees.map((e) => e.managerId).filter(Boolean))]
+    const named = managerIds
+      .map((id) => {
+        const m = employees.find((e) => e.id === id)
+        return m ? { value: id, label: m.name } : null
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.label.localeCompare(b.label))
+    return [
+      { value: 'all', label: 'All managers' },
+      { value: 'none', label: 'None' },
+      ...named
+    ]
+  }, [employees])
 
   const table = useTableControls(employees, {
     getSearchText: (e) => {
@@ -46,7 +84,7 @@ export default function EmployeeRecords() {
         e.id, e.name, e.department, e.role,
         e.isManager ? 'manager' : '',
         manager?.name,
-        profile ? profileStatusLabel(profile.status) : ''
+        profile ? profileStatusLabel(profile.status) : 'No record'
       ].join(' ')
     },
     getSortValue: (e, key) => {
@@ -56,14 +94,24 @@ export default function EmployeeRecords() {
       if (key === 'days') return getAttendanceForEmployee(e.id).length
       if (key === 'record') {
         const profile = e.role === 'employee' ? getProfileForEmployee(e.id) : null
-        return profile ? profileStatusLabel(profile.status) : ''
+        return profile ? profileStatusLabel(profile.status) : 'No record'
       }
       return e[key]
     },
     initialSortKey: 'name',
     initialSortDir: 'asc',
     filterFns: {
-      role: (e, val) => e.role === val
+      department: (e, val) => e.department === val,
+      role: (e, val) => e.role === val,
+      reportsTo: (e, val) => {
+        if (val === 'none') return !e.managerId
+        return e.managerId === val
+      },
+      record: (e, val) => {
+        if (e.role !== 'employee') return val === 'none'
+        const profile = getProfileForEmployee(e.id)
+        return (profile?.status || 'draft') === val
+      }
     }
   })
 
@@ -82,12 +130,37 @@ export default function EmployeeRecords() {
 
   const openEmp = employees.find((e) => e.id === openId) || null
   const openProfile = openEmp ? getProfileForEmployee(openEmp.id) : null
+  const editEmp = employees.find((e) => e.id === editId) || null
+
+  function toggleMenu(employeeId) {
+    setOpenMenuId(openMenuId === employeeId ? null : employeeId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
 
   // ---- team editing ----
   function startEdit(emp) {
     setOpenId(null)
     setEditId(emp.id)
     setForm({ isManager: !!emp.isManager, managerId: emp.managerId || '' })
+    closeMenu()
+  }
+
+  function closeEdit() {
+    setEditId(null)
+    setForm(null)
   }
 
   function saveEdit() {
@@ -95,8 +168,7 @@ export default function EmployeeRecords() {
       isManager: !!form.isManager,
       managerId: form.managerId || null
     })
-    setEditId(null)
-    setForm(null)
+    closeEdit()
     setRefresh((n) => n + 1)
   }
 
@@ -105,6 +177,12 @@ export default function EmployeeRecords() {
     setEditId(null)
     setForm(null)
     setOpenId(emp.id)
+    setNote('')
+    closeMenu()
+  }
+
+  function closeReview() {
+    setOpenId(null)
     setNote('')
   }
 
@@ -147,12 +225,32 @@ export default function EmployeeRecords() {
           showing={table.count}
           total={table.total}
           placeholder="Search employees..."
-          filters={[{
-            key: 'role',
-            label: 'Role',
-            value: table.filters.role || 'all',
-            options: ROLE_FILTER_OPTS
-          }]}
+          filters={[
+            {
+              key: 'department',
+              label: 'Department',
+              value: table.filters.department || 'all',
+              options: departmentFilterOpts
+            },
+            {
+              key: 'role',
+              label: 'Role',
+              value: table.filters.role || 'all',
+              options: ROLE_FILTER_OPTS
+            },
+            {
+              key: 'reportsTo',
+              label: 'Reports to',
+              value: table.filters.reportsTo || 'all',
+              options: reportsToFilterOpts
+            },
+            {
+              key: 'record',
+              label: 'Record',
+              value: table.filters.record || 'all',
+              options: RECORD_FILTER_OPTS
+            }
+          ]}
           onFilterChange={table.setFilter}
         />
         <table className="table">
@@ -190,26 +288,41 @@ export default function EmployeeRecords() {
                         {profileStatusLabel(profile.status)}
                       </span>
                     ) : (
-                      <span className="muted">--</span>
+                      <span className={`tag ${profileStatusTagClass('none')}`}>
+                        No record
+                      </span>
                     )}
                   </td>
                   <td>
-                    {e.role === 'employee' ? (
-                      <div className="row-actions">
-                        <button className="btn btn-tiny btn-light" onClick={() => startEdit(e)}>
-                          Edit team
-                        </button>
-                        <button
-                          className="btn btn-tiny btn-light"
-                          disabled={profile.status === 'draft'}
-                          onClick={() => openReview(e)}
-                        >
-                          {profile.status === 'draft' ? 'Not filled' : 'Open'}
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="muted">--</span>
-                    )}
+                    <div className="task-menu-container">
+                      <button
+                        type="button"
+                        className="btn btn-tiny btn-light task-menu-button"
+                        onClick={() => toggleMenu(e.id)}
+                        aria-label="Employee actions"
+                      >
+                        ⋯
+                      </button>
+                      {openMenuId === e.id && (
+                        <div className="task-menu-dropdown">
+                          <button
+                            type="button"
+                            className="task-menu-item"
+                            disabled={!profile || profile.status === 'draft'}
+                            onClick={() => openReview(e)}
+                          >
+                            {!profile || profile.status === 'draft' ? 'Not filled' : 'Open'}
+                          </button>
+                          <button
+                            type="button"
+                            className="task-menu-item"
+                            onClick={() => startEdit(e)}
+                          >
+                            Edit team
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )
@@ -218,145 +331,168 @@ export default function EmployeeRecords() {
         </table>
       </div>
 
-      {/* Edit team info for one employee */}
-      {editId && form && (
-        <div className="card">
-          <h3 className="section-title first">Team settings — {nameOf(editId)}</h3>
+      {editEmp && form && (
+        <Modal onClose={closeEdit} title="Edit team">
+          <div className="modal-form">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>
+                  Team settings
+                </h3>
+                <div className="muted small">{editEmp.name} · {editEmp.id}</div>
+              </div>
+              <button type="button" className="btn btn-tiny btn-light" onClick={closeEdit}>✕</button>
+            </div>
 
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={form.isManager}
-              onChange={(e) => setForm({ ...form, isManager: e.target.checked })}
-            />
-            <span>This person is a Manager / Team Leader (can assign tasks to their team)</span>
-          </label>
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={form.isManager}
+                onChange={(e) => setForm({ ...form, isManager: e.target.checked })}
+              />
+              <span>This person is a Manager / Team Leader (can assign tasks to their team)</span>
+            </label>
 
-          <label className="field">
-            <span>Reports to (their manager)</span>
-            <select
-              value={form.managerId}
-              onChange={(e) => setForm({ ...form, managerId: e.target.value })}
-            >
-              <option value="">-- None --</option>
-              {managers
-                .filter((m) => m.id !== editId)
-                .map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-            </select>
-          </label>
+            <label className="field">
+              <span>Reports to (their manager)</span>
+              <select
+                value={form.managerId}
+                onChange={(e) => setForm({ ...form, managerId: e.target.value })}
+              >
+                <option value="">-- None --</option>
+                {managers
+                  .filter((m) => m.id !== editId)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+              </select>
+            </label>
 
-          <div className="button-row">
-            <button className="btn btn-primary" onClick={saveEdit}>Save</button>
-            <button className="btn btn-light" onClick={() => { setEditId(null); setForm(null) }}>
-              Cancel
-            </button>
+            <div className="button-row">
+              <button type="button" className="btn btn-primary" onClick={saveEdit}>Save</button>
+              <button type="button" className="btn btn-light" onClick={closeEdit}>Cancel</button>
+            </div>
           </div>
-        </div>
+        </Modal>
       )}
 
-      {/* Open one onboarding record to review */}
       {openEmp && openProfile && (
-        <div className="card">
-          <div className="page-head">
-            <div>
-              <h3 style={{ margin: 0 }}>{openEmp.name}</h3>
-              <div className="muted small">
-                Submitted {openProfile.submittedOn ? formatDate(openProfile.submittedOn) : '--'}
-                {' — '}Reviewed {openProfile.reviewedOn ? formatDate(openProfile.reviewedOn) : '--'}
+        <Modal onClose={closeReview} title="Employee record">
+          <div className="modal-form modal-form-wide">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>{openEmp.name}</h3>
+                <div className="muted small">
+                  Submitted {openProfile.submittedOn ? formatDate(openProfile.submittedOn) : '--'}
+                  {' — '}Reviewed {openProfile.reviewedOn ? formatDate(openProfile.reviewedOn) : '--'}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={`tag ${profileStatusTagClass(openProfile.status)}`}>
+                  {profileStatusLabel(openProfile.status)}
+                </span>
+                <button type="button" className="btn btn-tiny btn-light" onClick={closeReview}>✕</button>
               </div>
             </div>
-            <button className="btn btn-tiny btn-light" onClick={() => setOpenId(null)}>Close</button>
-          </div>
 
-          {openProfile.status === 'returned' && openProfile.reviewNote && (
-            <div className="info-box first">
-              Returned to the employee with note: &ldquo;{openProfile.reviewNote}&rdquo;
-            </div>
-          )}
+            {openProfile.status === 'returned' && openProfile.reviewNote && (
+              <div className="info-box first">
+                Returned to the employee with note: &ldquo;{openProfile.reviewNote}&rdquo;
+              </div>
+            )}
 
-          {openProfile.status === 'update_requested' && (
-            <div className="info-box first">
-              <strong>Update request</strong> — sent on{' '}
-              {formatDate(openProfile.updateRequestedOn)}.
-              {openProfile.updateRequestNote
-                ? <> Reason: &ldquo;{openProfile.updateRequestNote}&rdquo;</>
-                : ' No reason was given.'}
-              Approve to let the employee edit their details, then verify after they submit.
-            </div>
-          )}
+            {openProfile.status === 'update_requested' && (
+              <div className="info-box first">
+                <strong>Update request</strong> — sent on{' '}
+                {formatDate(openProfile.updateRequestedOn)}.
+                {openProfile.updateRequestNote
+                  ? <> Reason: &ldquo;{openProfile.updateRequestNote}&rdquo;</>
+                  : ' No reason was given.'}
+                Approve to let the employee edit their details, then verify after they submit.
+              </div>
+            )}
 
-          {openProfile.status === 'update_approved' && (
-            <div className="info-box first">
-              Update approved on {formatDate(openProfile.reviewedOn)}. The employee
-              is editing their details and will submit for your verification.
-            </div>
-          )}
+            {openProfile.status === 'update_approved' && (
+              <div className="info-box first">
+                Update approved on {formatDate(openProfile.reviewedOn)}. The employee
+                is editing their details and will submit for your verification.
+              </div>
+            )}
 
-          <ProfileView profile={openProfile} />
+            <ProfileView profile={openProfile} />
 
-          {/* HR decision on update request */}
-          {openProfile.status === 'update_requested' ? (
-            <>
-              <h3 className="section-title">Update request</h3>
-              <label className="field">
-                <span>Note to employee (optional when approving, required when denying)</span>
-                <input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="e.g. Approved — please update your bank details only"
-                />
-              </label>
+            {openProfile.status === 'update_requested' ? (
+              <>
+                <h3 className="section-title">Update request</h3>
+                <label className="field">
+                  <span>Note to employee (optional when approving, required when denying)</span>
+                  <input
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="e.g. Approved — please update your bank details only"
+                  />
+                </label>
+                <div className="button-row">
+                  <button type="button" className="btn btn-primary" onClick={() => approveUpdateRequest(openEmp.id)}>
+                    Approve update
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={!note.trim()}
+                    onClick={() => denyUpdateRequest(openEmp.id)}
+                  >
+                    Deny request
+                  </button>
+                </div>
+              </>
+            ) : openProfile.status === 'submitted' ? (
+              <>
+                <h3 className="section-title">Review decision</h3>
+                <label className="field">
+                  <span>Note (needed only if you return it for correction)</span>
+                  <input
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="e.g. PAN number does not match the uploaded card"
+                  />
+                </label>
+                <div className="button-row">
+                  <button type="button" className="btn btn-primary" onClick={() => verify(openEmp.id)}>
+                    Mark verified
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={!note.trim()}
+                    onClick={() => returnForFix(openEmp.id)}
+                  >
+                    Return for correction
+                  </button>
+                </div>
+              </>
+            ) : (
               <div className="button-row">
-                <button className="btn btn-primary" onClick={() => approveUpdateRequest(openEmp.id)}>
-                  Approve update
-                </button>
+                <label className="field inline" style={{ flex: 1 }}>
+                  <input
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Reason to reopen"
+                    style={{ width: '100%' }}
+                  />
+                </label>
                 <button
-                  className="btn btn-danger"
+                  type="button"
+                  className="btn btn-light"
+                  onClick={() => returnForFix(openEmp.id)}
                   disabled={!note.trim()}
-                  onClick={() => denyUpdateRequest(openEmp.id)}
                 >
-                  Deny request
+                  Reopen for correction
                 </button>
               </div>
-            </>
-          ) : openProfile.status === 'submitted' ? (
-            <>
-              <h3 className="section-title">Review decision</h3>
-              <label className="field">
-                <span>Note (needed only if you return it for correction)</span>
-                <input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="e.g. PAN number does not match the uploaded card"
-                />
-              </label>
-              <div className="button-row">
-                <button className="btn btn-primary" onClick={() => verify(openEmp.id)}>
-                  Mark verified
-                </button>
-                <button className="btn btn-danger" disabled={!note.trim()} onClick={() => returnForFix(openEmp.id)}>
-                  Return for correction
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="button-row">
-              <button className="btn btn-light" onClick={() => returnForFix(openEmp.id)} disabled={!note.trim()}>
-                Reopen for correction
-              </button>
-              <label className="field inline" style={{ flex: 1 }}>
-                <input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Reason to reopen"
-                  style={{ width: '100%' }}
-                />
-              </label>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </Modal>
       )}
 
       <p className="hint">

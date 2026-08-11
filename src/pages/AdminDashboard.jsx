@@ -14,6 +14,7 @@ import {
 } from '../utils/attendance.js'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import { AttendanceTodayChart } from '../components/dashboard/AttendanceTodayChart.tsx'
 import { useTableControls } from '../hooks/useTableControls.js'
 
 function todayKey() {
@@ -39,9 +40,25 @@ export default function AdminDashboard() {
     return { emp, rec }
   }), [employees, attendance, today])
 
+  const departmentFilterOpts = useMemo(() => {
+    const departments = [...new Set(employees.map((e) => e.department).filter(Boolean))].sort()
+    return [
+      { value: 'all', label: 'All departments' },
+      ...departments.map((d) => ({ value: d, label: d }))
+    ]
+  }, [employees])
+
+  const STATUS_FILTER_OPTS = [
+    { value: 'all', label: 'All statuses' },
+    { value: 'Present', label: 'Present' },
+    { value: 'On time', label: 'On time' },
+    { value: 'Late', label: 'Late' },
+    { value: 'Absent', label: 'Absent' }
+  ]
+
   const table = useTableControls(allRows, {
     getSearchText: ({ emp, rec }) =>
-      [emp.name, emp.id, emp.department, formatClock(rec?.timeIn), formatClock(rec?.timeOut), statusOf(rec, settings.officeStartTime)].join(' '),
+      [emp.name, emp.id, emp.department, formatClock(rec?.timeIn), formatClock(rec?.timeOut), statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes)].join(' '),
     getSortValue: ({ emp, rec }, key) => {
       if (key === 'name') return emp.name
       if (key === 'department') return emp.department
@@ -49,16 +66,20 @@ export default function AdminDashboard() {
       if (key === 'timeOut') return rec?.timeOut || ''
       if (key === 'worked') return rec ? workedMinutes(rec) : -1
       if (key === 'break') return rec ? totalBreakMinutes(rec) : -1
-      if (key === 'status') return statusOf(rec, settings.officeStartTime)
+      if (key === 'status') return statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes)
       return ''
     },
     initialSortKey: 'name',
-    initialSortDir: 'asc'
+    initialSortDir: 'asc',
+    filterFns: {
+      department: ({ emp }, val) => emp.department === val,
+      status: ({ rec }, val) => statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes) === val
+    }
   })
 
   const present = allRows.filter((r) => r.rec && r.rec.timeIn).length
   const late = allRows.filter(
-    (r) => r.rec && isLate(r.rec, settings.officeStartTime)
+    (r) => r.rec && isLate(r.rec, settings.officeStartTime, settings.lateGraceMinutes)
   ).length
   const absent = employees.length - present
 
@@ -69,24 +90,12 @@ export default function AdminDashboard() {
         <span className="muted">Today</span>
       </div>
 
-      <div className="stat-grid">
-        <div className="stat-card">
-          <div className="stat-num">{employees.length}</div>
-          <div className="stat-label">Employees</div>
-        </div>
-        <div className="stat-card stat-good">
-          <div className="stat-num">{present}</div>
-          <div className="stat-label">Present today</div>
-        </div>
-        <div className="stat-card stat-warn">
-          <div className="stat-num">{late}</div>
-          <div className="stat-label">Late today</div>
-        </div>
-        <div className="stat-card stat-bad">
-          <div className="stat-num">{absent}</div>
-          <div className="stat-label">Not in yet</div>
-        </div>
-      </div>
+      <AttendanceTodayChart
+        employees={employees.length}
+        present={present}
+        late={late}
+        absent={absent}
+      />
 
       <h3 className="section-title">Today by employee</h3>
       <div className="card">
@@ -96,6 +105,21 @@ export default function AdminDashboard() {
           showing={table.count}
           total={table.total}
           placeholder="Search employees..."
+          filters={[
+            {
+              key: 'department',
+              label: 'Department',
+              value: table.filters.department || 'all',
+              options: departmentFilterOpts
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              value: table.filters.status || 'all',
+              options: STATUS_FILTER_OPTS
+            }
+          ]}
+          onFilterChange={table.setFilter}
         />
         <table className="table">
           <thead>
@@ -111,7 +135,7 @@ export default function AdminDashboard() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={7} className="muted">No employees match your search.</td></tr>
+              <tr><td colSpan={7} className="muted">No employees match your filters.</td></tr>
             )}
             {table.rows.map(({ emp, rec }) => (
               <tr key={emp.id}>
@@ -129,12 +153,12 @@ export default function AdminDashboard() {
                     className={`tag ${
                       !rec || !rec.timeIn
                         ? 'tag-absent'
-                        : isLate(rec, settings.officeStartTime)
+                        : isLate(rec, settings.officeStartTime, settings.lateGraceMinutes)
                         ? 'tag-late'
                         : 'tag-ok'
                     }`}
                   >
-                    {statusOf(rec, settings.officeStartTime)}
+                    {statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes)}
                   </span>
                 </td>
               </tr>
