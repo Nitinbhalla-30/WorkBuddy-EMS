@@ -648,6 +648,9 @@ textarea::placeholder {
 .tag-high { background: #fdecec; color: var(--bad); }
 .tag-medium { background: #fdf0e2; color: var(--warn); }
 .tag-low { background: #eef1ff; color: var(--brand-dark); }
+/* Announcement type badges: keep the same filled-pill look for every type. */
+.tag-event { background: #e6f5ec; color: var(--good); }
+.tag-general { background: #f0f2f6; color: #475569; }
 
 /* ---------- Onboarding wizard ---------- */
 .wizard-steps { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -864,6 +867,21 @@ textarea::placeholder {
 }
 .phone-link:hover {
   color: var(--brand-dark);
+}
+
+/* Clickable issue title that opens the detail modal */
+.issue-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--link);
+  cursor: pointer;
+  text-align: left;
+}
+.issue-link:hover {
+  color: var(--brand-dark);
+  text-decoration: underline;
 }
 
 /* ---------- Task Menu Dropdown ---------- */
@@ -1432,6 +1450,8 @@ textarea::placeholder {
 [data-theme="dark"] .tag-high { background: #3d2428; }
 [data-theme="dark"] .tag-medium { background: #3d2e1a; }
 [data-theme="dark"] .tag-low { background: #1e2d4a; }
+[data-theme="dark"] .tag-event { background: #1a3d2a; }
+[data-theme="dark"] .tag-general { background: #252d3f; color: #cbd5e1; }
 [data-theme="dark"] .state-not-in { background: #252d3f; }
 [data-theme="dark"] .state-working { background: #1a3d2a; }
 [data-theme="dark"] .state-on-break { background: #3d2e1a; }
@@ -1504,32 +1524,33 @@ textarea::placeholder {
   z-index: 20;
   background: #1e3a8a;
   color: #fff;
-  padding: 12px 16px;
-  padding-top: calc(12px + env(safe-area-inset-top));
+  padding: 10px 16px 12px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+.driver-topbar-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-}
-.driver-topbar-left {
-  display: flex;
-  align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
 }
-.driver-topbar-right {
+.driver-topbar-driver {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  padding-top: 8px;
 }
 .driver-brand {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  opacity: 0.85;
+  opacity: 0.95;
 }
 .driver-logout {
   background: rgba(255,255,255,0.15);
@@ -1548,6 +1569,7 @@ textarea::placeholder {
 .driver-date {
   font-size: 12px;
   opacity: 0.75;
+  margin-left: auto;
 }
 
 .driver-content {
@@ -1586,16 +1608,16 @@ textarea::placeholder {
   flex-wrap: wrap;
   gap: 8px;
 }
-.pickup-title  { background: #eff6ff; color: #1d4ed8; border-bottom: 1px solid #dbeafe; }
-.drop-title    { background: #f0fdf4; color: #15803d; border-bottom: 1px solid #bbf7d0; }
+.pickup-title  { background: #f0fdf4; color: #15803d; border-bottom: 1px solid #bbf7d0; }
+.drop-title    { background: #fff7ed; color: #c2410c; border-bottom: 1px solid #fed7aa; }
 .driver-vehicle-chip {
   font-size: 13px;
   padding: 4px 10px;
   border-radius: 20px;
   font-weight: 600;
 }
-.chip-pickup { background: #dbeafe; color: #1e40af; }
-.chip-drop   { background: #bbf7d0; color: #166534; }
+.chip-pickup { background: #bbf7d0; color: #166534; }
+.chip-drop   { background: #fed7aa; color: #9a3412; }
 
 .driver-section-body {
   display: flex;
@@ -1713,6 +1735,24 @@ textarea::placeholder {
 }
 .stop-btn-nav:hover { background: #1e40af; }
 
+/* Pickup cards use a green palette, drop cards an orange palette, so the
+   driver can tell the two runs apart at a glance (the banner stays blue). */
+.stop-card-pickup { border-color: #bbf7d0; border-top: 4px solid #15803d; }
+.stop-card-pickup .stop-num { background: #15803d; }
+.stop-card-pickup .stop-tel { color: #15803d; }
+.stop-card-pickup .stop-btn-call { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+.stop-card-pickup .stop-btn-call:hover { background: #dcfce7; }
+.stop-card-pickup .stop-btn-nav { background: #15803d; }
+.stop-card-pickup .stop-btn-nav:hover { background: #166534; }
+
+.stop-card-drop { border-color: #fed7aa; border-top: 4px solid #ea580c; }
+.stop-card-drop .stop-num { background: #ea580c; }
+.stop-card-drop .stop-tel { color: #c2410c; }
+.stop-card-drop .stop-btn-call { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+.stop-card-drop .stop-btn-call:hover { background: #ffedd5; }
+.stop-card-drop .stop-btn-nav { background: #ea580c; }
+.stop-card-drop .stop-btn-nav:hover { background: #c2410c; }
+
 .driver-cancelled-block {
   padding: 12px 14px;
   background: #fff7f7;
@@ -1754,4 +1794,92 @@ textarea::placeholder {
   font-weight: 700;
   color: #111;
   margin-bottom: 2px;
+}
+
+/* ---- Toggle date field (cab temporary-change form) ----
+   Custom calendar popover so the icon click toggles open/closed, unlike the
+   native date picker which reopens on every click. */
+.toggle-date-field {
+  position: relative;
+}
+.toggle-date-field input {
+  cursor: pointer;
+  padding-right: 40px;
+}
+.toggle-date-icon {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 4px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.toggle-date-cal {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  width: 216px;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 8px;
+}
+.toggle-date-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.toggle-date-head span {
+  font-size: 12px;
+  font-weight: 700;
+}
+.toggle-date-head button {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.toggle-date-head button:hover {
+  background: var(--hover, #f1f5f9);
+}
+.toggle-date-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.toggle-date-grid .cal-dow {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 2px 0;
+}
+.toggle-date-grid .cal-day {
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 0;
+  font-size: 12px;
+  cursor: pointer;
+}
+.toggle-date-grid .cal-day:hover {
+  background: var(--hover, #eef2ff);
+}
+.toggle-date-grid .cal-today {
+  outline: 1px solid var(--brand, #1d4ed8);
+}
+.toggle-date-grid .cal-selected {
+  background: var(--brand, #1d4ed8);
+  color: #fff;
 }

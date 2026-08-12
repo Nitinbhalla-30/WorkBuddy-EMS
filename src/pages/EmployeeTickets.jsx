@@ -204,7 +204,15 @@ export default function EmployeeTickets() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '35%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '9%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Subject" keyName="subject" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -221,7 +229,7 @@ export default function EmployeeTickets() {
             )}
             {ticketsPage.map((t) => (
               <tr key={t.id}>
-                <td><strong>{t.subject}</strong></td>
+                <td>{t.subject}</td>
                 <td>{kindLabel(t.kind)}{t.anonymous ? ' (anon)' : ''}</td>
                 <td>{categoryLabel(t.category)}</td>
                 <td><span className={`tag ${statusTagClass(t.status)}`}>{statusLabel(t.status)}</span></td>

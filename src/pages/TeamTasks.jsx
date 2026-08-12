@@ -305,16 +305,16 @@ export default function TeamTasks() {
           placeholder="Search tasks..."
           filters={[
             {
-              key: 'status',
-              label: 'Status',
-              value: table.filters.status || 'all',
-              options: TASK_STATUS_FILTER_OPTS
-            },
-            {
               key: 'priority',
               label: 'Priority',
               value: table.filters.priority || 'all',
               options: TASK_PRIORITY_FILTER_OPTS
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              value: table.filters.status || 'all',
+              options: TASK_STATUS_FILTER_OPTS
             }
           ]}
           onFilterChange={table.setFilter}

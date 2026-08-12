@@ -724,6 +724,15 @@ export const IT_ISSUE_STATUSES = [
   { key: 'withdrawn',  label: 'Withdrawn' }
 ]
 
+// Issue categories — help the IT manager route the issue to the right person.
+export const IT_ISSUE_CATEGORIES = [
+  { key: 'hardware', label: 'Hardware' },
+  { key: 'software', label: 'Software' },
+  { key: 'network',  label: 'Network Access' },
+  { key: 'email',    label: 'Email & Accounts' },
+  { key: 'other',    label: 'Other' }
+]
+
 // IT support team members (for assigning issues)
 export const SAMPLE_IT_STAFF = [
   { id: 'IT001', name: 'Rajesh Kumar', mobile: '9876543210', email: 'rajesh.kumar@company.com' },
@@ -738,10 +747,30 @@ export const SAMPLE_IT_ISSUES = [
     employeeId: 'EMP001',
     issue: 'Computer not starting',
     description: 'My computer is not booting up. Shows blue screen error.',
+    category: 'hardware',
     priority: 'high',
     status: 'inprogress',
     assignedTo: 'IT001',
     estimatedTime: '2 hours',
+    attachment: null,
+    comments: [
+      {
+        id: 'ITIC01',
+        byId: 'IT001',
+        byName: 'Rajesh Kumar',
+        byRole: 'it',
+        text: 'Which laptop model are you using, and does the blue screen show an error code?',
+        on: dayFromToday(-1)
+      },
+      {
+        id: 'ITIC02',
+        byId: 'EMP001',
+        byName: 'Arjun Mehta',
+        byRole: 'employee',
+        text: 'It is a Dell Latitude 5420. The error code is CRITICAL_PROCESS_DIED.',
+        on: dayFromToday(0)
+      }
+    ],
     createdOn: dayFromToday(-1),
     updatedOn: dayFromToday(0)
   },
@@ -750,10 +779,13 @@ export const SAMPLE_IT_ISSUES = [
     employeeId: 'EMP002',
     issue: 'Internet connection slow',
     description: 'Internet is very slow since morning. Unable to work.',
+    category: 'network',
     priority: 'medium',
     status: 'open',
     assignedTo: null,
     estimatedTime: null,
+    attachment: null,
+    comments: [],
     createdOn: dayFromToday(0),
     updatedOn: dayFromToday(0)
   },
@@ -762,10 +794,13 @@ export const SAMPLE_IT_ISSUES = [
     employeeId: 'EMP002',
     issue: 'Adobe Creative Cloud login failing',
     description: 'Cannot sign in to Creative Cloud since the password reset yesterday.',
+    category: 'software',
     priority: 'high',
     status: 'inprogress',
     assignedTo: 'IT002',
     estimatedTime: '30 minutes',
+    attachment: null,
+    comments: [],
     createdOn: dayFromToday(-3),
     updatedOn: dayFromToday(-1)
   },
@@ -774,10 +809,13 @@ export const SAMPLE_IT_ISSUES = [
     employeeId: 'EMP002',
     issue: 'Keyboard keys sticking',
     description: 'Several keys on my keyboard are sticking and need cleaning or replacement.',
+    category: 'hardware',
     priority: 'low',
     status: 'open',
     assignedTo: null,
     estimatedTime: null,
+    attachment: null,
+    comments: [],
     createdOn: dayFromToday(-1),
     updatedOn: dayFromToday(-1)
   },
@@ -786,10 +824,13 @@ export const SAMPLE_IT_ISSUES = [
     employeeId: 'EMP003',
     issue: 'Printer not working',
     description: 'The shared printer on 2nd floor is not responding.',
+    category: 'hardware',
     priority: 'low',
     status: 'resolved',
     assignedTo: 'IT002',
     estimatedTime: '1 hour',
+    attachment: null,
+    comments: [],
     createdOn: dayFromToday(-2),
     updatedOn: dayFromToday(-1)
   },
@@ -798,10 +839,13 @@ export const SAMPLE_IT_ISSUES = [
     employeeId: 'EMP004',
     issue: 'Monitor flickering',
     description: 'My monitor keeps flickering. It is hard to work.',
+    category: 'hardware',
     priority: 'medium',
     status: 'open',
     assignedTo: null,
     estimatedTime: null,
+    attachment: null,
+    comments: [],
     createdOn: dayFromToday(0),
     updatedOn: dayFromToday(0)
   }

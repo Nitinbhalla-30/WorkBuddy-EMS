@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
+  addITIssueComment,
   assignITIssue,
   getEmployeeById,
   getITIssues,
   getITStaff,
   setITIssueStatus
 } from '../data/store.js'
-import { IT_ISSUE_PRIORITIES, IT_ISSUE_STATUSES } from '../data/sampleData.js'
+import { IT_ISSUE_CATEGORIES, IT_ISSUE_PRIORITIES, IT_ISSUE_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
+import { itIssueCategoryLabel } from '../utils/itIssues.js'
+import ITIssueThread from '../components/ITIssueThread.jsx'
+import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
@@ -23,11 +27,16 @@ const IT_PRIORITY_FILTER_OPTS = [
   { value: 'all', label: 'All priorities' },
   ...IT_ISSUE_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
 ]
+const IT_CATEGORY_FILTER_OPTS = [
+  { value: 'all', label: 'All categories' },
+  ...IT_ISSUE_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))
+]
 
 export default function AdminITHelpDesk() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
   const [editingIssue, setEditingIssue] = useState(null)
+  const [viewId, setViewId] = useState(null)
   const [editForm, setEditForm] = useState({
     assignedTo: '',
     estimatedTime: ''
@@ -42,6 +51,8 @@ export default function AdminITHelpDesk() {
     const issues = getITIssues()
     return isITStaff ? issues.filter((i) => i.assignedTo === user.id) : issues
   }, [refresh, isITStaff, user.id])
+
+  const viewIssue = allIssues.find((i) => i.id === viewId) || null
 
   const itStaff = getITStaff()
 
@@ -66,7 +77,7 @@ export default function AdminITHelpDesk() {
     getSearchText: (i) => {
       const employee = getEmployeeById(i.employeeId)
       const assigned = i.assignedTo ? getITStaff().find((s) => s.id === i.assignedTo) : null
-      return [employee?.name, i.issue, i.description, i.priority, i.status, assigned?.name, i.estimatedTime, i.createdOn].join(' ')
+      return [employee?.name, i.issue, i.description, itIssueCategoryLabel(i.category), i.priority, i.status, assigned?.name, i.estimatedTime, i.createdOn].join(' ')
     },
     getSortValue: (i, key) => {
       if (key === 'employee') return getEmployeeById(i.employeeId)?.name || i.employeeId
@@ -78,6 +89,7 @@ export default function AdminITHelpDesk() {
     filterFns: {
       status: (i, val) => i.status === val,
       priority: (i, val) => i.priority === val,
+      category: (i, val) => (i.category || 'other') === val,
       employee: (i, val) => i.employeeId === val,
       assigned: (i, val) => (val === 'unassigned' ? !i.assignedTo : i.assignedTo === val)
     }
@@ -126,6 +138,12 @@ export default function AdminITHelpDesk() {
     setRefresh((n) => n + 1)
   }
 
+  // IT staff post questions/updates to the issue's discussion thread.
+  function handleViewReply(issueId, text) {
+    addITIssueComment(issueId, { byId: user.id, byName: user.name, byRole: 'it' }, text)
+    setRefresh((n) => n + 1)
+  }
+
   function getPriorityLabel(key) {
     const p = IT_ISSUE_PRIORITIES.find((item) => item.key === key)
     return p ? p.label : key
@@ -160,28 +178,41 @@ export default function AdminITHelpDesk() {
           placeholder="Search IT issues..."
           filters={[
             { key: 'employee', label: 'Employee', value: table.filters.employee || 'all', options: employeeFilterOpts },
+            { key: 'category', label: 'Category', value: table.filters.category || 'all', options: IT_CATEGORY_FILTER_OPTS },
             { key: 'priority', label: 'Priority', value: table.filters.priority || 'all', options: IT_PRIORITY_FILTER_OPTS },
             { key: 'status', label: 'Status', value: table.filters.status || 'all', options: IT_STATUS_FILTER_OPTS },
             { key: 'assigned', label: 'Assigned To', value: table.filters.assigned || 'all', options: assignedFilterOpts }
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '32%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '8%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Issue" keyName="issue" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Category" keyName="category" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Status</th>
               <SortableTh label="Assigned To" keyName="assigned" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Est. Time" keyName="estimatedTime" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Expected Response Time" keyName="estimatedTime" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Reported On" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               {canAssign && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={canAssign ? 8 : 7} className="muted">
+              <tr><td colSpan={canAssign ? 9 : 8} className="muted">
                 {isITStaff ? 'No IT issues are assigned to you right now.' : 'No IT issues match your filters.'}
               </td></tr>
             )}
@@ -194,11 +225,14 @@ export default function AdminITHelpDesk() {
                 <tr key={issue.id}>
                   <td>{employee?.name || issue.employeeId}</td>
                   <td>
-                    <strong>{issue.issue}</strong>
+                    <button type="button" className="issue-link" onClick={() => setViewId(issue.id)} title="Open issue details and discussion">
+                      <strong>{issue.issue}</strong>
+                    </button>
                     {issue.description && (
                       <div className="muted small">{issue.description}</div>
                     )}
                   </td>
+                  <td>{itIssueCategoryLabel(issue.category)}</td>
                   <td>
                     <span className={`tag ${getPriorityClass(issue.priority)}`}>
                       {getPriorityLabel(issue.priority)}
@@ -293,6 +327,70 @@ export default function AdminITHelpDesk() {
           onPageChange={setPage}
         />
       </div>
+
+      {viewIssue && (
+        <Modal onClose={() => setViewId(null)} title={viewIssue.issue}>
+          <div className="modal-form">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>{viewIssue.issue}</h3>
+                <div className="muted small">Reported {formatDate(viewIssue.createdOn)}</div>
+              </div>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setViewId(null)}>✕</button>
+            </div>
+            <ul className="lunch-policy-list first">
+              <li>
+                <span className="muted">Employee</span>
+                <strong>{getEmployeeById(viewIssue.employeeId)?.name || viewIssue.employeeId}</strong>
+              </li>
+              <li>
+                <span className="muted">Category</span>
+                <strong>{itIssueCategoryLabel(viewIssue.category)}</strong>
+              </li>
+              <li>
+                <span className="muted">Priority</span>
+                <strong>{getPriorityLabel(viewIssue.priority)}</strong>
+              </li>
+              <li>
+                <span className="muted">Status</span>
+                <strong>{IT_ISSUE_STATUSES.find((s) => s.key === viewIssue.status)?.label || viewIssue.status}</strong>
+              </li>
+              <li>
+                <span className="muted">Assigned to</span>
+                <strong>
+                  {viewIssue.assignedTo
+                    ? itStaff.find((s) => s.id === viewIssue.assignedTo)?.name || viewIssue.assignedTo
+                    : 'Not assigned'}
+                </strong>
+              </li>
+              {viewIssue.estimatedTime && (
+                <li>
+                  <span className="muted">Expected Response Time</span>
+                  <strong>{viewIssue.estimatedTime}</strong>
+                </li>
+              )}
+            </ul>
+            {viewIssue.description && (
+              <p className="hint"><strong>Description:</strong> {viewIssue.description}</p>
+            )}
+            {viewIssue.attachment && viewIssue.attachment.dataUrl && (
+              <div className="field">
+                <span>Error screenshot</span>
+                <img
+                  src={viewIssue.attachment.dataUrl}
+                  alt={viewIssue.attachment.name || 'Error screenshot'}
+                  style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 8, border: '1px solid #d9def0' }}
+                />
+              </div>
+            )}
+            <ITIssueThread
+              issue={viewIssue}
+              viewerRole="it"
+              onReply={(text) => handleViewReply(viewIssue.id, text)}
+            />
+          </div>
+        </Modal>
+      )}
 
       <p className="hint">
         {isITStaff

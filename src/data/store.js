@@ -1443,17 +1443,20 @@ export function getITStaffById(id) {
 }
 
 // Create a new IT issue. Returns the saved issue.
-export function createITIssue({ employeeId, issue, description, priority }) {
+export function createITIssue({ employeeId, issue, description, priority, category, attachment }) {
   const all = getITIssues()
   const newIssue = {
     id: `ITI${Date.now()}`,
     employeeId,
     issue,
     description: description || '',
+    category: category || 'other',
     priority,
     status: 'open',
     assignedTo: null,
     estimatedTime: null,
+    attachment: attachment || null,
+    comments: [],
     createdOn: todayKey(),
     updatedOn: todayKey()
   }
@@ -1476,7 +1479,7 @@ export function withdrawITIssue(issueId, employeeId) {
 }
 
 // Employee edits an open IT issue that has not been assigned yet.
-export function updateITIssue(issueId, employeeId, { issue, description, priority }) {
+export function updateITIssue(issueId, employeeId, { issue, description, priority, category, attachment }) {
   const all = getITIssues()
   const idx = all.findIndex((i) => i.id === issueId)
   if (idx < 0) return null
@@ -1488,6 +1491,8 @@ export function updateITIssue(issueId, employeeId, { issue, description, priorit
     issue,
     description: description || '',
     priority,
+    category: category || row.category || 'other',
+    attachment: attachment === undefined ? row.attachment || null : (attachment || null),
     updatedOn: todayKey()
   }
   write(KEYS.itIssues, all)
@@ -1522,6 +1527,44 @@ export function setITIssueStatus(issueId, status) {
   }
   write(KEYS.itIssues, all)
   return all[idx]
+}
+
+// Employee re-opens an issue that was marked resolved/closed but is not
+// actually fixed. It goes back to open so IT picks it up again.
+export function reopenITIssue(issueId, employeeId) {
+  const all = getITIssues()
+  const idx = all.findIndex((i) => i.id === issueId)
+  if (idx < 0) return null
+  const issue = all[idx]
+  if (issue.employeeId !== employeeId) return null
+  if (!['resolved', 'closed'].includes(issue.status)) return null
+  all[idx] = { ...issue, status: 'open', updatedOn: todayKey() }
+  write(KEYS.itIssues, all)
+  return all[idx]
+}
+
+// Add a comment to an IT issue's thread. author = { byId, byName, byRole }
+// where byRole is 'employee' or 'it'.
+export function addITIssueComment(issueId, author, text) {
+  const all = getITIssues()
+  const idx = all.findIndex((i) => i.id === issueId)
+  if (idx < 0) return null
+  const issue = all[idx]
+  const comment = {
+    id: `ITIC${Date.now()}`,
+    byId: author.byId,
+    byName: author.byName,
+    byRole: author.byRole,
+    text,
+    on: todayKey()
+  }
+  all[idx] = {
+    ...issue,
+    comments: [...(issue.comments || []), comment],
+    updatedOn: todayKey()
+  }
+  write(KEYS.itIssues, all)
+  return comment
 }
 
 // ---- Company Announcements ----

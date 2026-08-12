@@ -430,11 +430,94 @@ export default function EmployeeDashboard() {
         </div>
       )}
 
+      <h3 className="section-title">Attendance history</h3>
+      <div className="card">
+        <TableToolbar
+          showSearch={false}
+          total={historyTotal}
+          startIndex={historyStart}
+          endIndex={historyEnd}
+          filters={[
+            {
+              key: 'month',
+              label: 'Month',
+              value: selectedHistoryMonth,
+              options: historyMonthOptions
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              value: historyTable.filters.status || 'all',
+              options: ATTENDANCE_STATUS_FILTERS
+            }
+          ]}
+          onFilterChange={(key, val) => {
+            if (key === 'month') setSelectedHistoryMonth(val)
+            else historyTable.setFilter(key, val)
+          }}
+        />
+        <table className="table table-cols-attendance">
+          <colgroup>
+            <col className="col-date" />
+            <col className="col-time" />
+            <col className="col-time" />
+            <col className="col-narrow" />
+            <col className="col-narrow" />
+            <col className="col-status" />
+          </colgroup>
+          <thead>
+            <tr>
+              <SortableTh label="Date" keyName="date" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
+              <SortableTh label="Time In" keyName="timeIn" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
+              <SortableTh label="Time Out" keyName="timeOut" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
+              <SortableTh label="Worked" keyName="worked" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
+              <SortableTh label="Break" keyName="break" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
+              <SortableTh label="Status" keyName="status" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
+            </tr>
+          </thead>
+          <tbody>
+            {historyTable.count === 0 && (
+              <tr><td colSpan="6" className="muted">No attendance records for {monthLabel(selectedHistoryMonth)}.</td></tr>
+            )}
+            {historyPage.map((r) => (
+              <tr key={r.id}>
+                <td>{formatDate(r.date)}</td>
+                <td>{formatClock(r.timeIn)}</td>
+                <td>{formatClock(r.timeOut)}</td>
+                <td>{formatMinutes(workedMinutes(r))}</td>
+                <td>{formatMinutes(totalBreakMinutes(r))}</td>
+                <td>
+                  <span className={`tag ${isLate(r, settings.officeStartTime, settings.lateGraceMinutes) ? 'tag-late' : 'tag-ok'}`}>
+                    {statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pagination
+          page={historyPageNum}
+          totalPages={historyTotalPages}
+          total={historyTotal}
+          startIndex={historyStart}
+          endIndex={historyEnd}
+          onPageChange={setHistoryPage}
+        />
+      </div>
+
       {corrections.length > 0 && (
         <>
           <h3 className="section-title">My correction requests</h3>
           <div className="card">
-            <table className="table">
+            <table className="table" style={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '27%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '15%' }} />
+              </colgroup>
               <thead>
                 <tr>
                   <SortableTh label="Date" keyName="date" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
@@ -683,80 +766,6 @@ export default function EmployeeDashboard() {
         </Modal>
       )}
 
-      <h3 className="section-title">Attendance history</h3>
-      <div className="card">
-        <TableToolbar
-          showSearch={false}
-          total={historyTotal}
-          startIndex={historyStart}
-          endIndex={historyEnd}
-          filters={[
-            {
-              key: 'month',
-              label: 'Month',
-              value: selectedHistoryMonth,
-              options: historyMonthOptions
-            },
-            {
-              key: 'status',
-              label: 'Status',
-              value: historyTable.filters.status || 'all',
-              options: ATTENDANCE_STATUS_FILTERS
-            }
-          ]}
-          onFilterChange={(key, val) => {
-            if (key === 'month') setSelectedHistoryMonth(val)
-            else historyTable.setFilter(key, val)
-          }}
-        />
-        <table className="table table-cols-attendance">
-          <colgroup>
-            <col className="col-date" />
-            <col className="col-time" />
-            <col className="col-time" />
-            <col className="col-narrow" />
-            <col className="col-narrow" />
-            <col className="col-status" />
-          </colgroup>
-          <thead>
-            <tr>
-              <SortableTh label="Date" keyName="date" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
-              <SortableTh label="Time In" keyName="timeIn" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
-              <SortableTh label="Time Out" keyName="timeOut" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
-              <SortableTh label="Worked" keyName="worked" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
-              <SortableTh label="Break" keyName="break" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
-              <SortableTh label="Status" keyName="status" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
-            </tr>
-          </thead>
-          <tbody>
-            {historyTable.count === 0 && (
-              <tr><td colSpan="6" className="muted">No attendance records for {monthLabel(selectedHistoryMonth)}.</td></tr>
-            )}
-            {historyPage.map((r) => (
-              <tr key={r.id}>
-                <td>{formatDate(r.date)}</td>
-                <td>{formatClock(r.timeIn)}</td>
-                <td>{formatClock(r.timeOut)}</td>
-                <td>{formatMinutes(workedMinutes(r))}</td>
-                <td>{formatMinutes(totalBreakMinutes(r))}</td>
-                <td>
-                  <span className={`tag ${isLate(r, settings.officeStartTime, settings.lateGraceMinutes) ? 'tag-late' : 'tag-ok'}`}>
-                    {statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <Pagination
-          page={historyPageNum}
-          totalPages={historyTotalPages}
-          total={historyTotal}
-          startIndex={historyStart}
-          endIndex={historyEnd}
-          onPageChange={setHistoryPage}
-        />
-      </div>
     </div>
   )
 }

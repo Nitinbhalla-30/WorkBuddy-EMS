@@ -27,10 +27,12 @@ export default function DriverView() {
     return (
       <div className="driver-page">
         <header className="driver-topbar">
-          <span className="driver-brand">WorkBuddy — Driver View</span>
-          {user?.role === 'driver' && (
-            <button className="driver-logout" onClick={logout}>Log out</button>
-          )}
+          <div className="driver-topbar-row">
+            <span className="driver-brand">WorkBuddy — Driver View</span>
+            {user?.role === 'driver' && (
+              <button className="driver-logout" onClick={logout}>Log out</button>
+            )}
+          </div>
         </header>
         <main className="driver-content">
           <div className="info-box">Driver not found. Please check your credentials.</div>
@@ -56,13 +58,13 @@ export default function DriverView() {
     <div className="driver-page">
       {/* Sticky top bar: always visible while scrolling on the phone */}
       <header className="driver-topbar">
-        <div className="driver-topbar-left">
+        <div className="driver-topbar-row">
           <span className="driver-brand">WorkBuddy — Driver View</span>
           {user?.role === 'driver' && (
             <button className="driver-logout" onClick={logout}>Log out</button>
           )}
         </div>
-        <div className="driver-topbar-right">
+        <div className="driver-topbar-driver">
           <span className="driver-name">{driver.name}</span>
           <span className="driver-date">{todayLabel}</span>
         </div>
@@ -160,7 +162,7 @@ function StopCard({ index, stop, direction }) {
     : (trip.shiftEnd ? `Shift ends ${formatTime12(trip.shiftEnd)}` : '')
 
   return (
-    <article className="stop-card">
+    <article className={`stop-card ${direction === 'pickup' ? 'stop-card-pickup' : 'stop-card-drop'}`}>
       <div className="stop-card-head">
         <span className="stop-num">{index}</span>
         <div className="stop-head-text">

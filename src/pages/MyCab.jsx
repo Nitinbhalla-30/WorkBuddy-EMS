@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addCabMessage,
@@ -285,6 +285,98 @@ export default function MyCab() {
   )
 }
 
+// Date field with a calendar that toggles open/closed on click. The native
+// <input type="date"> picker reopens on every icon click and can't be
+// closed from JS, so we render our own popover instead.
+function ToggleDateInput({ value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef(null)
+  const initial = value ? new Date(`${value}T00:00:00`) : new Date()
+  const [viewYear, setViewYear] = useState(initial.getFullYear())
+  const [viewMonth, setViewMonth] = useState(initial.getMonth())
+
+  useEffect(() => {
+    if (!open) return
+    const onOutside = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [open])
+
+  function toggle(e) {
+    // Field sits inside a <label>; stop the label from re-forwarding the
+    // click to the input, which would undo the toggle.
+    if (e) e.preventDefault()
+    if (!open) {
+      const base = value ? new Date(`${value}T00:00:00`) : new Date()
+      setViewYear(base.getFullYear())
+      setViewMonth(base.getMonth())
+    }
+    setOpen((o) => !o)
+  }
+
+  function shiftMonth(delta) {
+    const d = new Date(viewYear, viewMonth + delta, 1)
+    setViewYear(d.getFullYear())
+    setViewMonth(d.getMonth())
+  }
+
+  function pick(day) {
+    onChange(`${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`)
+    setOpen(false)
+  }
+
+  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString([], { month: 'long', year: 'numeric' })
+  const firstWeekday = new Date(viewYear, viewMonth, 1).getDay()
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
+  const todayKey = new Date().toISOString().slice(0, 10)
+
+  return (
+    <div className="toggle-date-field" ref={wrapRef}>
+      <input
+        type="text"
+        readOnly
+        value={value ? formatDate(value) : ''}
+        placeholder="Select a date"
+        onClick={(e) => toggle(e)}
+      />
+      <button type="button" className="toggle-date-icon" onClick={(e) => toggle(e)} aria-label="Toggle calendar">📅</button>
+      {open && (
+        <div className="toggle-date-cal">
+          <div className="toggle-date-head">
+            <button type="button" onClick={() => shiftMonth(-1)}>‹</button>
+            <span>{monthLabel}</span>
+            <button type="button" onClick={() => shiftMonth(1)}>›</button>
+          </div>
+          <div className="toggle-date-grid">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+              <span key={d} className="cal-dow">{d}</span>
+            ))}
+            {Array.from({ length: firstWeekday }).map((_, i) => (
+              <span key={`b${i}`} />
+            ))}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1
+              const key = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+              const cls = [
+                'cal-day',
+                key === value ? 'cal-selected' : '',
+                key === todayKey ? 'cal-today' : ''
+              ].filter(Boolean).join(' ')
+              return (
+                <button type="button" key={key} className={cls} onClick={() => pick(day)}>
+                  {day}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ---- Inline request form ----
 function RequestForm({ pickupTrip, onSubmit, onCancel }) {
   const [forDate, setForDate] = useState('')
@@ -329,11 +421,11 @@ function RequestForm({ pickupTrip, onSubmit, onCancel }) {
       <div className="two-col">
         <label className="field">
           <span>Date (day 1) *</span>
-          <input type="date" value={forDate} onChange={(e) => setForDate(e.target.value)} />
+          <ToggleDateInput value={forDate} onChange={setForDate} />
         </label>
         <label className="field">
           <span>Date (day 2, optional)</span>
-          <input type="date" value={forDate2} onChange={(e) => setForDate2(e.target.value)} />
+          <ToggleDateInput value={forDate2} onChange={setForDate2} />
         </label>
       </div>
 

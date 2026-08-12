@@ -85,8 +85,8 @@ export default function EmployeeAnnouncements() {
       case 'urgent': return 'tag-high'
       case 'job': return 'tag-medium'
       case 'policy': return 'tag-low'
-      case 'event': return ''
-      default: return ''
+      case 'event': return 'tag-event'
+      default: return 'tag-general'
     }
   }
 
@@ -111,7 +111,14 @@ export default function EmployeeAnnouncements() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '38%' }} />
+            <col style={{ width: '17%' }} />
+            <col style={{ width: '17%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '14%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -133,9 +140,7 @@ export default function EmployeeAnnouncements() {
                   <td>
                     <strong>{announcement.title}</strong>
                     <div className="muted small">
-                      {announcement.content.length > 60
-                        ? `${announcement.content.substring(0, 60)}...`
-                        : announcement.content}
+                      {announcement.content}
                     </div>
                   </td>
                   <td>

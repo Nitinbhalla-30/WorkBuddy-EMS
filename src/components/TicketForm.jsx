@@ -52,25 +52,23 @@ export default function TicketForm({ onCreate, onCancel, initial = null, submitL
     <form onSubmit={submit}>
       {error && <div className="error-box first">{error}</div>}
 
-      <div className="two-col">
-        <label className="field">
-          <span>Type</span>
-          <select value={kind} onChange={(e) => changeKind(e.target.value)}>
-            <option value="query">Query (a routine question)</option>
-            <option value="grievance">Grievance (a serious concern)</option>
-          </select>
-        </label>
+      <label className="field">
+        <span>Type</span>
+        <select value={kind} onChange={(e) => changeKind(e.target.value)}>
+          <option value="query">Query (a routine question)</option>
+          <option value="grievance">Grievance (a serious concern)</option>
+        </select>
+      </label>
 
-        <label className="field">
-          <span>Category</span>
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="">-- choose --</option>
-            {categories.map((c) => (
-              <option key={c.key} value={c.key}>{c.label}</option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <label className="field">
+        <span>Category</span>
+        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="">-- choose --</option>
+          {categories.map((c) => (
+            <option key={c.key} value={c.key}>{c.label}</option>
+          ))}
+        </select>
+      </label>
 
       <label className="field">
         <span>Subject</span>

@@ -32,6 +32,30 @@ const STATUS_FILTERS = [
   { value: 'rejected', label: 'Rejected' },
   { value: 'withdrawn', label: 'Withdrawn' }
 ]
+const SUBMITTED_DURING_FILTERS = [
+  { value: 'all', label: 'All time' },
+  { value: 'this-month', label: 'This Month' },
+  { value: 'last-month', label: 'Last Month' },
+  { value: 'ytd', label: 'Year to Date' }
+]
+
+// Whether a claim's submitted-on date (YYYY-MM-DD) falls inside the chosen
+// "Submitted During" window.
+function inSubmittedDuring(dateKey, val) {
+  if (!val || val === 'all') return true
+  if (!dateKey) return false
+  const d = new Date(`${dateKey}T00:00:00`)
+  const now = new Date()
+  if (val === 'this-month') {
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+  }
+  if (val === 'last-month') {
+    const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    return d.getFullYear() === lm.getFullYear() && d.getMonth() === lm.getMonth()
+  }
+  if (val === 'ytd') return d.getFullYear() === now.getFullYear()
+  return true
+}
 
 export default function EmployeeReimbursements() {
   const { user } = useAuth()
@@ -59,7 +83,8 @@ export default function EmployeeReimbursements() {
     initialSortKey: 'appliedOn',
     initialSortDir: 'desc',
     filterFns: {
-      status: (c, val) => c.status === val
+      status: (c, val) => c.status === val,
+      submittedDuring: (c, val) => inSubmittedDuring(c.appliedOn, val)
     }
   })
 
@@ -230,27 +255,6 @@ export default function EmployeeReimbursements() {
               <div className="info-box">Reason: {openClaim.reviewNote}</div>
             )}
             <div className="button-row">
-              {canEditReimbursement(openClaim) && (
-                <button
-                  type="button"
-                  className="btn btn-light"
-                  onClick={() => {
-                    setEditId(openClaim.id)
-                    setOpenId(null)
-                  }}
-                >
-                  Edit claim
-                </button>
-              )}
-              {canWithdrawReimbursement(openClaim) && (
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => handleWithdraw(openClaim.id)}
-                >
-                  Withdraw claim
-                </button>
-              )}
               <button type="button" className="btn btn-light" onClick={() => setOpenId(null)}>
                 Close
               </button>
@@ -289,15 +293,32 @@ export default function EmployeeReimbursements() {
           startIndex={startIndex}
           endIndex={endIndex}
           placeholder="Search claims..."
-          filters={[{
-            key: 'status',
-            label: 'Status',
-            value: table.filters.status || 'all',
-            options: STATUS_FILTERS
-          }]}
+          filters={[
+            {
+              key: 'submittedDuring',
+              label: 'Submitted During',
+              value: table.filters.submittedDuring || 'all',
+              options: SUBMITTED_DURING_FILTERS
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              value: table.filters.status || 'all',
+              options: STATUS_FILTERS
+            }
+          ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '30%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '10%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Category" keyName="category" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />

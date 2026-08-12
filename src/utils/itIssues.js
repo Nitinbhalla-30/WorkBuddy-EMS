@@ -6,6 +6,12 @@ export function canWithdrawITIssue(issue) {
   return issue?.status === 'open' || issue?.status === 'inprogress'
 }
 
+// An issue can be re-opened by the employee when it was marked resolved or
+// closed but the problem is not actually fixed.
+export function canReopenITIssue(issue) {
+  return issue?.status === 'resolved' || issue?.status === 'closed'
+}
+
 export function itIssueStatusLabel(status) {
   switch (status) {
     case 'open': return 'Open'
@@ -25,5 +31,16 @@ export function itIssueStatusClass(status) {
     case 'withdrawn': return 'tag-absent'
     case 'closed': return ''
     default: return ''
+  }
+}
+
+export function itIssueCategoryLabel(key) {
+  switch (key) {
+    case 'hardware': return 'Hardware'
+    case 'software': return 'Software'
+    case 'network': return 'Network Access'
+    case 'email': return 'Email & Accounts'
+    case 'other': return 'Other'
+    default: return key || 'Other'
   }
 }

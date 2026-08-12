@@ -41,6 +41,30 @@ const TASK_PRIORITY_FILTER_OPTS = [
   { value: 'all', label: 'All priorities' },
   ...TASK_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
 ]
+const ASSIGNED_DURING_FILTER_OPTS = [
+  { value: 'all', label: 'All time' },
+  { value: 'this-month', label: 'This Month' },
+  { value: 'last-month', label: 'Last Month' },
+  { value: 'ytd', label: 'Year to Date' }
+]
+
+// Whether a task's assigned-on date (YYYY-MM-DD) falls inside the chosen
+// "Assigned During" window.
+function inAssignedDuring(dateKey, val) {
+  if (!val || val === 'all') return true
+  if (!dateKey) return false
+  const d = new Date(`${dateKey}T00:00:00`)
+  const now = new Date()
+  if (val === 'this-month') {
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+  }
+  if (val === 'last-month') {
+    const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    return d.getFullYear() === lm.getFullYear() && d.getMonth() === lm.getMonth()
+  }
+  if (val === 'ytd') return d.getFullYear() === now.getFullYear()
+  return true
+}
 
 // The employee's own task board. Self-created tasks can be edited and deleted;
 // manager-assigned tasks follow a submit-for-closure → manager approval flow.
@@ -74,7 +98,8 @@ export default function EmployeeTasks() {
     initialSortDir: 'asc',
     filterFns: {
       status: (t, val) => t.status === val,
-      priority: (t, val) => t.priority === val
+      priority: (t, val) => t.priority === val,
+      assignedDuring: (t, val) => inAssignedDuring(t.createdOn, val)
     }
   })
   const {
@@ -322,21 +347,37 @@ export default function EmployeeTasks() {
           placeholder="Search tasks..."
           filters={[
             {
-              key: 'status',
-              label: 'Status',
-              value: table.filters.status || 'all',
-              options: TASK_STATUS_FILTER_OPTS
+              key: 'assignedDuring',
+              label: 'Assigned During',
+              value: table.filters.assignedDuring || 'all',
+              options: ASSIGNED_DURING_FILTER_OPTS
             },
             {
               key: 'priority',
               label: 'Priority',
               value: table.filters.priority || 'all',
               options: TASK_PRIORITY_FILTER_OPTS
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              value: table.filters.status || 'all',
+              options: TASK_STATUS_FILTER_OPTS
             }
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '17%' }} />
+            <col style={{ width: '25%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '8%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />

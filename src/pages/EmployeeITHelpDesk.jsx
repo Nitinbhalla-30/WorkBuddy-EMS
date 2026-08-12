@@ -1,17 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
+  addITIssueComment,
   createITIssue,
   getITIssuesForEmployee,
   getITStaffById,
+  reopenITIssue,
   updateITIssue,
   withdrawITIssue
 } from '../data/store.js'
-import { IT_ISSUE_PRIORITIES, IT_ISSUE_STATUSES } from '../data/sampleData.js'
+import { IT_ISSUE_CATEGORIES, IT_ISSUE_PRIORITIES, IT_ISSUE_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import {
   canEditITIssue,
+  canReopenITIssue,
   canWithdrawITIssue,
+  itIssueCategoryLabel,
   itIssueStatusClass,
   itIssueStatusLabel
 } from '../utils/itIssues.js'
@@ -20,6 +24,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import ITIssueThread from '../components/ITIssueThread.jsx'
 import Modal from '../components/Modal.jsx'
 
 const IT_STATUS_FILTER_OPTS = [
@@ -30,14 +35,72 @@ const IT_PRIORITY_FILTER_OPTS = [
   { value: 'all', label: 'All priorities' },
   ...IT_ISSUE_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
 ]
+const IT_CATEGORY_FILTER_OPTS = [
+  { value: 'all', label: 'All categories' },
+  ...IT_ISSUE_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))
+]
 
-const BLANK_FORM = { issue: '', description: '', priority: 'medium' }
+const BLANK_FORM = { issue: '', description: '', category: '', priority: 'medium', attachment: null }
+
+// Screenshot of the error message, stored as a data URL so IT can actually
+// see it. Images only, max 2 MB.
+function ScreenshotField({ attachment, onChange }) {
+  const inputRef = useRef(null)
+  const [error, setError] = useState('')
+
+  function handlePick(e) {
+    const file = e.target.files && e.target.files[0]
+    if (inputRef.current) inputRef.current.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file (e.g., a screenshot).')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Please choose an image under 2 MB.')
+      return
+    }
+    setError('')
+    const reader = new FileReader()
+    reader.onload = () => {
+      onChange({ name: file.name, size: file.size, dataUrl: String(reader.result || '') })
+    }
+    reader.onerror = () => setError('Could not read that image. Please try another file.')
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div className="field">
+      <span>Error screenshot</span>
+      <div className="button-row">
+        <button type="button" className="btn btn-light btn-tiny" onClick={() => inputRef.current && inputRef.current.click()}>
+          {attachment ? 'Replace screenshot' : 'Attach screenshot'}
+        </button>
+        {attachment && (
+          <button type="button" className="btn btn-light btn-tiny" onClick={() => onChange(null)}>
+            Remove
+          </button>
+        )}
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePick} />
+      <div className="file-hint">Attach a screenshot of the error message so IT can solve it faster.</div>
+      {error && <div className="error-box first">{error}</div>}
+      {attachment && attachment.dataUrl && (
+        <img
+          src={attachment.dataUrl}
+          alt={attachment.name}
+          style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 8, border: '1px solid #d9def0', marginTop: 8 }}
+        />
+      )}
+    </div>
+  )
+}
 
 function ITIssueForm({ formData, onChange, onSubmit, onCancel, submitLabel = 'Submit Issue' }) {
   return (
     <form onSubmit={onSubmit}>
-      <div className="field">
-        <label>Issue *</label>
+      <label className="field">
+        <span>Issue *</span>
         <input
           type="text"
           value={formData.issue}
@@ -45,18 +108,30 @@ function ITIssueForm({ formData, onChange, onSubmit, onCancel, submitLabel = 'Su
           placeholder="e.g., Computer not starting"
           required
         />
-      </div>
-      <div className="field">
-        <label>Description</label>
+      </label>
+      <label className="field">
+        <span>Description</span>
         <input
           type="text"
           value={formData.description}
           onChange={(e) => onChange({ ...formData, description: e.target.value })}
           placeholder="Describe the problem in detail..."
         />
-      </div>
-      <div className="field">
-        <label>Priority</label>
+      </label>
+      <label className="field">
+        <span>Category *</span>
+        <select
+          value={formData.category}
+          onChange={(e) => onChange({ ...formData, category: e.target.value })}
+        >
+          <option value="">-- choose --</option>
+          {IT_ISSUE_CATEGORIES.map((c) => (
+            <option key={c.key} value={c.key}>{c.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
+        <span>Priority</span>
         <select
           value={formData.priority}
           onChange={(e) => onChange({ ...formData, priority: e.target.value })}
@@ -65,7 +140,11 @@ function ITIssueForm({ formData, onChange, onSubmit, onCancel, submitLabel = 'Su
             <option key={p.key} value={p.key}>{p.label}</option>
           ))}
         </select>
-      </div>
+      </label>
+      <ScreenshotField
+        attachment={formData.attachment}
+        onChange={(attachment) => onChange({ ...formData, attachment })}
+      />
       <div className="button-row">
         <button type="submit" className="btn btn-primary">{submitLabel}</button>
         {onCancel && (
@@ -95,16 +174,17 @@ export default function EmployeeITHelpDesk() {
 
   const table = useTableControls(issues, {
     getSearchText: (i) =>
-      [i.issue, i.description, i.priority, i.status, i.estimatedTime, i.createdOn].join(' '),
+      [i.issue, i.description, itIssueCategoryLabel(i.category), i.priority, i.status, i.estimatedTime, i.createdOn].join(' '),
     getSortValue: (i, key) => {
       if (key === 'assigned') return i.assignedTo || ''
       return i[key]
     },
     initialSortKey: 'createdOn',
     initialSortDir: 'desc',
-    filterFns: {
+        filterFns: {
       status: (i, val) => i.status === val,
-      priority: (i, val) => i.priority === val
+      priority: (i, val) => i.priority === val,
+      category: (i, val) => (i.category || 'other') === val
     }
   })
   const {
@@ -127,7 +207,9 @@ export default function EmployeeITHelpDesk() {
     setFormData({
       issue: issue.issue,
       description: issue.description || '',
-      priority: issue.priority || 'medium'
+      category: issue.category || '',
+      priority: issue.priority || 'medium',
+      attachment: issue.attachment || null
     })
     setShowForm(false)
     setEditId(issue.id)
@@ -135,13 +217,15 @@ export default function EmployeeITHelpDesk() {
 
   function handleCreateSubmit(e) {
     e.preventDefault()
-    if (!formData.issue.trim()) return
+    if (!formData.issue.trim() || !formData.category) return
 
     createITIssue({
       employeeId: user.id,
       issue: formData.issue,
       description: formData.description,
-      priority: formData.priority
+      priority: formData.priority,
+      category: formData.category,
+      attachment: formData.attachment
     })
 
     setFormData(BLANK_FORM)
@@ -151,16 +235,28 @@ export default function EmployeeITHelpDesk() {
 
   function handleEditSubmit(e) {
     e.preventDefault()
-    if (!editIssue || !formData.issue.trim()) return
+    if (!editIssue || !formData.issue.trim() || !formData.category) return
 
     updateITIssue(editIssue.id, user.id, {
       issue: formData.issue,
       description: formData.description,
-      priority: formData.priority
+      priority: formData.priority,
+      category: formData.category,
+      attachment: formData.attachment
     })
 
     setEditId(null)
     setFormData(BLANK_FORM)
+    setRefresh((n) => n + 1)
+  }
+
+  function handleReopen(issueId) {
+    reopenITIssue(issueId, user.id)
+    setRefresh((n) => n + 1)
+  }
+
+  function handleReply(issueId, text) {
+    addITIssueComment(issueId, { byId: user.id, byName: user.name, byRole: 'employee' }, text)
     setRefresh((n) => n + 1)
   }
 
@@ -276,6 +372,10 @@ export default function EmployeeITHelpDesk() {
             </div>
             <ul className="lunch-policy-list first">
               <li>
+                <span className="muted">Category</span>
+                <strong>{itIssueCategoryLabel(openIssue.category)}</strong>
+              </li>
+              <li>
                 <span className="muted">Priority</span>
                 <strong>{getPriorityLabel(openIssue.priority)}</strong>
               </li>
@@ -293,7 +393,7 @@ export default function EmployeeITHelpDesk() {
               </li>
               {openIssue.estimatedTime && (
                 <li>
-                  <span className="muted">Est. time</span>
+                  <span className="muted">Expected Response Time</span>
                   <strong>{openIssue.estimatedTime}</strong>
                 </li>
               )}
@@ -301,32 +401,33 @@ export default function EmployeeITHelpDesk() {
             {openIssue.description && (
               <p className="hint"><strong>Description:</strong> {openIssue.description}</p>
             )}
-            <div className="button-row">
-              {canEditITIssue(openIssue) && (
+            {openIssue.attachment && openIssue.attachment.dataUrl && (
+              <div className="field">
+                <span>Error screenshot</span>
+                <img
+                  src={openIssue.attachment.dataUrl}
+                  alt={openIssue.attachment.name || 'Error screenshot'}
+                  style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 8, border: '1px solid #d9def0' }}
+                />
+              </div>
+            )}
+            {canReopenITIssue(openIssue) && (
+              <div className="button-row">
                 <button
                   type="button"
-                  className="btn btn-light"
-                  onClick={() => {
-                    openEditForm(openIssue)
-                    setOpenId(null)
-                  }}
+                  className="btn btn-primary"
+                  onClick={() => handleReopen(openIssue.id)}
                 >
-                  Edit issue
+                  Re-Open issue
                 </button>
-              )}
-              {canWithdrawITIssue(openIssue) && (
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => handleWithdraw(openIssue.id)}
-                >
-                  Withdraw issue
-                </button>
-              )}
-              <button type="button" className="btn btn-light" onClick={() => setOpenId(null)}>
-                Close
-              </button>
-            </div>
+              </div>
+            )}
+            <ITIssueThread
+              issue={openIssue}
+              viewerRole="employee"
+              onReply={(text) => handleReply(openIssue.id, text)}
+              onClose={() => setOpenId(null)}
+            />
           </div>
         </Modal>
       )}
@@ -340,26 +441,38 @@ export default function EmployeeITHelpDesk() {
           endIndex={issuesEnd}
           placeholder="Search IT issues..."
           filters={[
-            { key: 'status', label: 'Status', value: table.filters.status || 'all', options: IT_STATUS_FILTER_OPTS },
-            { key: 'priority', label: 'Priority', value: table.filters.priority || 'all', options: IT_PRIORITY_FILTER_OPTS }
+            { key: 'category', label: 'Category', value: table.filters.category || 'all', options: IT_CATEGORY_FILTER_OPTS },
+            { key: 'priority', label: 'Priority', value: table.filters.priority || 'all', options: IT_PRIORITY_FILTER_OPTS },
+            { key: 'status', label: 'Status', value: table.filters.status || 'all', options: IT_STATUS_FILTER_OPTS }
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '40%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '5%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Issue" keyName="issue" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Category" keyName="category" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Assigned To" keyName="assigned" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Est. Time" keyName="estimatedTime" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Expected Response Time" keyName="estimatedTime" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Reported On" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={7} className="muted">No IT issues match your filters.</td></tr>
+              <tr><td colSpan={8} className="muted">No IT issues match your filters.</td></tr>
             )}
             {issuesPage.map((issue) => {
               const assignedStaff = issue.assignedTo ? getITStaffById(issue.assignedTo) : null
@@ -371,6 +484,7 @@ export default function EmployeeITHelpDesk() {
                       <div className="muted small">{issue.description}</div>
                     )}
                   </td>
+                  <td>{itIssueCategoryLabel(issue.category)}</td>
                   <td>
                     <span className={`tag ${getPriorityClass(issue.priority)}`}>
                       {getPriorityLabel(issue.priority)}
@@ -428,6 +542,17 @@ export default function EmployeeITHelpDesk() {
                             }}
                           >
                             Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="task-menu-item"
+                            disabled={!canReopenITIssue(issue)}
+                            onClick={() => {
+                              handleReopen(issue.id)
+                              closeMenu()
+                            }}
+                          >
+                            Re-Open
                           </button>
                           <button
                             type="button"

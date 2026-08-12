@@ -88,8 +88,8 @@ export default function AdminAnnouncements() {
       case 'urgent': return 'tag-high'
       case 'job': return 'tag-medium'
       case 'policy': return 'tag-low'
-      case 'event': return ''
-      default: return ''
+      case 'event': return 'tag-event'
+      default: return 'tag-general'
     }
   }
 

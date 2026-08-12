@@ -328,7 +328,17 @@ export default function EmployeeLeaves() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '30%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '10%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Type" keyName="type" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -485,29 +495,6 @@ export default function EmployeeLeaves() {
               onReply={handleLeaveReply}
               onClose={closeLeaveModal}
             />
-
-            {(canEditLeave(openLeave) || canWithdrawLeave(openLeave)) && (
-              <div className="button-row">
-                {canEditLeave(openLeave) && (
-                  <button
-                    type="button"
-                    className="btn btn-light"
-                    onClick={() => { setEditId(openLeave.id); setOpenId(null) }}
-                  >
-                    Edit request
-                  </button>
-                )}
-                {canWithdrawLeave(openLeave) && (
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={() => handleWithdraw(openLeave.id)}
-                  >
-                    Withdraw request
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         </Modal>
       )}
