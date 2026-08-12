@@ -29,11 +29,15 @@ import Settings from './pages/Settings.jsx'
 import DriverView from './pages/DriverView.jsx'
 
 // Only let logged-in users through. Admin-only pages also check the role.
-function Protected({ children, adminOnly }) {
+// noIT blocks everyone in the IT Support department (they get no announcements).
+function Protected({ children, adminOnly, noIT }) {
   const { user, ready } = useAuth()
   if (!ready) return null
   if (!user) return <Navigate to="/login" replace />
   if (adminOnly && user.role !== 'admin') return <Navigate to="/" replace />
+  if (noIT && user.department === 'IT Support') {
+    return <Navigate to="/it-help-desk" replace />
+  }
   return children
 }
 
@@ -41,7 +45,11 @@ function Protected({ children, adminOnly }) {
 function Home() {
   const { user } = useAuth()
   if (!user) return <Navigate to="/login" replace />
-  if (user.role === 'admin')  return <Navigate to="/admin" replace />
+  if (user.role === 'admin') {
+    // IT staff land on the IT Help Desk, HR/Admin on the dashboard.
+    if (user.department === 'IT Support') return <Navigate to="/it-help-desk" replace />
+    return <Navigate to="/admin" replace />
+  }
   if (user.role === 'driver') return <Navigate to={`/driver/${user.id}`} replace />
   return <Navigate to="/me" replace />
 }
@@ -72,7 +80,14 @@ export default function App() {
         <Route path="/my-profile" element={<EmployeeProfile />} />
         <Route path="/help" element={<EmployeeTickets />} />
         <Route path="/it-help" element={<EmployeeITHelpDesk />} />
-        <Route path="/announcements" element={<EmployeeAnnouncements />} />
+        <Route
+          path="/announcements"
+          element={
+            <Protected noIT>
+              <EmployeeAnnouncements />
+            </Protected>
+          }
+        />
         <Route path="/my-cab" element={<MyCab />} />
         <Route
           path="/admin"
@@ -141,7 +156,7 @@ export default function App() {
         <Route
           path="/company-announcements"
           element={
-            <Protected adminOnly>
+            <Protected adminOnly noIT>
               <AdminAnnouncements />
             </Protected>
           }

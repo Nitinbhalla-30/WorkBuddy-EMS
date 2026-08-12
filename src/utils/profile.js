@@ -28,6 +28,7 @@ export function blankProfile(employeeId) {
       aadhaar: '',
       pan: '',
       homeGate: '',
+      wantsCabService: null,    // true/false once the employee answers the cab question
       pickupPoint: null,        // { lat, lng } map point for cab pickup
       dropPoint: null,          // { lat, lng } map point for cab drop
       dropSameAsPickup: true,   // drop point is same as pickup by default
@@ -89,6 +90,12 @@ export function validateForSubmit(profile) {
   if (!isValidAadhaar(p.aadhaar)) problems.push('Aadhaar must be 12 digits.')
   if (!isValidPan(p.pan)) problems.push('PAN must look like ABCDE1234F.')
   if (!p.photo?.dataUrl) problems.push('Profile picture is required.')
+
+  if (p.wantsCabService == null) {
+    problems.push('Please answer whether you want cab service for pickup and drop.')
+  } else if (p.wantsCabService && !p.pickupPoint) {
+    problems.push('Pickup point (Google Map location) is required for cab service.')
+  }
 
   const b = profile.bank
   if (!b.accountNumber.trim()) problems.push('Bank account number is required.')

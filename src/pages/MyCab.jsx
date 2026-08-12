@@ -18,6 +18,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
+import TimeInput from '../components/TimeInput.jsx'
 import {
   driverById,
   formatDateTime,
@@ -349,7 +350,7 @@ function RequestForm({ pickupTrip, onSubmit, onCancel }) {
         </label>
         <label className="field">
           <span>New pickup time (if different)</span>
-          <input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
+          <TimeInput value={newTime} onChange={(e) => setNewTime(e.target.value)} />
         </label>
       </div>
 

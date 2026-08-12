@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   addCabMessage,
   addDriver,
@@ -19,8 +19,15 @@ import {
   markCabThreadRead,
   setCabAssignment,
   setCabRequestStatus,
-  setDriverPin
+  setDriverPin,
+  updateDriver,
+  updateTrip,
+  updateVehicle
 } from '../data/store.js'
+import Modal from '../components/Modal.jsx'
+import Pagination from '../components/Pagination.jsx'
+import TimeInput from '../components/TimeInput.jsx'
+import { usePagination } from '../hooks/usePagination.js'
 import { formatDate } from '../utils/attendance.js'
 import {
   driverById,
@@ -87,52 +94,279 @@ export default function CabManagement() {
 
 // ---- Vehicles ----
 function VehiclesTab({ vehicles, bump }) {
-  const [number, setNumber] = useState('')
-  const [label, setLabel] = useState('')
+  const [showAdd, setShowAdd] = useState(false)
+  const [editId, setEditId] = useState(null)
+  const [form, setForm] = useState({ number: '', label: '' })
+  const [deleteId, setDeleteId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
 
-  function add() {
-    if (!number.trim()) return
-    addVehicle({ number: number.trim(), label: label.trim() })
-    setNumber(''); setLabel(''); bump()
+  const editVehicle = vehicles.find((v) => v.id === editId) || null
+
+  const {
+    items: vehiclesPage,
+    page: vehiclesPageNum,
+    totalPages: vehiclesTotalPages,
+    total: vehiclesTotal,
+    startIndex: vehiclesStart,
+    endIndex: vehiclesEnd,
+    setPage: setVehiclesPage
+  } = usePagination(vehicles)
+
+  function toggleMenu(vehicleId) {
+    setOpenMenuId(openMenuId === vehicleId ? null : vehicleId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
+
+  function openAdd() {
+    setForm({ number: '', label: '' })
+    setShowAdd(true)
+  }
+
+  function openEdit(v) {
+    setEditId(v.id)
+    setForm({ number: v.number, label: v.label || '' })
+  }
+
+  function submitAdd() {
+    if (!form.number.trim()) return
+    addVehicle({ number: form.number.trim(), label: form.label.trim() })
+    setShowAdd(false)
+    bump()
+  }
+
+  function submitEdit() {
+    if (!editId || !form.number.trim()) return
+    updateVehicle(editId, { number: form.number.trim(), label: form.label.trim() })
+    setEditId(null)
+    bump()
+  }
+
+  function confirmDelete() {
+    if (deleteId) {
+      deleteVehicle(deleteId)
+      setDeleteId(null)
+      bump()
+    }
   }
 
   return (
     <div className="card">
-      <h3 className="section-title first">Company vehicles</h3>
+      <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
+        <h3 className="section-title first">Company vehicles</h3>
+        <button className="btn btn-primary btn-tiny" onClick={openAdd}>Add vehicle</button>
+      </div>
       <table className="table">
-        <thead><tr><th>Vehicle No.</th><th>Label</th><th></th></tr></thead>
+        <thead><tr><th>Vehicle No.</th><th>Label</th><th>Action</th></tr></thead>
         <tbody>
-          {vehicles.map((v) => (
+          {vehiclesPage.map((v) => (
             <tr key={v.id}>
               <td><strong>{v.number}</strong></td>
               <td>{v.label || <span className="muted">--</span>}</td>
-              <td><button className="btn btn-tiny btn-danger" onClick={() => { deleteVehicle(v.id); bump() }}>Remove</button></td>
+              <td>
+                <div className="task-menu-container">
+                  <button
+                    type="button"
+                    className="btn btn-tiny btn-light task-menu-button"
+                    onClick={() => toggleMenu(v.id)}
+                    aria-label="Vehicle actions"
+                  >
+                    ⋯
+                  </button>
+                  {openMenuId === v.id && (
+                    <div className="task-menu-dropdown">
+                      <button
+                        type="button"
+                        className="task-menu-item"
+                        onClick={() => {
+                          openEdit(v)
+                          closeMenu()
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="task-menu-item task-menu-item-danger"
+                        onClick={() => {
+                          setDeleteId(v.id)
+                          closeMenu()
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div className="button-row">
-        <input className="inline-input" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="Vehicle no." />
-        <input className="inline-input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label (e.g. Sedan / White)" />
-        <button className="btn btn-primary btn-tiny" onClick={add}>Add</button>
-      </div>
+      <Pagination
+        page={vehiclesPageNum}
+        totalPages={vehiclesTotalPages}
+        total={vehiclesTotal}
+        startIndex={vehiclesStart}
+        endIndex={vehiclesEnd}
+        onPageChange={setVehiclesPage}
+      />
+
+      {showAdd && (
+        <Modal onClose={() => setShowAdd(false)} title="Add vehicle">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Add vehicle</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)}>✕</button>
+            </div>
+            <label className="field">
+              <span>Vehicle no.</span>
+              <input value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} placeholder="e.g. DL 1CA 1234" />
+            </label>
+            <label className="field">
+              <span>Label (optional)</span>
+              <input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Sedan / White" />
+            </label>
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!form.number.trim()} onClick={submitAdd}>Add vehicle</button>
+              <button className="btn btn-light" onClick={() => setShowAdd(false)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {editVehicle && (
+        <Modal onClose={() => setEditId(null)} title={`Edit vehicle — ${editVehicle.number}`}>
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Edit vehicle — {editVehicle.number}</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)}>✕</button>
+            </div>
+            <label className="field">
+              <span>Vehicle no.</span>
+              <input value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} />
+            </label>
+            <label className="field">
+              <span>Label (optional)</span>
+              <input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Sedan / White" />
+            </label>
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!form.number.trim()} onClick={submitEdit}>Save changes</button>
+              <button className="btn btn-light" onClick={() => setEditId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteId && (
+        <Modal onClose={() => setDeleteId(null)} title="Confirm Delete">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Delete</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)}>✕</button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to delete this vehicle? This action cannot be undone.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>Delete</button>
+              <button type="button" className="btn btn-light" onClick={() => setDeleteId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
 
 // ---- Drivers ----
 function DriversTab({ drivers, bump }) {
-  const [name, setName] = useState('')
-  const [mobile, setMobile] = useState('')
-  const [newPin, setNewPin] = useState('')
+  const [showAdd, setShowAdd] = useState(false)
+  const [editId, setEditId] = useState(null)
+  const [form, setForm] = useState({ name: '', mobile: '', pin: '' })
+  const [deleteId, setDeleteId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
   // Per-driver inline PIN editing state: { [driverId]: value }
   const [pins, setPins] = useState({})
   const [pinSaved, setPinSaved] = useState({})
 
-  function add() {
-    if (!name.trim()) return
-    addDriver({ name: name.trim(), mobile: mobile.trim(), pin: newPin.trim() })
-    setName(''); setMobile(''); setNewPin(''); bump()
+  const editDriver = drivers.find((d) => d.id === editId) || null
+
+  const {
+    items: driversPage,
+    page: driversPageNum,
+    totalPages: driversTotalPages,
+    total: driversTotal,
+    startIndex: driversStart,
+    endIndex: driversEnd,
+    setPage: setDriversPage
+  } = usePagination(drivers)
+
+  function toggleMenu(driverId) {
+    setOpenMenuId(openMenuId === driverId ? null : driverId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
+
+  function openAdd() {
+    setForm({ name: '', mobile: '', pin: '' })
+    setShowAdd(true)
+  }
+
+  function openEdit(d) {
+    setEditId(d.id)
+    setForm({ name: d.name, mobile: d.mobile || '', pin: '' })
+  }
+
+  function submitAdd() {
+    if (!form.name.trim()) return
+    addDriver({ name: form.name.trim(), mobile: form.mobile.trim(), pin: form.pin.trim() })
+    setShowAdd(false)
+    bump()
+  }
+
+  function submitEdit() {
+    if (!editId || !form.name.trim()) return
+    updateDriver(editId, {
+      name: form.name.trim(),
+      mobile: form.mobile.trim(),
+      // Blank PIN keeps the existing one.
+      ...(form.pin.trim() ? { pin: form.pin.trim() } : {})
+    })
+    setEditId(null)
+    bump()
+  }
+
+  function confirmDelete() {
+    if (deleteId) {
+      deleteDriver(deleteId)
+      setDeleteId(null)
+      bump()
+    }
   }
 
   function savePin(driverId) {
@@ -146,7 +380,10 @@ function DriversTab({ drivers, bump }) {
 
   return (
     <div className="card">
-      <h3 className="section-title first">Company drivers</h3>
+      <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
+        <h3 className="section-title first">Company drivers</h3>
+        <button className="btn btn-primary btn-tiny" onClick={openAdd}>Add driver</button>
+      </div>
       <p className="hint first">
         Each driver needs a <strong>WorkBuddy ID</strong> and <strong>PIN</strong> to log in and
         view their run sheet. Set or change a driver&rsquo;s PIN in the table below.
@@ -158,11 +395,11 @@ function DriversTab({ drivers, bump }) {
             <th>Mobile</th>
             <th>WorkBuddy ID</th>
             <th>PIN</th>
-            <th></th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          {drivers.map((d) => (
+          {driversPage.map((d) => (
             <tr key={d.id}>
               <td><strong>{d.name}</strong></td>
               <td>{d.mobile}</td>
@@ -188,56 +425,319 @@ function DriversTab({ drivers, bump }) {
                 </div>
               </td>
               <td>
-                <button className="btn btn-tiny btn-danger" onClick={() => { deleteDriver(d.id); bump() }}>Remove</button>
+                <div className="task-menu-container">
+                  <button
+                    type="button"
+                    className="btn btn-tiny btn-light task-menu-button"
+                    onClick={() => toggleMenu(d.id)}
+                    aria-label="Driver actions"
+                  >
+                    ⋯
+                  </button>
+                  {openMenuId === d.id && (
+                    <div className="task-menu-dropdown">
+                      <button
+                        type="button"
+                        className="task-menu-item"
+                        onClick={() => {
+                          openEdit(d)
+                          closeMenu()
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="task-menu-item task-menu-item-danger"
+                        onClick={() => {
+                          setDeleteId(d.id)
+                          closeMenu()
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <h4 className="sub-title" style={{ marginTop: '1.5rem' }}>Add a driver</h4>
-      <div className="button-row">
-        <input className="inline-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Driver name" />
-        <input className="inline-input" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="Mobile" maxLength={10} />
-        <input className="inline-input" style={{ width: 80 }} value={newPin} onChange={(e) => setNewPin(e.target.value)} placeholder="PIN" maxLength={8} />
-        <button className="btn btn-primary btn-tiny" onClick={add}>Add</button>
-      </div>
+      <Pagination
+        page={driversPageNum}
+        totalPages={driversTotalPages}
+        total={driversTotal}
+        startIndex={driversStart}
+        endIndex={driversEnd}
+        onPageChange={setDriversPage}
+      />
+
+      {showAdd && (
+        <Modal onClose={() => setShowAdd(false)} title="Add driver">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Add driver</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)}>✕</button>
+            </div>
+            <label className="field">
+              <span>Driver name</span>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Ramu Yadav" />
+            </label>
+            <div className="two-col">
+              <label className="field">
+                <span>Mobile</span>
+                <input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} placeholder="10-digit mobile" maxLength={10} />
+              </label>
+              <label className="field">
+                <span>PIN (optional)</span>
+                <input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} placeholder="Login PIN" maxLength={8} />
+              </label>
+            </div>
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!form.name.trim()} onClick={submitAdd}>Add driver</button>
+              <button className="btn btn-light" onClick={() => setShowAdd(false)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {editDriver && (
+        <Modal onClose={() => setEditId(null)} title={`Edit driver — ${editDriver.name}`}>
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Edit driver — {editDriver.name}</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)}>✕</button>
+            </div>
+            <label className="field">
+              <span>Driver name</span>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </label>
+            <div className="two-col">
+              <label className="field">
+                <span>Mobile</span>
+                <input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} maxLength={10} />
+              </label>
+              <label className="field">
+                <span>New PIN (leave blank to keep current)</span>
+                <input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} placeholder={editDriver.pin ? '••••' : 'Set PIN'} maxLength={8} />
+              </label>
+            </div>
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!form.name.trim()} onClick={submitEdit}>Save changes</button>
+              <button className="btn btn-light" onClick={() => setEditId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteId && (
+        <Modal onClose={() => setDeleteId(null)} title="Confirm Delete">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Delete</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)}>✕</button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to delete this driver? This action cannot be undone.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>Delete</button>
+              <button type="button" className="btn btn-light" onClick={() => setDeleteId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
 
 // ---- Trips ----
-function TripsTab({ trips, vehicles, drivers, bump }) {
-  const [vehicleId, setVehicleId] = useState('')
-  const [driverId, setDriverId] = useState('')
-  const [direction, setDirection] = useState('pickup')
-  const [time, setTime] = useState('')
-  const [shiftStart, setShiftStart] = useState('')
-  const [shiftEnd, setShiftEnd] = useState('')
-  const [officeGate, setOfficeGate] = useState('')
-  const [supervisorName, setSupervisorName] = useState('')
-  const [supervisorMobile, setSupervisorMobile] = useState('')
+const EMPTY_TRIP_FORM = {
+  vehicleId: '', driverId: '', direction: 'pickup', time: '',
+  shiftStart: '', shiftEnd: '', officeGate: '',
+  supervisorName: '', supervisorMobile: ''
+}
 
-  function add() {
-    if (!vehicleId || !driverId || !time) return
-    addTrip({
-      vehicleId, driverId, direction, time,
-      officeGate: direction === 'drop' ? officeGate : '',
-      supervisorName, supervisorMobile,
-      shiftStart: direction === 'pickup' ? shiftStart : '',
-      shiftEnd: direction === 'drop' ? shiftEnd : ''
+// Person cell for the trips table: name on its own line with the mobile
+// number below it in brackets, tappable (tel: link) on phones.
+function PersonCell({ name, mobile }) {
+  if (!name && !mobile) return <span className="muted">--</span>
+  return (
+    <>
+      <div>{name || '--'}</div>
+      {mobile
+        ? <a href={`tel:${mobile}`} className="phone-link">({mobile})</a>
+        : <span className="muted">(--)</span>}
+    </>
+  )
+}
+
+function TripsTab({ trips, vehicles, drivers, bump }) {
+  const [showAdd, setShowAdd] = useState(false)
+  const [editId, setEditId] = useState(null)
+  const [form, setForm] = useState(EMPTY_TRIP_FORM)
+  const [deleteId, setDeleteId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+
+  const editTrip = trips.find((t) => t.id === editId) || null
+
+  const {
+    items: tripsPage,
+    page: tripsPageNum,
+    totalPages: tripsTotalPages,
+    total: tripsTotal,
+    startIndex: tripsStart,
+    endIndex: tripsEnd,
+    setPage: setTripsPage
+  } = usePagination(trips)
+
+  function toggleMenu(tripId) {
+    setOpenMenuId(openMenuId === tripId ? null : tripId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
+
+  function openAdd() {
+    setForm(EMPTY_TRIP_FORM)
+    setShowAdd(true)
+  }
+
+  function openEdit(t) {
+    setEditId(t.id)
+    setForm({
+      vehicleId: t.vehicleId, driverId: t.driverId, direction: t.direction, time: t.time,
+      shiftStart: t.shiftStart || '', shiftEnd: t.shiftEnd || '', officeGate: t.officeGate || '',
+      supervisorName: t.supervisorName || '', supervisorMobile: t.supervisorMobile || ''
     })
-    setVehicleId(''); setDriverId(''); setTime(''); setOfficeGate('')
-    setShiftStart(''); setShiftEnd('')
-    setSupervisorName(''); setSupervisorMobile(''); bump()
+  }
+
+  // Keep only the fields that belong to the chosen direction.
+  function normalize(data) {
+    return {
+      vehicleId: data.vehicleId,
+      driverId: data.driverId,
+      direction: data.direction,
+      time: data.time,
+      officeGate: data.direction === 'drop' ? data.officeGate : '',
+      supervisorName: data.supervisorName,
+      supervisorMobile: data.supervisorMobile,
+      shiftStart: data.direction === 'pickup' ? data.shiftStart : '',
+      shiftEnd: data.direction === 'drop' ? data.shiftEnd : ''
+    }
+  }
+
+  const canSubmit = Boolean(form.vehicleId && form.driverId && form.time)
+
+  function submitAdd() {
+    if (!canSubmit) return
+    addTrip(normalize(form))
+    setShowAdd(false)
+    bump()
+  }
+
+  function submitEdit() {
+    if (!editId || !canSubmit) return
+    updateTrip(editId, normalize(form))
+    setEditId(null)
+    bump()
+  }
+
+  function confirmDelete() {
+    if (deleteId) {
+      deleteTrip(deleteId)
+      setDeleteId(null)
+      bump()
+    }
+  }
+
+  // The trip form is shared by the Add and Edit popups.
+  function tripFormFields() {
+    return (
+      <>
+        <div className="two-col">
+          <label className="field">
+            <span>Vehicle</span>
+            <select value={form.vehicleId} onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}>
+              <option value="">-- choose --</option>
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.number}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>Driver</span>
+            <select value={form.driverId} onChange={(e) => setForm({ ...form, driverId: e.target.value })}>
+              <option value="">-- choose --</option>
+              {drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="two-col">
+          <label className="field">
+            <span>Direction</span>
+            <select value={form.direction} onChange={(e) => setForm({ ...form, direction: e.target.value })}>
+              <option value="pickup">Pickup (home to office)</option>
+              <option value="drop">Drop (office to home)</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>{form.direction === 'drop' ? 'Cab leaves office time' : 'Pickup time'}</span>
+            <TimeInput value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
+          </label>
+        </div>
+        {form.direction === 'pickup' && (
+          <label className="field">
+            <span>Office starts at</span>
+            <TimeInput value={form.shiftStart} onChange={(e) => setForm({ ...form, shiftStart: e.target.value })} />
+          </label>
+        )}
+        {form.direction === 'drop' && (
+          <label className="field">
+            <span>Office ends at</span>
+            <TimeInput value={form.shiftEnd} onChange={(e) => setForm({ ...form, shiftEnd: e.target.value })} />
+          </label>
+        )}
+        {form.direction === 'drop' && (
+          <label className="field">
+            <span>Office gate (where cab waits)</span>
+            <input value={form.officeGate} onChange={(e) => setForm({ ...form, officeGate: e.target.value })} placeholder="e.g. Gate 2" />
+          </label>
+        )}
+        <div className="two-col">
+          <label className="field">
+            <span>Supervisor name (to call if cab is late)</span>
+            <input value={form.supervisorName} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} placeholder="e.g. Anil Singh" />
+          </label>
+          <label className="field">
+            <span>Supervisor mobile</span>
+            <input value={form.supervisorMobile} onChange={(e) => setForm({ ...form, supervisorMobile: e.target.value })} placeholder="10-digit mobile" maxLength={10} />
+          </label>
+        </div>
+      </>
+    )
   }
 
   return (
     <div className="card">
-      <h3 className="section-title first">Cab trips</h3>
+      <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
+        <h3 className="section-title first">Cab trips</h3>
+        <button className="btn btn-primary btn-tiny" onClick={openAdd}>Add trip</button>
+      </div>
       <table className="table">
-        <thead><tr><th>Direction</th><th>Cab time</th><th>Office time</th><th>Vehicle</th><th>Driver</th><th>Office Gate</th><th>Supervisor</th><th></th></tr></thead>
+        <thead><tr><th>Direction</th><th>Cab time</th><th>Office time</th><th>Vehicle</th><th>Driver</th><th>Office Gate</th><th>Supervisor</th><th>Action</th></tr></thead>
         <tbody>
-          {trips.map((t) => {
+          {tripsPage.map((t) => {
             const v = vehicleById(vehicles, t.vehicleId)
             const d = driverById(drivers, t.driverId)
             return (
@@ -250,83 +750,108 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
                     : (t.shiftStart ? <>Starts {formatTime12(t.shiftStart)}</> : <span className="muted">--</span>)}
                 </td>
                 <td>{v?.number || '--'}</td>
-                <td>{d?.name || '--'} ({d?.mobile || '--'})</td>
+                <td><PersonCell name={d?.name} mobile={d?.mobile} /></td>
                 <td>{t.officeGate || <span className="muted">--</span>}</td>
+                <td><PersonCell name={t.supervisorName} mobile={t.supervisorMobile} /></td>
                 <td>
-                  {t.supervisorName
-                    ? <>{t.supervisorName}<div className="muted small">{t.supervisorMobile}</div></>
-                    : <span className="muted">--</span>}
+                  <div className="task-menu-container">
+                    <button
+                      type="button"
+                      className="btn btn-tiny btn-light task-menu-button"
+                      onClick={() => toggleMenu(t.id)}
+                      aria-label="Trip actions"
+                    >
+                      ⋯
+                    </button>
+                    {openMenuId === t.id && (
+                      <div className="task-menu-dropdown">
+                        <button
+                          type="button"
+                          className="task-menu-item"
+                          onClick={() => {
+                            openEdit(t)
+                            closeMenu()
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="task-menu-item task-menu-item-danger"
+                          onClick={() => {
+                            setDeleteId(t.id)
+                            closeMenu()
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </td>
-                <td><button className="btn btn-tiny btn-danger" onClick={() => { deleteTrip(t.id); bump() }}>Remove</button></td>
               </tr>
             )
           })}
         </tbody>
       </table>
+      <Pagination
+        page={tripsPageNum}
+        totalPages={tripsTotalPages}
+        total={tripsTotal}
+        startIndex={tripsStart}
+        endIndex={tripsEnd}
+        onPageChange={setTripsPage}
+      />
 
-      <h4 className="sub-title">Add a trip</h4>
-      <div className="two-col">
-        <label className="field">
-          <span>Vehicle</span>
-          <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
-            <option value="">-- choose --</option>
-            {vehicles.map((v) => <option key={v.id} value={v.id}>{v.number}</option>)}
-          </select>
-        </label>
-        <label className="field">
-          <span>Driver</span>
-          <select value={driverId} onChange={(e) => setDriverId(e.target.value)}>
-            <option value="">-- choose --</option>
-            {drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
-        </label>
-      </div>
-      <div className="two-col">
-        <label className="field">
-          <span>Direction</span>
-          <select value={direction} onChange={(e) => setDirection(e.target.value)}>
-            <option value="pickup">Pickup (home to office)</option>
-            <option value="drop">Drop (office to home)</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>{direction === 'drop' ? 'Cab leaves office time' : 'Pickup time'}</span>
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
-        </label>
-      </div>
-      <div className="two-col">
-        {direction === 'pickup' ? (
-          <label className="field">
-            <span>Office starts at</span>
-            <input type="time" value={shiftStart} onChange={(e) => setShiftStart(e.target.value)} />
-          </label>
-        ) : (
-          <label className="field">
-            <span>Office ends at</span>
-            <input type="time" value={shiftEnd} onChange={(e) => setShiftEnd(e.target.value)} />
-          </label>
-        )}
-        <div />
-      </div>
-      {direction === 'drop' && (
-        <label className="field">
-          <span>Office gate (where cab waits)</span>
-          <input value={officeGate} onChange={(e) => setOfficeGate(e.target.value)} placeholder="e.g. Gate 2" />
-        </label>
+      {showAdd && (
+        <Modal onClose={() => setShowAdd(false)} title="Add trip">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Add trip</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)}>✕</button>
+            </div>
+            {tripFormFields()}
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!canSubmit} onClick={submitAdd}>Add trip</button>
+              <button className="btn btn-light" onClick={() => setShowAdd(false)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
       )}
-      <div className="two-col">
-        <label className="field">
-          <span>Supervisor name (to call if cab is late)</span>
-          <input value={supervisorName} onChange={(e) => setSupervisorName(e.target.value)} placeholder="e.g. Anil Singh" />
-        </label>
-        <label className="field">
-          <span>Supervisor mobile</span>
-          <input value={supervisorMobile} onChange={(e) => setSupervisorMobile(e.target.value)} placeholder="10-digit mobile" maxLength={10} />
-        </label>
-      </div>
-      <div className="button-row">
-        <button className="btn btn-primary" onClick={add}>Add trip</button>
-      </div>
+
+      {editTrip && (
+        <Modal onClose={() => setEditId(null)} title="Edit trip">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Edit trip</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)}>✕</button>
+            </div>
+            {tripFormFields()}
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!canSubmit} onClick={submitEdit}>Save changes</button>
+              <button className="btn btn-light" onClick={() => setEditId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteId && (
+        <Modal onClose={() => setDeleteId(null)} title="Confirm Delete">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Delete</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)}>✕</button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to delete this trip? This action cannot be undone.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>Delete</button>
+              <button type="button" className="btn btn-light" onClick={() => setDeleteId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
@@ -335,6 +860,16 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
 function AssignTab({ employees, trips, assignments, bump }) {
   const pickupTrips = trips.filter((t) => t.direction === 'pickup')
   const dropTrips = trips.filter((t) => t.direction === 'drop')
+
+  const {
+    items: employeesPage,
+    page: assignPageNum,
+    totalPages: assignTotalPages,
+    total: assignTotal,
+    startIndex: assignStart,
+    endIndex: assignEnd,
+    setPage: setAssignPage
+  } = usePagination(employees)
 
   function assignedTo(empId) {
     return assignments.find((a) => a.employeeId === empId) || { pickupTripId: '', dropTripId: '' }
@@ -351,7 +886,7 @@ function AssignTab({ employees, trips, assignments, bump }) {
       <table className="table">
         <thead><tr><th>Employee</th><th>Pickup trip</th><th>Drop trip</th><th></th></tr></thead>
         <tbody>
-          {employees.map((emp) => {
+          {employeesPage.map((emp) => {
             const a = assignedTo(emp.id)
             return (
               <tr key={emp.id}>
@@ -382,6 +917,14 @@ function AssignTab({ employees, trips, assignments, bump }) {
           })}
         </tbody>
       </table>
+      <Pagination
+        page={assignPageNum}
+        totalPages={assignTotalPages}
+        total={assignTotal}
+        startIndex={assignStart}
+        endIndex={assignEnd}
+        onPageChange={setAssignPage}
+      />
       <p className="hint">Changes save automatically when you pick a trip.</p>
     </div>
   )
@@ -535,12 +1078,75 @@ function TodayTab({ employees, bump }) {
   )
   const drivers = useMemo(() => getDrivers(), [bump])
 
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [showCancellation, setShowCancellation] = useState(false)
+  const [copiedId, setCopiedId] = useState(null)
+  const copyTimer = useRef(null)
+
+  function toggleMenu(id) {
+    setOpenMenuId((cur) => (cur === id ? null : id))
+  }
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  function copyRunSheetLink(d) {
+    navigator.clipboard.writeText(`${origin}/driver/${d.id}`).catch(() => {})
+    setCopiedId(d.id)
+    window.clearTimeout(copyTimer.current)
+    copyTimer.current = window.setTimeout(() => {
+      setCopiedId(null)
+      setOpenMenuId(null)
+    }, 1200)
+  }
+
+  useEffect(() => () => window.clearTimeout(copyTimer.current), [])
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
+
+  const {
+    items: driversPage,
+    page: runsPageNum,
+    totalPages: runsTotalPages,
+    total: runsTotal,
+    startIndex: runsStart,
+    endIndex: runsEnd,
+    setPage: setRunsPage
+  } = usePagination(drivers)
+
   function nameOf(id) {
     return employees.find((e) => e.id === id)?.name || id
   }
 
   const skippingPickup = cancellations.filter((c) => c.skipPickup)
   const skippingDrop   = cancellations.filter((c) => c.skipDrop)
+
+  const {
+    items: pickupPage,
+    page: pickupPageNum,
+    totalPages: pickupTotalPages,
+    total: pickupTotal,
+    startIndex: pickupStart,
+    endIndex: pickupEnd,
+    setPage: setPickupPage
+  } = usePagination(skippingPickup)
+  const {
+    items: dropPage,
+    page: dropPageNum,
+    totalPages: dropTotalPages,
+    total: dropTotal,
+    startIndex: dropStart,
+    endIndex: dropEnd,
+    setPage: setDropPage
+  } = usePagination(skippingDrop)
 
   const todayLabel = new Date().toLocaleDateString('en-IN', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -552,78 +1158,147 @@ function TodayTab({ employees, bump }) {
     <>
       {/* Driver run-sheet links */}
       <div className="card">
-        <h3 className="section-title first">Driver run sheets — {todayLabel}</h3>
+        <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
+          <h3 className="section-title first">Driver run sheets — {todayLabel}</h3>
+          <button className="btn btn-primary btn-tiny" onClick={() => setShowCancellation(true)}>
+            Cancellation summary
+          </button>
+        </div>
         <p className="hint first">
           Open or share a driver&rsquo;s run sheet link on their phone before the shift starts.
           The page shows their full pickup and drop list with addresses, times, and map links.
         </p>
         {drivers.length === 0 && <p className="muted">No drivers added yet.</p>}
-        <div className="driver-link-grid">
-          {drivers.map((d) => (
-            <div key={d.id} className="driver-link-card">
-              <div className="driver-link-name">{d.name}</div>
-              <div className="muted small" style={{ marginBottom: 8 }}>{d.mobile}</div>
-              <a
-                href={`${origin}/driver/${d.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-primary btn-tiny"
-              >
-                Open run sheet →
-              </a>
-              <button
-                className="btn btn-light btn-tiny"
-                style={{ marginLeft: 8 }}
-                onClick={() => {
-                  navigator.clipboard.writeText(`${origin}/driver/${d.id}`)
-                    .catch(() => {})
-                }}
-              >
-                Copy link
-              </button>
+        {drivers.length > 0 && (
+          <>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Driver</th>
+                  <th>Mobile</th>
+                  <th>WorkBuddy ID</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {driversPage.map((d) => (
+                  <tr key={d.id}>
+                    <td><strong>{d.name}</strong></td>
+                    <td>{d.mobile}</td>
+                    <td><code>{d.id}</code></td>
+                    <td>
+                      <div className="task-menu-container">
+                        <button
+                          type="button"
+                          className="btn btn-tiny btn-light task-menu-button"
+                          onClick={() => toggleMenu(d.id)}
+                          aria-label="Run sheet actions"
+                        >
+                          ⋯
+                        </button>
+                        {openMenuId === d.id && (
+                          <div className="task-menu-dropdown">
+                            <a
+                              href={`${origin}/driver/${d.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="task-menu-item"
+                              onClick={closeMenu}
+                            >
+                              Open run sheet
+                            </a>
+                            <button
+                              type="button"
+                              className="task-menu-item"
+                              onClick={() => copyRunSheetLink(d)}
+                            >
+                              {copiedId === d.id ? 'Link copied ✓' : 'Copy link'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pagination
+              page={runsPageNum}
+              totalPages={runsTotalPages}
+              total={runsTotal}
+              startIndex={runsStart}
+              endIndex={runsEnd}
+              onPageChange={setRunsPage}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Cancellation summary popup */}
+      {showCancellation && (
+        <Modal onClose={() => setShowCancellation(false)} title="Cancellation summary">
+          <div className="modal-form modal-form-wide">
+            <div className="modal-header">
+              <h3 className="section-title first">Cancellation summary</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowCancellation(false)}>✕</button>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Cancellation summary */}
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3 className="section-title first">Cancellation summary</h3>
+            <h4 className="sub-title">Not taking pickup today</h4>
+            {skippingPickup.length === 0 ? (
+              <p className="muted">All employees are taking the pickup cab today.</p>
+            ) : (
+              <table className="table">
+                <thead><tr><th>Employee</th><th>ID</th></tr></thead>
+                <tbody>
+                  {pickupPage.map((c) => (
+                    <tr key={c.employeeId}>
+                      <td><strong>{nameOf(c.employeeId)}</strong></td>
+                      <td className="muted">{c.employeeId}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {skippingPickup.length > 0 && (
+              <Pagination
+                page={pickupPageNum}
+                totalPages={pickupTotalPages}
+                total={pickupTotal}
+                startIndex={pickupStart}
+                endIndex={pickupEnd}
+                onPageChange={setPickupPage}
+              />
+            )}
 
-        <h4 className="sub-title">Not taking pickup today</h4>
-        {skippingPickup.length === 0 ? (
-          <p className="muted">All employees are taking the pickup cab today.</p>
-        ) : (
-          <table className="table">
-            <thead><tr><th>Employee</th><th>ID</th></tr></thead>
-            <tbody>
-              {skippingPickup.map((c) => (
-                <tr key={c.employeeId}>
-                  <td><strong>{nameOf(c.employeeId)}</strong></td>
-                  <td className="muted">{c.employeeId}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        <h4 className="sub-title" style={{ marginTop: '1.5rem' }}>Not taking drop today</h4>
-        {skippingDrop.length === 0 ? (
-          <p className="muted">All employees are taking the drop cab today.</p>
-        ) : (
-          <table className="table">
-            <thead><tr><th>Employee</th><th>ID</th></tr></thead>
-            <tbody>
-              {skippingDrop.map((c) => (
-                <tr key={c.employeeId}>
-                  <td><strong>{nameOf(c.employeeId)}</strong></td>
-                  <td className="muted">{c.employeeId}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+            <h4 className="sub-title" style={{ marginTop: '1.5rem' }}>Not taking drop today</h4>
+            {skippingDrop.length === 0 ? (
+              <p className="muted">All employees are taking the drop cab today.</p>
+            ) : (
+              <table className="table">
+                <thead><tr><th>Employee</th><th>ID</th></tr></thead>
+                <tbody>
+                  {dropPage.map((c) => (
+                    <tr key={c.employeeId}>
+                      <td><strong>{nameOf(c.employeeId)}</strong></td>
+                      <td className="muted">{c.employeeId}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {skippingDrop.length > 0 && (
+              <Pagination
+                page={dropPageNum}
+                totalPages={dropTotalPages}
+                total={dropTotal}
+                startIndex={dropStart}
+                endIndex={dropEnd}
+                onPageChange={setDropPage}
+              />
+            )}
+          </div>
+        </Modal>
+      )}
     </>
   )
 }

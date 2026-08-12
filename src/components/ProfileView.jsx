@@ -39,6 +39,13 @@ export default function ProfileView({ profile }) {
         <Row label="Aadhaar number" value={p.aadhaar} />
         <Row label="PAN" value={p.pan} />
         <div className="info-row">
+          <span className="info-label">Cab service for pickup &amp; drop</span>
+          <span className="info-value">
+            {p.wantsCabService === false ? 'Not opted in'
+              : (p.wantsCabService === true || p.pickupPoint ? 'Opted in' : <span className="muted">--</span>)}
+          </span>
+        </div>
+        <div className="info-row">
           <span className="info-label">Cab pickup point</span>
           <span className="info-value">
             {p.pickupPoint

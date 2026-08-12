@@ -113,28 +113,55 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
               placeholder="e.g. Gate 3, Gate B" />
           </label>
 
-          <h4 className="sub-title">Cab pickup &amp; drop location</h4>
-          <p className="hint first">
-            Drag the pin (or tap the map) to your exact home location. Your driver
-            uses this point to navigate to you in Google Maps.
-          </p>
+          <h4 className="sub-title">Cab service</h4>
           <label className="field">
-            <span>Pickup point (where the cab picks you up)</span>
+            <span>Do you want cab service for pickup and drop? *</span>
           </label>
-          <MapPicker value={p.pickupPoint} onChange={(pt) => setPersonal('pickupPoint', pt)} />
+          <div className="detect-row">
+            <label className="checkbox-row">
+              <input type="radio" name="wantsCabService" checked={p.wantsCabService === true}
+                onChange={() => setPersonal('wantsCabService', true)} />
+              <span>Yes</span>
+            </label>
+            <label className="checkbox-row">
+              <input type="radio" name="wantsCabService" checked={p.wantsCabService === false}
+                onChange={() => setPersonal('wantsCabService', false)} />
+              <span>No</span>
+            </label>
+          </div>
 
-          <label className="checkbox-row">
-            <input type="checkbox" checked={p.dropSameAsPickup !== false}
-              onChange={(e) => setPersonal('dropSameAsPickup', e.target.checked)} />
-            <span>Drop point is same as pickup (my home)</span>
-          </label>
-          {p.dropSameAsPickup === false && (
+          {p.wantsCabService === true && (
             <>
+              <p className="hint first">
+                Drag the pin (or tap the map) to your exact pickup location. This
+                Google Map point is mandatory and your driver uses it to navigate
+                to you.
+              </p>
               <label className="field">
-                <span>Drop point (where the cab drops you)</span>
+                <span>Pickup point (where the cab picks you up) *</span>
               </label>
-              <MapPicker value={p.dropPoint} onChange={(pt) => setPersonal('dropPoint', pt)} />
+              <MapPicker value={p.pickupPoint} onChange={(pt) => setPersonal('pickupPoint', pt)} />
+
+              <label className="checkbox-row">
+                <input type="checkbox" checked={p.dropSameAsPickup !== false}
+                  onChange={(e) => setPersonal('dropSameAsPickup', e.target.checked)} />
+                <span>Drop point is same as pickup (my home)</span>
+              </label>
+              {p.dropSameAsPickup === false && (
+                <>
+                  <label className="field">
+                    <span>Drop point (where the cab drops you)</span>
+                  </label>
+                  <MapPicker value={p.dropPoint} onChange={(pt) => setPersonal('dropPoint', pt)} />
+                </>
+              )}
             </>
+          )}
+          {p.wantsCabService === false && (
+            <p className="hint first">
+              You will not be included in cab routes. You can opt in later by
+              updating your details and sharing your pickup location.
+            </p>
           )}
 
           <h4 className="sub-title">Emergency contact</h4>

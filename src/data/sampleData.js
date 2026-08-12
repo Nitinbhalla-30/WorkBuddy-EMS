@@ -79,26 +79,56 @@ export const REIMBURSEMENT_STATUSES = [
 //   managerId  -> the id of the manager this person reports to (or null).
 // A manager's team = everyone whose managerId is that manager's id.
 export const SAMPLE_EMPLOYEES = [
-  { id: 'EMP001', name: 'Aarav Sharma', pin: '1111', role: 'employee', department: 'Sales',
+  { id: 'EMP001', name: 'Arjun Mehta', pin: '1111', role: 'employee', department: 'Sales',
     isManager: true, managerId: null,
-    email: 'aarav.sharma@company.com', designation: 'Sales Manager',
-    dateJoined: '2024-08-01',
-    salary: { basic: 18000, hra: 9000, other: 5000, tdsMonthly: 1500 } },
-  { id: 'EMP002', name: 'Priya Nair', pin: '2222', role: 'employee', department: 'Design',
+    email: 'arjun.mehta@company.com', designation: 'Sales Manager',
+    dateJoined: '2024-06-10',
+    salary: { basic: 45000, hra: 20000, other: 8000, tdsMonthly: 3000 } },
+  { id: 'EMP002', name: 'Kavya Reddy', pin: '2222', role: 'employee', department: 'Design',
     isManager: false, managerId: 'EMP001',
-    email: 'priya.nair@company.com', designation: 'UI Designer',
+    email: 'kavya.reddy@company.com', designation: 'UI Designer',
     dateJoined: '2025-03-15',
-    salary: { basic: 12000, hra: 5000, other: 3000, tdsMonthly: 0 } },
-  { id: 'EMP003', name: 'Rohan Gupta', pin: '3333', role: 'employee', department: 'Support',
+    salary: { basic: 22000, hra: 10000, other: 4000, tdsMonthly: 0 } },
+  { id: 'EMP003', name: 'Sameer Joshi', pin: '3333', role: 'employee', department: 'Support',
     isManager: false, managerId: 'EMP001',
-    email: 'rohan.gupta@company.com', designation: 'Support Executive',
+    email: 'sameer.joshi@company.com', designation: 'Support Executive',
     dateJoined: '2025-01-10',
-    salary: { basic: 10000, hra: 4000, other: 2000, tdsMonthly: 0 } },
-  { id: 'EMP004', name: 'Sneha Iyer', pin: '4444', role: 'employee', department: 'Sales',
+    salary: { basic: 12000, hra: 5000, other: 2000, tdsMonthly: 0 } },
+  { id: 'EMP004', name: 'Divya Menon', pin: '4444', role: 'employee', department: 'Sales',
     isManager: false, managerId: 'EMP001',
-    email: 'sneha.iyer@company.com', designation: 'Sales Executive',
+    email: 'divya.menon@company.com', designation: 'Sales Executive',
     dateJoined: '2024-11-01',
-    salary: { basic: 15000, hra: 7000, other: 4000, tdsMonthly: 800 } },
+    salary: { basic: 16000, hra: 7000, other: 3000, tdsMonthly: 0 } },
+  { id: 'EMP005', name: 'Rahul Verma', pin: '8888', role: 'employee', department: 'Marketing',
+    isManager: false, managerId: 'EMP001',
+    email: 'rahul.verma@company.com', designation: 'Marketing Associate',
+    dateJoined: '2025-05-02',
+    salary: { basic: 14000, hra: 6000, other: 2500, tdsMonthly: 0 } },
+  { id: 'EMP006', name: 'Neha Kulkarni', pin: '9999', role: 'employee', department: 'Operations',
+    isManager: true, managerId: null,
+    email: 'neha.kulkarni@company.com', designation: 'Operations Manager',
+    dateJoined: '2024-04-18',
+    salary: { basic: 40000, hra: 18000, other: 7000, tdsMonthly: 2500 } },
+  { id: 'EMP007', name: 'Aditya Rao', pin: '1010', role: 'employee', department: 'Operations',
+    isManager: false, managerId: 'EMP006',
+    email: 'aditya.rao@company.com', designation: 'Operations Executive',
+    dateJoined: '2025-02-20',
+    salary: { basic: 13000, hra: 5500, other: 2000, tdsMonthly: 0 } },
+  { id: 'EMP008', name: 'Ishita Bose', pin: '2020', role: 'employee', department: 'Marketing',
+    isManager: false, managerId: 'EMP001',
+    email: 'ishita.bose@company.com', designation: 'Content Writer',
+    dateJoined: '2025-06-09',
+    salary: { basic: 15000, hra: 6500, other: 2500, tdsMonthly: 0 } },
+  { id: 'EMP009', name: 'Karan Malhotra', pin: '3030', role: 'employee', department: 'Quality',
+    isManager: false, managerId: 'EMP006',
+    email: 'karan.malhotra@company.com', designation: 'QA Analyst',
+    dateJoined: '2025-04-07',
+    salary: { basic: 17000, hra: 7500, other: 3000, tdsMonthly: 0 } },
+  { id: 'EMP010', name: 'Pooja Hegde', pin: '4040', role: 'employee', department: 'Human Resources',
+    isManager: false, managerId: 'EMP006',
+    email: 'pooja.hegde@company.com', designation: 'HR Executive',
+    dateJoined: '2025-07-01',
+    salary: { basic: 18000, hra: 8000, other: 3500, tdsMonthly: 0 } },
   { id: 'ADM001', name: 'Meera Kapoor', pin: '0000', role: 'admin', department: 'Human Resources',
     isManager: false, managerId: null,
     salary: { basic: 0, hra: 0, other: 0, tdsMonthly: 0 } },
@@ -172,7 +202,7 @@ export const SAMPLE_LEAVES = [
     reason: 'Fever', status: 'approved',
     appliedOn: dayFromToday(-11), decidedBy: 'ADM001', decidedOn: dayFromToday(-11),
     supportingDocuments: [
-      { name: 'priya-medical-cert.pdf', size: 145000, type: 'application/pdf', uploadedOn: dayFromToday(-11) }
+      { name: 'kavya-medical-cert.pdf', size: 145000, type: 'application/pdf', uploadedOn: dayFromToday(-11) }
     ],
     messages: [], rejectionReason: ''
   },
@@ -248,7 +278,7 @@ export const SAMPLE_LEAVES = [
     reason: 'Migraine', status: 'pending',
     appliedOn: dayFromToday(-2), decidedBy: null, decidedOn: null,
     supportingDocuments: [
-      { name: 'priya-clinic-note.pdf', size: 98000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }
+      { name: 'kavya-clinic-note.pdf', size: 98000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }
     ],
     messages: [
       {
@@ -338,7 +368,13 @@ function buildSampleAttendance() {
     EMP001: { inH: 9, inM: 25, outH: 18, outM: 5,  bs: [13, 0],  be: [13, 40] },
     EMP002: { inH: 9, inM: 45, outH: 18, outM: 30, bs: [13, 30], be: [14, 15] }, // often late
     EMP003: { inH: 9, inM: 10, outH: 17, outM: 50, bs: [12, 45], be: [13, 20] },
-    EMP004: { inH: 9, inM: 32, outH: 18, outM: 0,  bs: [13, 15], be: [13, 45] }
+    EMP004: { inH: 9, inM: 32, outH: 18, outM: 0,  bs: [13, 15], be: [13, 45] },
+    EMP005: { inH: 9, inM: 20, outH: 18, outM: 10, bs: [13, 0],  be: [13, 35] },
+    EMP006: { inH: 9, inM: 5,  outH: 18, outM: 20, bs: [13, 0],  be: [13, 30] },
+    EMP007: { inH: 9, inM: 50, outH: 18, outM: 40, bs: [13, 45], be: [14, 20] }, // often late
+    EMP008: { inH: 9, inM: 15, outH: 17, outM: 55, bs: [12, 50], be: [13, 25] },
+    EMP009: { inH: 9, inM: 28, outH: 18, outM: 15, bs: [13, 10], be: [13, 40] },
+    EMP010: { inH: 9, inM: 35, outH: 18, outM: 5,  bs: [13, 20], be: [13, 50] }
   }
 
   // ~70 calendar days back yields more months for attendance history testing.
@@ -908,33 +944,36 @@ export const DOCUMENT_TYPES = [
   { key: 'bankProof',   label: 'Bank proof (cancelled cheque / passbook)', multiple: false, required: false }
 ]
 
-// A couple of sample profiles so HR has something to review. Documents store
-// only the file details (name/size), not the actual PDF, in this test phase.
+// Sample profiles for the 10 employees so HR has something to review.
+// Documents store only the file details (name/size), not the actual PDF, in
+// this test phase. Every employee opted in to the cab service
+// (wantsCabService: true) and has a home gate + pickup map point.
 export const SAMPLE_PROFILES = [
   {
     employeeId: 'EMP001', status: 'verified',
     updatedOn: dayFromToday(-30), submittedOn: dayFromToday(-32),
     reviewedBy: 'ADM001', reviewedOn: dayFromToday(-30), reviewNote: '',
     personal: {
-      fullName: 'Aarav Sharma', dob: '1990-04-12',
-      address: '12 MG Road, New Delhi 110001', contactNumber: '9810012345',
-      emergencyName: 'Ravi Sharma', emergencyRelation: 'Father', emergencyContact: '9810099999',
-      aadhaar: '123456789012', pan: 'ABCPS1234K', homeGate: 'Gate 3',
-      pickupPoint: { lat: 28.5921, lng: 77.229 }, dropPoint: null, dropSameAsPickup: true,
-      photo: samplePhoto('Aarav Sharma', '#2f6fed', dayFromToday(-32))
+      fullName: 'Arjun Mehta', dob: '1990-04-12',
+      address: 'B-42 Sector 15, Gurugram 122001', contactNumber: '9810012345',
+      emergencyName: 'Ravi Mehta', emergencyRelation: 'Father', emergencyContact: '9810099999',
+      aadhaar: '123456789012', pan: 'ABCPA1234K', homeGate: 'Gate 3',
+      wantsCabService: true,
+      pickupPoint: { lat: 28.4595, lng: 77.0266 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Arjun Mehta', '#2f6fed', dayFromToday(-32))
     },
     bank: { accountNumber: '50100123456789', ifsc: 'HDFC0001234', bankName: 'HDFC Bank' },
     statutory: {
-      uan: '100200300400', esicApplicable: false, esic: '',
-      nomineeName: 'Ravi Sharma', nomineeRelation: 'Father', nomineeShare: '100'
+      uan: '100200300401', esicApplicable: false, esic: '',
+      nomineeName: 'Ravi Mehta', nomineeRelation: 'Father', nomineeShare: '100'
     },
     documents: {
-      panCard: [{ name: 'aarav-pan.pdf', size: 120000, type: 'application/pdf', uploadedOn: dayFromToday(-32) }],
-      aadhaarCard: [{ name: 'aarav-aadhaar.pdf', size: 200000, type: 'application/pdf', uploadedOn: dayFromToday(-32) }],
-      educational: [{ name: 'aarav-degree.pdf', size: 300000, type: 'application/pdf', uploadedOn: dayFromToday(-32) }],
-      experience: [],
+      panCard: [{ name: 'arjun-pan.pdf', size: 120000, type: 'application/pdf', uploadedOn: dayFromToday(-32) }],
+      aadhaarCard: [{ name: 'arjun-aadhaar.pdf', size: 200000, type: 'application/pdf', uploadedOn: dayFromToday(-32) }],
+      educational: [{ name: 'arjun-degree.pdf', size: 300000, type: 'application/pdf', uploadedOn: dayFromToday(-32) }],
+      experience: [{ name: 'arjun-relieving.pdf', size: 140000, type: 'application/pdf', uploadedOn: dayFromToday(-32) }],
       form12b: [],
-      bankProof: [{ name: 'aarav-cheque.pdf', size: 90000, type: 'application/pdf', uploadedOn: dayFromToday(-32) }]
+      bankProof: [{ name: 'arjun-cheque.pdf', size: 90000, type: 'application/pdf', uploadedOn: dayFromToday(-32) }]
     }
   },
   {
@@ -942,28 +981,29 @@ export const SAMPLE_PROFILES = [
     updatedOn: dayFromToday(-2), submittedOn: dayFromToday(-2),
     reviewedBy: '', reviewedOn: '', reviewNote: '',
     personal: {
-      fullName: 'Priya Nair', dob: '1994-09-03',
-      address: '44 Residency Road, Bengaluru 560025', contactNumber: '9900011122',
-      emergencyName: 'Anita Nair', emergencyRelation: 'Mother', emergencyContact: '9900099888',
-      aadhaar: '987654321098', pan: 'AXNPN5678L', homeGate: 'Gate B',
-      pickupPoint: { lat: 12.9716, lng: 77.5946 }, dropPoint: null, dropSameAsPickup: true,
-      photo: samplePhoto('Priya Nair', '#0f9d7a', dayFromToday(-2))
+      fullName: 'Kavya Reddy', dob: '1994-09-03',
+      address: '18 Sector 62, Noida 201309', contactNumber: '9900011122',
+      emergencyName: 'Anita Reddy', emergencyRelation: 'Mother', emergencyContact: '9900099888',
+      aadhaar: '987654321098', pan: 'AXNPK5678L', homeGate: 'Gate B',
+      wantsCabService: true,
+      pickupPoint: { lat: 28.6353, lng: 77.3668 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Kavya Reddy', '#0f9d7a', dayFromToday(-2))
     },
     bank: { accountNumber: '000123456789', ifsc: 'ICIC0000456', bankName: 'ICICI Bank' },
     statutory: {
-      uan: '555666777888', esicApplicable: true, esic: '3100456789',
-      nomineeName: 'Anita Nair', nomineeRelation: 'Mother', nomineeShare: '100'
+      uan: '555666777888', esicApplicable: false, esic: '',
+      nomineeName: 'Anita Reddy', nomineeRelation: 'Mother', nomineeShare: '100'
     },
     documents: {
-      panCard: [{ name: 'priya-pan.pdf', size: 110000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }],
-      aadhaarCard: [{ name: 'priya-aadhaar.pdf', size: 210000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }],
+      panCard: [{ name: 'kavya-pan.pdf', size: 110000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }],
+      aadhaarCard: [{ name: 'kavya-aadhaar.pdf', size: 210000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }],
       educational: [
-        { name: 'priya-btech.pdf', size: 280000, type: 'application/pdf', uploadedOn: dayFromToday(-2) },
-        { name: 'priya-12th.pdf', size: 150000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }
+        { name: 'kavya-btech.pdf', size: 280000, type: 'application/pdf', uploadedOn: dayFromToday(-2) },
+        { name: 'kavya-12th.pdf', size: 150000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }
       ],
-      experience: [{ name: 'priya-relieving.pdf', size: 130000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }],
-      form12b: [{ name: 'priya-form12b.pdf', size: 95000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }],
-      bankProof: [{ name: 'priya-cheque.pdf', size: 90000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }]
+      experience: [{ name: 'kavya-relieving.pdf', size: 130000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }],
+      form12b: [{ name: 'kavya-form12b.pdf', size: 95000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }],
+      bankProof: [{ name: 'kavya-cheque.pdf', size: 90000, type: 'application/pdf', uploadedOn: dayFromToday(-2) }]
     }
   },
   {
@@ -971,17 +1011,18 @@ export const SAMPLE_PROFILES = [
     updatedOn: dayFromToday(-15), submittedOn: dayFromToday(-18),
     reviewedBy: 'ADM001', reviewedOn: dayFromToday(-15), reviewNote: '',
     personal: {
-      fullName: 'Rohan Gupta', dob: '1992-01-20',
-      address: '8 Sector 18, Noida 201301', contactNumber: '9811122233',
-      emergencyName: 'Kiran Gupta', emergencyRelation: 'Spouse', emergencyContact: '9811144455',
-      aadhaar: '112233445566', pan: 'ROHPG1234M', homeGate: 'Gate 1',
-      pickupPoint: { lat: 28.5355, lng: 77.3910 }, dropPoint: null, dropSameAsPickup: true,
-      photo: samplePhoto('Rohan Gupta', '#d97706', dayFromToday(-18))
+      fullName: 'Sameer Joshi', dob: '1992-01-20',
+      address: '8 Sector 18, Dwarka, New Delhi 110075', contactNumber: '9811122233',
+      emergencyName: 'Kiran Joshi', emergencyRelation: 'Spouse', emergencyContact: '9811144455',
+      aadhaar: '112233445566', pan: 'SMRPJ1234M', homeGate: 'Gate 1',
+      wantsCabService: true,
+      pickupPoint: { lat: 28.5921, lng: 77.0460 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Sameer Joshi', '#d97706', dayFromToday(-18))
     },
     bank: { accountNumber: '30099887766', ifsc: 'SBIN0001234', bankName: 'State Bank of India' },
     statutory: {
       uan: '111222333444', esicApplicable: true, esic: '3100998877',
-      nomineeName: 'Kiran Gupta', nomineeRelation: 'Spouse', nomineeShare: '100'
+      nomineeName: 'Kiran Joshi', nomineeRelation: 'Spouse', nomineeShare: '100'
     },
     documents: {}
   },
@@ -990,17 +1031,139 @@ export const SAMPLE_PROFILES = [
     updatedOn: dayFromToday(-12), submittedOn: dayFromToday(-14),
     reviewedBy: 'ADM001', reviewedOn: dayFromToday(-12), reviewNote: '',
     personal: {
-      fullName: 'Sneha Iyer', dob: '1993-07-08',
-      address: '22 Anna Salai, Chennai 600002', contactNumber: '9840055666',
-      emergencyName: 'Lakshmi Iyer', emergencyRelation: 'Mother', emergencyContact: '9840077888',
-      aadhaar: '998877665544', pan: 'SNHPI5678N', homeGate: 'Gate 2',
-      pickupPoint: { lat: 13.0827, lng: 80.2707 }, dropPoint: null, dropSameAsPickup: true,
-      photo: samplePhoto('Sneha Iyer', '#7c3aed', dayFromToday(-14))
+      fullName: 'Divya Menon', dob: '1993-07-08',
+      address: '22 Sector 21, Faridabad 121001', contactNumber: '9840055666',
+      emergencyName: 'Lakshmi Menon', emergencyRelation: 'Mother', emergencyContact: '9840077888',
+      aadhaar: '998877665544', pan: 'DVYPM5678N', homeGate: 'Gate 2',
+      wantsCabService: true,
+      pickupPoint: { lat: 28.4089, lng: 77.3178 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Divya Menon', '#7c3aed', dayFromToday(-14))
     },
     bank: { accountNumber: '40055667788', ifsc: 'AXIS0000456', bankName: 'Axis Bank' },
     statutory: {
       uan: '222333444555', esicApplicable: false, esic: '',
-      nomineeName: 'Lakshmi Iyer', nomineeRelation: 'Mother', nomineeShare: '100'
+      nomineeName: 'Lakshmi Menon', nomineeRelation: 'Mother', nomineeShare: '100'
+    },
+    documents: {}
+  },
+  {
+    employeeId: 'EMP005', status: 'verified',
+    updatedOn: dayFromToday(-20), submittedOn: dayFromToday(-22),
+    reviewedBy: 'ADM001', reviewedOn: dayFromToday(-20), reviewNote: '',
+    personal: {
+      fullName: 'Rahul Verma', dob: '1995-11-25',
+      address: '56 Sector 8, Rohini, New Delhi 110085', contactNumber: '9812345670',
+      emergencyName: 'Sunita Verma', emergencyRelation: 'Mother', emergencyContact: '9812340000',
+      aadhaar: '445566778899', pan: 'RHLVR9012P', homeGate: 'Gate A',
+      wantsCabService: true,
+      pickupPoint: { lat: 28.7260, lng: 77.0765 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Rahul Verma', '#0ea5e9', dayFromToday(-22))
+    },
+    bank: { accountNumber: '11223344556677', ifsc: 'PUNB0123400', bankName: 'Punjab National Bank' },
+    statutory: {
+      uan: '333444555666', esicApplicable: false, esic: '',
+      nomineeName: 'Sunita Verma', nomineeRelation: 'Mother', nomineeShare: '100'
+    },
+    documents: {}
+  },
+  {
+    employeeId: 'EMP006', status: 'verified',
+    updatedOn: dayFromToday(-40), submittedOn: dayFromToday(-42),
+    reviewedBy: 'ADM001', reviewedOn: dayFromToday(-40), reviewNote: '',
+    personal: {
+      fullName: 'Neha Kulkarni', dob: '1989-02-17',
+      address: '77 Saket District Centre, New Delhi 110017', contactNumber: '9818877665',
+      emergencyName: 'Mahesh Kulkarni', emergencyRelation: 'Spouse', emergencyContact: '9818800112',
+      aadhaar: '223344556677', pan: 'NHKPK3456Q', homeGate: 'Gate 4',
+      wantsCabService: true,
+      pickupPoint: { lat: 28.5245, lng: 77.2066 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Neha Kulkarni', '#db2777', dayFromToday(-42))
+    },
+    bank: { accountNumber: '77889900112233', ifsc: 'KKBK0000123', bankName: 'Kotak Mahindra Bank' },
+    statutory: {
+      uan: '444555666777', esicApplicable: false, esic: '',
+      nomineeName: 'Mahesh Kulkarni', nomineeRelation: 'Spouse', nomineeShare: '100'
+    },
+    documents: {}
+  },
+  {
+    employeeId: 'EMP007', status: 'submitted',
+    updatedOn: dayFromToday(-1), submittedOn: dayFromToday(-1),
+    reviewedBy: '', reviewedOn: '', reviewNote: '',
+    personal: {
+      fullName: 'Aditya Rao', dob: '1996-06-30',
+      address: '12 Indirapuram, Ghaziabad 201014', contactNumber: '9911223344',
+      emergencyName: 'Sunita Rao', emergencyRelation: 'Mother', emergencyContact: '9911220001',
+      aadhaar: '334455667788', pan: 'ADTRA7890R', homeGate: 'Gate C',
+      wantsCabService: true,
+      pickupPoint: { lat: 28.6430, lng: 77.3777 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Aditya Rao', '#16a34a', dayFromToday(-1))
+    },
+    bank: { accountNumber: '99001122334455', ifsc: 'BARB0001234', bankName: 'Bank of Baroda' },
+    statutory: {
+      uan: '666777888999', esicApplicable: true, esic: '3100556644',
+      nomineeName: 'Sunita Rao', nomineeRelation: 'Mother', nomineeShare: '100'
+    },
+    documents: {}
+  },
+  {
+    employeeId: 'EMP008', status: 'verified',
+    updatedOn: dayFromToday(-10), submittedOn: dayFromToday(-11),
+    reviewedBy: 'ADM001', reviewedOn: dayFromToday(-10), reviewNote: '',
+    personal: {
+      fullName: 'Ishita Bose', dob: '1997-03-11',
+      address: '33 Mayur Vihar, New Delhi 110091', contactNumber: '9955667788',
+      emergencyName: 'Debashish Bose', emergencyRelation: 'Father', emergencyContact: '9955660002',
+      aadhaar: '556677889900', pan: 'ISHRB2345S', homeGate: 'Gate D',
+      wantsCabService: true,
+      pickupPoint: { lat: 28.6050, lng: 77.2950 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Ishita Bose', '#f59e0b', dayFromToday(-11))
+    },
+    bank: { accountNumber: '66778899001122', ifsc: 'ICIC0000789', bankName: 'ICICI Bank' },
+    statutory: {
+      uan: '777888999000', esicApplicable: false, esic: '',
+      nomineeName: 'Debashish Bose', nomineeRelation: 'Father', nomineeShare: '100'
+    },
+    documents: {}
+  },
+  {
+    employeeId: 'EMP009', status: 'returned',
+    updatedOn: dayFromToday(-3), submittedOn: dayFromToday(-5),
+    reviewedBy: 'ADM001', reviewedOn: dayFromToday(-3),
+    reviewNote: 'PAN card copy is blurred. Please re-upload a clearer scan.',
+    personal: {
+      fullName: 'Karan Malhotra', dob: '1994-12-05',
+      address: '9 Vaishali, Ghaziabad 201010', contactNumber: '9977889900',
+      emergencyName: 'Rakesh Malhotra', emergencyRelation: 'Father', emergencyContact: '9977880003',
+      aadhaar: '667788990011', pan: 'KARML6789T', homeGate: 'Gate E',
+      wantsCabService: true,
+      pickupPoint: { lat: 28.6440, lng: 77.3400 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Karan Malhotra', '#64748b', dayFromToday(-5))
+    },
+    bank: { accountNumber: '55667788990011', ifsc: 'SBIN0005678', bankName: 'State Bank of India' },
+    statutory: {
+      uan: '888999000111', esicApplicable: false, esic: '',
+      nomineeName: 'Rakesh Malhotra', nomineeRelation: 'Father', nomineeShare: '100'
+    },
+    documents: {}
+  },
+  {
+    employeeId: 'EMP010', status: 'verified',
+    updatedOn: dayFromToday(-8), submittedOn: dayFromToday(-9),
+    reviewedBy: 'ADM001', reviewedOn: dayFromToday(-8), reviewNote: '',
+    personal: {
+      fullName: 'Pooja Hegde', dob: '1998-08-22',
+      address: '15 Vasundhara Enclave, New Delhi 110096', contactNumber: '9988001122',
+      emergencyName: 'Meena Hegde', emergencyRelation: 'Mother', emergencyContact: '9988000044',
+      aadhaar: '778899001122', pan: 'POOHG0123U', homeGate: 'Gate F',
+      wantsCabService: true,
+      pickupPoint: { lat: 28.6070, lng: 77.2870 }, dropPoint: null, dropSameAsPickup: true,
+      photo: samplePhoto('Pooja Hegde', '#dc2626', dayFromToday(-9))
+    },
+    bank: { accountNumber: '33445566778899', ifsc: 'AXIS0000321', bankName: 'Axis Bank' },
+    statutory: {
+      uan: '999000111222', esicApplicable: false, esic: '',
+      nomineeName: 'Meena Hegde', nomineeRelation: 'Mother', nomineeShare: '100'
     },
     documents: {}
   }
@@ -1141,12 +1304,20 @@ export const SAMPLE_TRIPS = [
     supervisorName: 'Meena Joshi', supervisorMobile: '9822077777' }
 ]
 
-// Which employee is on which trips.
+// Which employee is on which trips. All 10 sample employees have opted in
+// to the cab service: the day shift rides TRP01/TRP02, the evening shift
+// rides TRP03/TRP04.
 export const SAMPLE_CAB_ASSIGNMENTS = [
   { employeeId: 'EMP001', pickupTripId: 'TRP01', dropTripId: 'TRP02' },
   { employeeId: 'EMP002', pickupTripId: 'TRP01', dropTripId: 'TRP02' },
-  { employeeId: 'EMP003', pickupTripId: 'TRP03', dropTripId: 'TRP04' },
-  { employeeId: 'EMP004', pickupTripId: 'TRP01', dropTripId: 'TRP02' }
+  { employeeId: 'EMP003', pickupTripId: 'TRP01', dropTripId: 'TRP02' },
+  { employeeId: 'EMP004', pickupTripId: 'TRP01', dropTripId: 'TRP02' },
+  { employeeId: 'EMP005', pickupTripId: 'TRP01', dropTripId: 'TRP02' },
+  { employeeId: 'EMP006', pickupTripId: 'TRP01', dropTripId: 'TRP02' },
+  { employeeId: 'EMP007', pickupTripId: 'TRP03', dropTripId: 'TRP04' },
+  { employeeId: 'EMP008', pickupTripId: 'TRP03', dropTripId: 'TRP04' },
+  { employeeId: 'EMP009', pickupTripId: 'TRP03', dropTripId: 'TRP04' },
+  { employeeId: 'EMP010', pickupTripId: 'TRP03', dropTripId: 'TRP04' }
 ]
 
 // Temporary change requests (employee asks for a one-off change).

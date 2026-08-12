@@ -525,7 +525,7 @@ textarea::placeholder {
   cursor: pointer;
   color: var(--ink);
 }
-.tab:hover { background: var(--btn-hover-bg); }
+.tab:hover:not(.tab-active) { background: var(--btn-hover-bg); }
 .tab-active { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
 .row-actions { display: flex; gap: 6px; }
 
@@ -1488,42 +1488,61 @@ textarea::placeholder {
 }
 
 /* ============================================================
-   Driver run-sheet page (/driver/:id)
+   Driver run-sheet page (/driver/:id) — mobile-first
+   Plain document scroll (no fixed-height shell) so no card can
+   ever be clipped; large tap targets for phone use.
    ============================================================ */
-.driver-shell {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+.driver-page {
+  min-height: 100vh;
   background: #f0f4ff;
   font-family: inherit;
 }
 
-.driver-header {
-  flex-shrink: 0;
+.driver-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   background: #1e3a8a;
   color: #fff;
-  padding: 16px 24px;
+  padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top));
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
-.driver-brand {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  opacity: 0.85;
+.driver-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
-.driver-meta {
+.driver-topbar-right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
 }
+.driver-brand {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+.driver-logout {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.4);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.driver-logout:hover { background: rgba(255,255,255,0.25); }
 .driver-name {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
 }
 .driver-date {
@@ -1531,17 +1550,23 @@ textarea::placeholder {
   opacity: 0.75;
 }
 
-.driver-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  max-width: 740px;
-  width: 100%;
+.driver-content {
+  max-width: 720px;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: 16px 12px calc(48px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
+}
+
+.driver-notice {
+  border: 1px solid #1e3a8a;
+  background: #eff6ff;
+  color: #1e3a8a;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .driver-section {
@@ -1550,32 +1575,51 @@ textarea::placeholder {
   box-shadow: 0 2px 12px rgba(0,0,0,0.07);
   overflow: hidden;
 }
-
 .driver-section-title {
-  padding: 14px 20px;
+  padding: 14px 16px;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.01em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .pickup-title  { background: #eff6ff; color: #1d4ed8; border-bottom: 1px solid #dbeafe; }
 .drop-title    { background: #f0fdf4; color: #15803d; border-bottom: 1px solid #bbf7d0; }
+.driver-vehicle-chip {
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.chip-pickup { background: #dbeafe; color: #1e40af; }
+.chip-drop   { background: #bbf7d0; color: #166534; }
 
-.driver-stops {
+.driver-section-body {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 12px;
+  padding: 14px 12px;
 }
+.driver-empty { padding: 8px 4px; }
 
-.driver-stop-card {
+/* One stop = one card; height grows with content, nothing is hidden. */
+.stop-card {
+  background: #fff;
+  border: 1px solid #e5e9f5;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  padding: 14px 14px 12px;
+}
+.stop-card-head {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f0f0f0;
+  gap: 12px;
+  margin-bottom: 10px;
 }
-.driver-stop-card:last-child { border-bottom: none; }
-
-.driver-stop-index {
+.stop-num {
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -1589,50 +1633,91 @@ textarea::placeholder {
   flex-shrink: 0;
   margin-top: 2px;
 }
-
-.driver-stop-body { flex: 1; }
-
-.driver-stop-name {
+.stop-head-text { flex: 1; min-width: 0; }
+.stop-name {
   font-size: 16px;
   font-weight: 700;
   color: #111;
   margin-bottom: 2px;
+  overflow-wrap: anywhere;
 }
-.driver-stop-time {
+.stop-time {
   font-size: 14px;
   color: #444;
-  margin-bottom: 8px;
 }
-.driver-stop-shift {
+.stop-shift {
   color: #888;
   font-size: 12px;
 }
 
-.driver-stop-row {
+.stop-details {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stop-detail {
   display: flex;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
   color: #333;
-  margin-bottom: 4px;
   align-items: flex-start;
 }
-.driver-stop-label {
-  min-width: 90px;
+.stop-detail dt {
+  min-width: 86px;
   color: #888;
   font-weight: 600;
   flex-shrink: 0;
 }
-.driver-map-link {
+.stop-detail dd {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.stop-tel {
   color: #1d4ed8;
   font-weight: 600;
   text-decoration: none;
 }
-.driver-map-link:hover { text-decoration: underline; }
+.stop-tel:hover { text-decoration: underline; }
+
+/* Thumb-friendly action buttons (min 44px tall). */
+.stop-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.stop-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+.stop-btn-call {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.stop-btn-call:hover { background: #dbeafe; }
+.stop-btn-nav {
+  background: #1d4ed8;
+  color: #fff;
+}
+.stop-btn-nav:hover { background: #1e40af; }
 
 .driver-cancelled-block {
-  padding: 14px 20px;
+  padding: 12px 14px;
   background: #fff7f7;
-  border-top: 1px solid #fde2e2;
+  border: 1px solid #fde2e2;
+  border-radius: 12px;
 }
 .driver-cancelled-label {
   font-size: 13px;

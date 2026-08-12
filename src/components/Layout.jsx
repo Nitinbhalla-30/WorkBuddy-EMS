@@ -15,20 +15,21 @@ export default function Layout() {
   const settings = getSettings()
   const isAdmin = user?.role === 'admin'
   const isIT = user?.department === 'IT Support'
+  const showAnnouncements = !isAdmin
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
-    if (user && (isIT || !isAdmin)) {
+    if (user && showAnnouncements) {
       setUnreadCount(getUnreadAnnouncementCount(user.id))
     } else {
       setUnreadCount(0)
     }
-  }, [user, isAdmin, isIT, location])
+  }, [user, showAnnouncements, location])
 
   // Listen for announcement read events to update badge in real-time
   useEffect(() => {
     const handleAnnouncementRead = () => {
-      if (user && (isIT || !isAdmin)) {
+      if (user && showAnnouncements) {
         setUnreadCount(getUnreadAnnouncementCount(user.id))
       }
     }
@@ -37,7 +38,7 @@ export default function Layout() {
     return () => {
       window.removeEventListener('announcementRead', handleAnnouncementRead)
     }
-  }, [user, isAdmin, isIT])
+  }, [user, showAnnouncements])
 
   function handleLogout() {
     logout()
@@ -57,10 +58,13 @@ export default function Layout() {
           <span className="who">
             <Avatar src={photoUrl} name={user?.name || ''} size={32} />
             <span className="who-text">
-              {user?.name} <small>({isAdmin ? (isIT ? 'IT Support' : 'HR / Admin') : 'Employee'})</small>
+              {user?.name}{' '}
+              <small>
+                {isAdmin ? (isIT ? (user?.isManager ? 'IT Manager' : 'IT Support') : 'HR / Admin') : 'Employee'}
+              </small>
             </span>
           </span>
-          {user && (user.role === 'employee' || user.role === 'admin') && (
+          {user && (user.role === 'employee' || (user.role === 'admin' && !isIT)) && (
             <NotificationBell employeeId={user.id} viewerRole={user.role} />
           )}
           <button className="btn btn-light" onClick={handleLogout}>
@@ -118,12 +122,6 @@ export default function Layout() {
           {isIT && (
             <>
               <NavLink to="/it-help-desk" className="nav-item">IT Issues</NavLink>
-              <NavLink to="/company-announcements" className="nav-item">
-                Announcements
-                {unreadCount > 0 && (
-                  <span className="notification-badge">{unreadCount}</span>
-                )}
-              </NavLink>
             </>
           )}
         </nav>

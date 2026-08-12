@@ -795,6 +795,24 @@ export function updateTaskByAssignee(taskId, employeeId, { title, description, d
   return all[idx]
 }
 
+// Edit any task (admin use).
+export function updateTaskByAdmin(taskId, { title, description, assigneeId, dueDate, priority }) {
+  const all = getTasks()
+  const idx = all.findIndex((t) => t.id === taskId)
+  if (idx < 0) return null
+  const task = all[idx]
+  all[idx] = {
+    ...task,
+    title: title?.trim() || task.title,
+    description: description !== undefined ? description : task.description,
+    assigneeId: assigneeId || task.assigneeId,
+    dueDate: dueDate !== undefined ? dueDate : task.dueDate,
+    priority: priority || task.priority
+  }
+  write(KEYS.tasks, all)
+  return all[idx]
+}
+
 // Remove a task.
 export function deleteTask(taskId) {
   const all = getTasks().filter((t) => t.id !== taskId)
@@ -871,6 +889,27 @@ export function updateTaskStatusByManager(taskId, managerId, status) {
   }
 
   return null
+}
+
+// Admin follow-up message on any task (no participant restriction).
+export function addTaskMessageByAdmin(taskId, { byId, text }) {
+  const all = getTasks()
+  const idx = all.findIndex((t) => t.id === taskId)
+  if (idx < 0) return null
+
+  const task = all[idx]
+  const trimmed = String(text || '').trim()
+  if (!trimmed) return null
+
+  all[idx] = {
+    ...task,
+    messages: [
+      ...(task.messages || []),
+      { id: `TSM${Date.now()}`, byId, text: trimmed, on: todayKey() }
+    ]
+  }
+  write(KEYS.tasks, all)
+  return all[idx]
 }
 
 export function getTaskById(taskId) {

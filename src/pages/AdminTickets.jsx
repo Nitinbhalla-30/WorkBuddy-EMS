@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addTicketMessage,
@@ -16,6 +16,7 @@ import {
   statusTagClass
 } from '../utils/tickets.js'
 import TicketThread from '../components/TicketThread.jsx'
+import Modal from '../components/Modal.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { useTableControls } from '../hooks/useTableControls.js'
@@ -35,6 +36,7 @@ export default function AdminTickets() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
   const [openId, setOpenId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
 
   const nameOf = (id) => getEmployeeById(id)?.name || id
 
@@ -60,13 +62,31 @@ export default function AdminTickets() {
 
   const open = allTickets.find((t) => t.id === openId) || null
 
+  function toggleMenu(ticketId) {
+    setOpenMenuId(openMenuId === ticketId ? null : ticketId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
+
   function handleReply(text) {
     addTicketMessage(open.id, { byId: user.id, byRole: 'admin', text })
     setRefresh((n) => n + 1)
   }
 
-  function handleSetStatus(status) {
-    setTicketStatus(open.id, status)
+  function handleSetStatus(ticketId, status) {
+    setTicketStatus(ticketId, status)
     setRefresh((n) => n + 1)
   }
 
@@ -101,7 +121,7 @@ export default function AdminTickets() {
               <SortableTh label="Category" keyName="category" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Updated" keyName="updatedOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <th></th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -114,18 +134,50 @@ export default function AdminTickets() {
                   <strong>{t.subject}</strong>
                   {t.confidential && <span className="tag tag-high" style={{ marginLeft: 8 }}>Confidential</span>}
                 </td>
-                <td>{raisedByName(t, nameOf)}</td>
+                <td>
+                  {raisedByName(t, nameOf)}
+                  {!t.anonymous && <div className="muted small">{t.employeeId}</div>}
+                </td>
                 <td>{kindLabel(t.kind)}</td>
                 <td>{categoryLabel(t.category)}</td>
-                <td><span className={`tag ${statusTagClass(t.status)}`}>{statusLabel(t.status)}</span></td>
+                <td>
+                  <select
+                    className="inline-select"
+                    value={t.status}
+                    aria-label={`Set status for ${t.subject}`}
+                    onChange={(e) => handleSetStatus(t.id, e.target.value)}
+                  >
+                    {TICKET_STATUSES.map((s) => (
+                      <option key={s.key} value={s.key}>{s.label}</option>
+                    ))}
+                  </select>
+                </td>
                 <td>{formatDate(t.updatedOn)}</td>
                 <td>
-                  <button
-                    className="btn btn-tiny btn-light"
-                    onClick={() => setOpenId(t.id === openId ? null : t.id)}
-                  >
-                    {t.id === openId ? 'Hide' : 'Open'}
-                  </button>
+                  <div className="task-menu-container">
+                    <button
+                      type="button"
+                      className="btn btn-tiny btn-light task-menu-button"
+                      onClick={() => toggleMenu(t.id)}
+                      aria-label="Ticket actions"
+                    >
+                      ⋯
+                    </button>
+                    {openMenuId === t.id && (
+                      <div className="task-menu-dropdown">
+                        <button
+                          type="button"
+                          className="task-menu-item"
+                          onClick={() => {
+                            setOpenId(t.id)
+                            closeMenu()
+                          }}
+                        >
+                          Open
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -135,24 +187,35 @@ export default function AdminTickets() {
 
       {/* Open one ticket */}
       {open && (
-        <div className="card">
-          <div className="page-head">
-            <div>
-              <h3 style={{ margin: 0 }}>{open.subject}</h3>
-              <div className="muted small">
-                From {raisedByName(open, nameOf)} — {kindLabel(open.kind)} — {categoryLabel(open.category)}
+        <Modal onClose={() => setOpenId(null)} title={open.subject}>
+          <div className="modal-form modal-form-wide">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>{open.subject}</h3>
+                <div className="muted small">
+                  From {raisedByName(open, nameOf)} — {kindLabel(open.kind)} — {categoryLabel(open.category)}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={`tag ${statusTagClass(open.status)}`}>{statusLabel(open.status)}</span>
+                <button
+                  type="button"
+                  className="btn btn-tiny btn-light"
+                  onClick={() => setOpenId(null)}
+                >
+                  ✕
+                </button>
               </div>
             </div>
-            <span className={`tag ${statusTagClass(open.status)}`}>{statusLabel(open.status)}</span>
+            <TicketThread
+              ticket={open}
+              viewerRole="admin"
+              nameOf={nameOf}
+              onReply={handleReply}
+              onClose={() => setOpenId(null)}
+            />
           </div>
-          <TicketThread
-            ticket={open}
-            viewerRole="admin"
-            nameOf={nameOf}
-            onReply={handleReply}
-            onSetStatus={handleSetStatus}
-          />
-        </div>
+        </Modal>
       )}
 
       <p className="hint">

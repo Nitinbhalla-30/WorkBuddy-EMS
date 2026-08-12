@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ATTENDANCE_CORRECTION_ISSUES } from '../data/sampleData.js'
+import TimeInput from './TimeInput.jsx'
 
 // Request HR to fix a wrong attendance record (create or edit).
 export default function AttendanceCorrectionForm({
@@ -74,8 +75,7 @@ export default function AttendanceCorrectionForm({
       {showTimeIn && (
         <label className="field">
           <span>Suggested time in (optional)</span>
-          <input
-            type="time"
+          <TimeInput
             value={suggestedTimeIn}
             onChange={(e) => setSuggestedTimeIn(e.target.value)}
           />
@@ -85,8 +85,7 @@ export default function AttendanceCorrectionForm({
       {showTimeOut && (
         <label className="field">
           <span>Suggested time out (optional)</span>
-          <input
-            type="time"
+          <TimeInput
             value={suggestedTimeOut}
             onChange={(e) => setSuggestedTimeOut(e.target.value)}
           />

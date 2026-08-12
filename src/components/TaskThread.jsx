@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { formatDate } from '../utils/attendance.js'
 
 // Task Q&A thread between the assignee and whoever created the task.
-export default function TaskThread({ task, viewerId, nameOf, onReply, onClose }) {
+// allowPost lets an admin view post on any task.
+export default function TaskThread({ task, viewerId, nameOf, onReply, onClose, allowPost }) {
   const [text, setText] = useState('')
   const messages = task.messages || []
-  const canPost = viewerId === task.assigneeId || viewerId === task.createdById
+  const canPost = allowPost || viewerId === task.assigneeId || viewerId === task.createdById
 
   function authorName(byId) {
     if (byId === task.assigneeId && byId === task.createdById) return `${nameOf(byId)} (me)`

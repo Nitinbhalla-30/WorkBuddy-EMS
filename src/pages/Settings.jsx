@@ -6,6 +6,7 @@ import {
 } from '../data/store.js'
 import { fetchPublicIp } from '../utils/network.js'
 import Modal from '../components/Modal.jsx'
+import TimeInput from '../components/TimeInput.jsx'
 
 // HR/Admin settings: branding, timing rules, and the office-internet check.
 export default function Settings() {
@@ -113,8 +114,7 @@ export default function Settings() {
         <div className="two-col">
           <label className="field">
             <span>Office start time (shift start)</span>
-            <input
-              type="time"
+            <TimeInput
               value={form.officeStartTime}
               onChange={(e) => update('officeStartTime', e.target.value)}
             />
@@ -180,16 +180,14 @@ export default function Settings() {
           </label>
           <label className="field">
             <span>Allowed lunch window — from</span>
-            <input
-              type="time"
+            <TimeInput
               value={form.lunchPolicy.startTime}
               onChange={(e) => updateLunchPolicy('startTime', e.target.value)}
             />
           </label>
           <label className="field">
             <span>Allowed lunch window — until</span>
-            <input
-              type="time"
+            <TimeInput
               value={form.lunchPolicy.endTime}
               onChange={(e) => updateLunchPolicy('endTime', e.target.value)}
             />
