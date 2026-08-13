@@ -492,7 +492,7 @@ export const SAMPLE_ATTENDANCE_CORRECTIONS = [
     appliedOn: dayFromToday(-7),
     decidedBy: 'ADM001',
     decidedOn: dayFromToday(-6),
-    reviewNote: 'No supporting badge or visitor log for that morning. Please request again with evidence if available.',
+    reviewNote: 'No supporting badge or visitor log for that morning. Please request again with evidence when available.',
     messages: []
   },
   {
