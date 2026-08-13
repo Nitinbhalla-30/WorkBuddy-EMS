@@ -11,10 +11,14 @@ import {
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
 import {
-  countLeaveDays,
   leaveBalance,
+  leaveDays,
+  leaveHalfLabel,
+  leaveStageLabel,
   leaveTypeLabel,
+  leaveTypeLabelWithPart,
   leaveSupportingDocuments,
+  paidLeaveApplyError,
   statusTagClass,
   canEditLeave,
   canWithdrawLeave
@@ -70,10 +74,10 @@ export default function EmployeeLeaves() {
   )
   const table = useTableControls(leaves, {
     getSearchText: (lv) =>
-      [leaveTypeLabel(lv.type), lv.fromDate, lv.toDate, lv.reason, lv.status].join(' '),
+      [leaveTypeLabelWithPart(lv), lv.fromDate, lv.toDate, lv.reason, lv.status].join(' '),
     getSortValue: (lv, key) => {
-      if (key === 'days') return countLeaveDays(lv.fromDate, lv.toDate)
-      if (key === 'type') return leaveTypeLabel(lv.type)
+      if (key === 'days') return leaveDays(lv)
+      if (key === 'type') return leaveTypeLabelWithPart(lv)
       return lv[key]
     },
     initialSortKey: 'fromDate',
@@ -105,14 +109,34 @@ export default function EmployeeLeaves() {
   }
 
   function handleApply(data) {
+    const err = paidLeaveApplyError({
+      employee: user,
+      leaves,
+      settings,
+      type: data.type,
+      fromDate: data.fromDate,
+      toDate: data.toDate
+    })
+    if (err) return err
     applyLeave({ employeeId: user.id, ...data })
     refreshLeaves()
     setShowForm(false)
-    setMessage('Your leave request was sent to HR/Admin.')
+    setMessage(user.managerId
+      ? 'Your leave request was sent to your manager for approval.'
+      : 'Your leave request was sent to HR/Admin.')
   }
 
   function handleEdit(data) {
     if (!editLeave) return
+    const err = paidLeaveApplyError({
+      employee: user,
+      leaves,
+      settings,
+      type: data.type,
+      fromDate: data.fromDate,
+      toDate: data.toDate
+    })
+    if (err) return err
     updateLeave(editLeave.id, user.id, data)
     refreshLeaves()
     setEditId(null)
@@ -254,6 +278,8 @@ export default function EmployeeLeaves() {
               <p className="hint first">
                 Choose your leave type and dates. Weekends are not counted toward your request.
                 For <strong>sick leave</strong>, upload a supporting document such as a medical certificate.
+                Paid leave needs an available balance and a completed probation period; it first goes to
+                your manager and then to HR for final approval.
               </p>
               <LeaveForm
                 onApply={handleApply}
@@ -296,7 +322,8 @@ export default function EmployeeLeaves() {
           <div className="stat-card" key={b.key}>
             <div className="stat-num">{b.remaining}</div>
             <div className="stat-label">
-              {b.label} left <span className="muted">/ {b.allowed}</span>
+              {b.label.toLowerCase().endsWith('leave') ? b.label : `${b.label} leave`} left{' '}
+              <span className="muted">/ {b.allowed}</span>
             </div>
           </div>
         ))}
@@ -359,10 +386,10 @@ export default function EmployeeLeaves() {
               const decision = leaveDecisionText(lv, nameOf)
               return (
               <tr key={lv.id}>
-                <td>{leaveTypeLabel(lv.type)}</td>
+                <td>{leaveTypeLabelWithPart(lv)}</td>
                 <td>{formatDate(lv.fromDate)}</td>
                 <td>{formatDate(lv.toDate)}</td>
-                <td>{countLeaveDays(lv.fromDate, lv.toDate)}</td>
+                <td>{leaveDays(lv)}</td>
                 <td>{lv.reason || <span className="muted">--</span>}</td>
                 <td>
                   {lv.type === 'sick'
@@ -373,6 +400,9 @@ export default function EmployeeLeaves() {
                   <span className={`tag ${statusTagClass(lv.status)}`}>
                     {leaveStatusLabel(lv.status)}
                   </span>
+                  {lv.status === 'pending' && (
+                    <div className="muted small">{leaveStageLabel(lv)}</div>
+                  )}
                   {decision && (
                     <div className="muted small">{decision.line}</div>
                   )}
@@ -451,8 +481,14 @@ export default function EmployeeLeaves() {
                   {leaveTypeLabel(openLeave.type)} leave
                 </h3>
                 <div className="muted small">
-                  {formatDate(openLeave.fromDate)} – {formatDate(openLeave.toDate)}
-                  {' · '}{countLeaveDays(openLeave.fromDate, openLeave.toDate)} day(s)
+                  {openLeave.fromDate === openLeave.toDate
+                    ? formatDate(openLeave.fromDate)
+                    : `${formatDate(openLeave.fromDate)} – ${formatDate(openLeave.toDate)}`}
+                  {leaveHalfLabel(openLeave) && ` · ${leaveHalfLabel(openLeave)}`}
+                  {' · '}{leaveDays(openLeave)} day(s)
+                  {leaveStageLabel(openLeave) && ` · ${leaveStageLabel(openLeave)}`}
+                  {openLeave.managerStatus === 'approved' && ' · Manager approved'}
+                  {openLeave.managerStatus === 'escalated' && ' · Auto-escalated to HR'}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

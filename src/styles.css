@@ -412,6 +412,8 @@ textarea::placeholder {
 .table th, .table td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); }
 .table th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
 .table tr:last-child td { border-bottom: none; }
+.table td select, .table td input { max-width: 100%; }
+.table td .btn-tiny { margin-left: 0; }
 
 /* Sortable tables paginate body rows, so auto layout reflows when sort changes the visible page. */
 .table:has(.th-sortable) {

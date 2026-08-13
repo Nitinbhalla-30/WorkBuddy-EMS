@@ -1,5 +1,5 @@
 import { formatDate } from './attendance.js'
-import { countLeaveDays, leaveTypeLabel, leaveSupportingDocuments } from './leaves.js'
+import { leaveDays, leaveTypeLabelWithPart, leaveSupportingDocuments } from './leaves.js'
 
 export function leaveStatusLabel(status) {
   if (status === 'approved') return 'Approved'
@@ -31,10 +31,10 @@ export function leaveDecisionText(leave, nameOf) {
 
 export function leaveSummaryLines(leave) {
   return {
-    type: leaveTypeLabel(leave.type),
+    type: leaveTypeLabelWithPart(leave),
     from: leave.fromDate,
     to: leave.toDate,
-    days: countLeaveDays(leave.fromDate, leave.toDate),
+    days: leaveDays(leave),
     reason: leave.reason,
     appliedOn: leave.appliedOn,
     documents: leaveSupportingDocuments(leave)
