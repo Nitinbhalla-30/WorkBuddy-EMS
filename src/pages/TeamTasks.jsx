@@ -40,14 +40,16 @@ const TASK_PRIORITY_FILTER_OPTS = [
   ...TASK_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
 ]
 
-// A manager's board: tasks for the whole team (and the manager). The manager
-// can create tasks for any team member, see closure submissions, and approve closure.
-export default function TeamTasks() {
+// Team tasks panel shown inside the My Team screen's "My Team Tasks" tab.
+// The manager can create tasks for any team member, see closure submissions,
+// and approve closure.
+export default function TeamTasksPanel() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openTaskId, setOpenTaskId] = useState(null)
+  const [deleteId, setDeleteId] = useState(null)
 
   const people = useMemo(() => {
     const members = getTeamMembers(user.id)
@@ -55,11 +57,11 @@ export default function TeamTasks() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id, refresh])
 
-  const ids = useMemo(() => people.map((p) => p.id), [people])
-
+  // Only tasks the manager assigned (to teammates or to themselves).
+  // Tasks teammates assigned to themselves stay on their own My Tasks screen.
   const tasks = useMemo(
-    () => getTasks().filter((t) => ids.includes(t.assigneeId)),
-    [ids, refresh]
+    () => getTasks().filter((t) => t.createdById === user.id),
+    [user.id, refresh]
   )
 
   const table = useTableControls(tasks, {
@@ -123,9 +125,20 @@ export default function TeamTasks() {
     bump()
   }
 
-  function remove(id) {
-    deleteTask(id)
-    bump()
+  function handleDelete(id) {
+    setDeleteId(id)
+  }
+
+  function confirmDelete() {
+    if (deleteId) {
+      deleteTask(deleteId)
+      setDeleteId(null)
+      bump()
+    }
+  }
+
+  function cancelDelete() {
+    setDeleteId(null)
   }
 
   function getPriorityLabel(key) {
@@ -199,35 +212,16 @@ export default function TeamTasks() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [openMenuId])
 
-  if (!user.isManager) {
-    return (
-      <div>
-        <div className="page-head">
-          <h2>Team Tasks</h2>
-        </div>
-        <div className="card">
-          <p className="muted">
-            This page is for Managers / Team Leaders. You are not marked as a
-            manager, so you do not have a team here.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div>
-      <div className="page-head">
-        <h2>Team Tasks</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span className="muted">{people.length - 1} team member(s)</span>
-          <button
-            className="btn btn-primary btn-tiny"
-            onClick={() => setShowForm(true)}
-          >
-            Assign a task
-          </button>
-        </div>
+      <div className="section-head-row first">
+        <h3 className="section-title">Team tasks</h3>
+        <button
+          className="btn btn-primary btn-tiny"
+          onClick={() => setShowForm(true)}
+        >
+          Assign a task
+        </button>
       </div>
 
       {showForm && (
@@ -319,7 +313,16 @@ export default function TeamTasks() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '26%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '9%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -360,15 +363,19 @@ export default function TeamTasks() {
                     </button>
                     {openMenuId === task.id && (
                       <div className="task-menu-dropdown">
-                        <button
-                          className="task-menu-item"
-                          onClick={() => {
-                            setOpenTaskId(task.id)
-                            closeMenu()
-                          }}
-                        >
-                          Ask question
-                        </button>
+                        {/* For a task the manager assigned to themself only
+                            Delete remains; marking done happens in My Tasks. */}
+                        {!isSelfAssigned(task) && (
+                          <button
+                            className="task-menu-item"
+                            onClick={() => {
+                              setOpenTaskId(task.id)
+                              closeMenu()
+                            }}
+                          >
+                            Ask question
+                          </button>
+                        )}
                         {canManagerApproveDone(task, user.id) && (
                           <button
                             className="task-menu-item"
@@ -380,23 +387,11 @@ export default function TeamTasks() {
                             Approve closure
                           </button>
                         )}
-                        {isSelfAssigned(task) && task.assigneeId === user.id && (
-                          <button
-                            className="task-menu-item"
-                            onClick={() => {
-                              move(task.id, 'done')
-                              closeMenu()
-                            }}
-                            disabled={task.status === 'done'}
-                          >
-                            Mark done
-                          </button>
-                        )}
                         {canDeleteTask(task) && (
                           <button
-                            className="task-menu-item"
+                            className="task-menu-item task-menu-item-danger"
                             onClick={() => {
-                              remove(task.id)
+                              handleDelete(task.id)
                               closeMenu()
                             }}
                           >
@@ -420,6 +415,28 @@ export default function TeamTasks() {
           onPageChange={setTasksPage}
         />
       </div>
+
+      {deleteId && (
+        <Modal onClose={cancelDelete} title="Confirm Delete">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Delete</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete}>✕</button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to delete this task? This action cannot be undone.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>
+                Delete
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelDelete}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <p className="hint">
         Assign tasks to your team from here. When an employee marks a task done,

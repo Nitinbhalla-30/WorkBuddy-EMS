@@ -206,6 +206,12 @@ code {
   align-items: center;
   gap: 10px;
 }
+/* Task-status count chips in the My Team directory table. */
+.team-task-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 .photo-field {
   padding: 12px 0 16px;
   border-bottom: 1px dashed var(--line);
@@ -748,6 +754,17 @@ textarea::placeholder {
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* Supporting-doc chips inside tables stay on one line so long file
+   names do not stretch row height; hovering shows the full name. */
+.table .file-chip { max-width: 100%; }
+.table .file-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table .file-chip-size { flex-shrink: 0; white-space: nowrap; }
 
 /* ---------- Queries & grievances (help desk) ---------- */
 .thread { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }

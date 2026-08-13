@@ -84,9 +84,6 @@ export default function Layout() {
               <NavLink to="/my-reimbursements" className="nav-item">My Reimbursements</NavLink>
               <NavLink to="/my-tasks" className="nav-item">My Tasks</NavLink>
               <NavLink to="/my-team" className="nav-item">My Team</NavLink>
-              {user?.isManager && (
-                <NavLink to="/team-tasks" className="nav-item">My Team Tasks</NavLink>
-              )}
               <NavLink to="/my-cab" className="nav-item">My Cab</NavLink>
               <NavLink to="/it-help" className="nav-item">My IT Issues</NavLink>
               <NavLink to="/help" className="nav-item">My Queries &amp; Grievances</NavLink>

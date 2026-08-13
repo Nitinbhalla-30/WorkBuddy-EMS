@@ -447,7 +447,7 @@ export default function EmployeeTasks() {
                         )}
                         {canEmployeeDeleteTask(task, user.id) && (
                           <button
-                            className="task-menu-item"
+                            className="task-menu-item task-menu-item-danger"
                             onClick={() => {
                               handleDelete(task.id)
                             }}

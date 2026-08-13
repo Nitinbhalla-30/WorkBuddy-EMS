@@ -1,25 +1,54 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
+  getAttendance,
   getEmployeeById,
   getLeaves,
   getMyTeamDirectory,
+  getTasks,
   managerDecideLeave
 } from '../data/store.js'
-import { formatDate } from '../utils/attendance.js'
+import { computeMonthAverages, computeMonthRawAverages, formatDate } from '../utils/attendance.js'
 import { leaveDays, leaveTypeLabelWithPart } from '../utils/leaves.js'
 import Avatar from '../components/Avatar.jsx'
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import TeamTasksPanel from './TeamTasks.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 
+// Merged team module. Managers get three tabs: the team directory, the
+// team's tasks, and the team's paid-leave requests waiting for approval.
+// Non-manager employees see only the directory (no tab bar).
 export default function MyTeam() {
   const { user } = useAuth()
+  const [tab, setTab] = useState('team')
 
   const teammates = useMemo(() => getMyTeamDirectory(user.id), [user.id])
+
+  // Per-teammate numbers for the directory table: this month's attendance
+  // averages plus how many tasks sit in each status bucket. Managers only;
+  // regular employees see just the contact columns.
+  const memberStats = useMemo(() => {
+    if (!user.isManager) return {}
+    const attendance = getAttendance()
+    const allTasks = getTasks()
+    const stats = {}
+    for (const m of teammates) {
+      const records = attendance.filter((r) => r.employeeId === m.id)
+      const tasks = allTasks.filter((t) => t.assigneeId === m.id)
+      stats[m.id] = {
+        ...computeMonthAverages(records),
+        ...computeMonthRawAverages(records),
+        todoCount: tasks.filter((t) => t.status === 'todo').length,
+        inprogressCount: tasks.filter((t) => t.status === 'inprogress').length,
+        doneCount: tasks.filter((t) => t.status === 'done' || t.status === 'closed').length
+      }
+    }
+    return stats
+  }, [teammates, user.isManager])
 
   // Paid-leave requests from this manager's team that are waiting on them.
   function loadTeamLeaves() {
@@ -59,7 +88,18 @@ export default function MyTeam() {
 
   const table = useTableControls(teammates, {
     getSearchText: (m) => [m.name, m.mobile, m.email, m.designation, m.reportsTo].join(' '),
-    getSortValue: (m, key) => m[key],
+    getSortValue: (m, key) => {
+      // Computed columns sort by their raw numbers, not the display strings.
+      const st = memberStats[m.id] || {}
+      switch (key) {
+        case 'avgTimeIn': return st.avgTimeInMins ?? -1
+        case 'avgTimeOut': return st.avgTimeOutMins ?? -1
+        case 'avgWorked': return st.avgWorkedMins ?? -1
+        case 'avgBreak': return st.avgBreakMins ?? -1
+        case 'tasks': return (st.todoCount || 0) + (st.inprogressCount || 0) + (st.doneCount || 0)
+        default: return m[key]
+      }
+    },
     initialSortKey: 'name',
     initialSortDir: 'asc'
   })
@@ -88,7 +128,35 @@ export default function MyTeam() {
       </div>
 
       {user.isManager && (
-        <div className="card" style={{ marginBottom: '16px' }}>
+        <div className="tabs">
+          <button
+            type="button"
+            className={`tab ${tab === 'team' ? 'tab-active' : ''}`}
+            onClick={() => setTab('team')}
+          >
+            My Team
+          </button>
+          <button
+            type="button"
+            className={`tab ${tab === 'tasks' ? 'tab-active' : ''}`}
+            onClick={() => setTab('tasks')}
+          >
+            My Team Tasks
+          </button>
+          <button
+            type="button"
+            className={`tab ${tab === 'leaves' ? 'tab-active' : ''}`}
+            onClick={() => setTab('leaves')}
+          >
+            Team Leave Request
+          </button>
+        </div>
+      )}
+
+      {user.isManager && tab === 'tasks' && <TeamTasksPanel />}
+
+      {user.isManager && tab === 'leaves' && (
+        <div className="card">
           <h3 className="section-title first">Team leave requests</h3>
           <p className="hint first">
             Paid-leave requests from your team come to you first. Approve to send
@@ -140,100 +208,190 @@ export default function MyTeam() {
         </div>
       )}
 
-      <div className="card">
-        <TableToolbar
-          search={table.search}
-          onSearchChange={table.setSearch}
-          total={total}
-          startIndex={startIndex}
-          endIndex={endIndex}
-          placeholder="Search team members..."
-        />
-        <table className="table">
-          <thead>
-            <tr>
-              <SortableTh
-                label="Name"
-                keyName="name"
-                sortKey={table.sortKey}
-                sortDir={table.sortDir}
-                onSort={table.toggleSort}
-              />
-              <SortableTh
-                label="Mobile"
-                keyName="mobile"
-                sortKey={table.sortKey}
-                sortDir={table.sortDir}
-                onSort={table.toggleSort}
-              />
-              <SortableTh
-                label="Email"
-                keyName="email"
-                sortKey={table.sortKey}
-                sortDir={table.sortDir}
-                onSort={table.toggleSort}
-              />
-              <SortableTh
-                label="Designation"
-                keyName="designation"
-                sortKey={table.sortKey}
-                sortDir={table.sortDir}
-                onSort={table.toggleSort}
-              />
-              <SortableTh
-                label="Reports to"
-                keyName="reportsTo"
-                sortKey={table.sortKey}
-                sortDir={table.sortDir}
-                onSort={table.toggleSort}
-              />
-            </tr>
-          </thead>
-          <tbody>
-            {table.count === 0 && (
-              <tr>
-                <td colSpan={5} className="muted">
-                  {teammates.length === 0 ? emptyMessage : 'No team members match your search.'}
-                </td>
-              </tr>
-            )}
-            {pageRows.map((m) => (
-              <tr key={m.id}>
-                <td>
-                  <div className="person-cell">
-                    <Avatar src={m.photoUrl} name={m.name} size={34} />
-                    <span>{m.id === user.id ? `${m.name} (me)` : m.name}</span>
-                  </div>
-                </td>
-                <td>
-                  {m.mobile
-                    ? <a href={`tel:${m.mobile}`} className="phone-link">{m.mobile}</a>
-                    : <span className="muted">--</span>}
-                </td>
-                <td>
-                  {m.email
-                    ? <a href={`mailto:${m.email}`} className="phone-link">{m.email}</a>
-                    : <span className="muted">--</span>}
-                </td>
-                <td>{m.designation || <span className="muted">--</span>}</td>
-                <td>{m.reportsTo || <span className="muted">--</span>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          startIndex={startIndex}
-          endIndex={endIndex}
-          onPageChange={setPage}
-        />
-      </div>
+      {(tab === 'team' || !user.isManager) && (
+        <div>
+          <div className="card">
+            <TableToolbar
+              search={table.search}
+              onSearchChange={table.setSearch}
+              total={total}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              placeholder="Search team members..."
+            />
+            <table className="table" style={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                {user.isManager ? (
+                  <>
+                    <col style={{ width: '11.7%' }} />
+                    <col style={{ width: '7.2%' }} />
+                    <col style={{ width: '13.5%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '8.1%' }} />
+                    <col style={{ width: '7.2%' }} />
+                    <col style={{ width: '7.2%' }} />
+                    <col style={{ width: '8.1%' }} />
+                    <col style={{ width: '8.1%' }} />
+                    <col style={{ width: '18.9%' }} />
+                  </>
+                ) : (
+                  <>
+                    <col style={{ width: '22%' }} />
+                    <col style={{ width: '16%' }} />
+                    <col style={{ width: '26%' }} />
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '18%' }} />
+                  </>
+                )}
+              </colgroup>
+              <thead>
+                <tr>
+                  <SortableTh
+                    label="Name"
+                    keyName="name"
+                    sortKey={table.sortKey}
+                    sortDir={table.sortDir}
+                    onSort={table.toggleSort}
+                  />
+                  <SortableTh
+                    label="Mobile"
+                    keyName="mobile"
+                    sortKey={table.sortKey}
+                    sortDir={table.sortDir}
+                    onSort={table.toggleSort}
+                  />
+                  <SortableTh
+                    label="Email"
+                    keyName="email"
+                    sortKey={table.sortKey}
+                    sortDir={table.sortDir}
+                    onSort={table.toggleSort}
+                  />
+                  <SortableTh
+                    label="Designation"
+                    keyName="designation"
+                    sortKey={table.sortKey}
+                    sortDir={table.sortDir}
+                    onSort={table.toggleSort}
+                  />
+                  <SortableTh
+                    label="Reports to"
+                    keyName="reportsTo"
+                    sortKey={table.sortKey}
+                    sortDir={table.sortDir}
+                    onSort={table.toggleSort}
+                  />
+                  {user.isManager && (
+                    <>
+                      <SortableTh
+                        label="Avg time in"
+                        keyName="avgTimeIn"
+                        sortKey={table.sortKey}
+                        sortDir={table.sortDir}
+                        onSort={table.toggleSort}
+                      />
+                      <SortableTh
+                        label="Avg time out"
+                        keyName="avgTimeOut"
+                        sortKey={table.sortKey}
+                        sortDir={table.sortDir}
+                        onSort={table.toggleSort}
+                      />
+                      <SortableTh
+                        label="Avg worked hours"
+                        keyName="avgWorked"
+                        sortKey={table.sortKey}
+                        sortDir={table.sortDir}
+                        onSort={table.toggleSort}
+                      />
+                      <SortableTh
+                        label="Avg break time"
+                        keyName="avgBreak"
+                        sortKey={table.sortKey}
+                        sortDir={table.sortDir}
+                        onSort={table.toggleSort}
+                      />
+                      <SortableTh
+                        label="Tasks"
+                        keyName="tasks"
+                        sortKey={table.sortKey}
+                        sortDir={table.sortDir}
+                        onSort={table.toggleSort}
+                      />
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {table.count === 0 && (
+                  <tr>
+                    <td colSpan={user.isManager ? 10 : 5} className="muted">
+                      {teammates.length === 0 ? emptyMessage : 'No team members match your search.'}
+                    </td>
+                  </tr>
+                )}
+                {pageRows.map((m) => {
+                  const st = memberStats[m.id] || {}
+                  return (
+                    <tr key={m.id}>
+                      <td>
+                        <div className="person-cell">
+                          <Avatar src={m.photoUrl} name={m.name} size={34} />
+                          <span>{m.id === user.id ? `${m.name} (me)` : m.name}</span>
+                        </div>
+                      </td>
+                      <td>
+                        {m.mobile
+                          ? <a href={`tel:${m.mobile}`} className="phone-link">{m.mobile}</a>
+                          : <span className="muted">--</span>}
+                      </td>
+                      <td>
+                        {m.email
+                          ? <a href={`mailto:${m.email}`} className="phone-link">{m.email}</a>
+                          : <span className="muted">--</span>}
+                      </td>
+                      <td>{m.designation || <span className="muted">--</span>}</td>
+                      <td>{m.reportsTo || <span className="muted">--</span>}</td>
+                      {user.isManager && (
+                        <>
+                          <td>{st.avgTimeIn}</td>
+                          <td>{st.avgTimeOut}</td>
+                          <td>{st.avgWorked}</td>
+                          <td>{st.avgBreak}</td>
+                          <td>
+                            <div className="team-task-counts">
+                              <span className="tag tag-absent">{st.todoCount} To do</span>
+                              <span className="tag tag-late">{st.inprogressCount} In progress</span>
+                              <span className="tag tag-ok">{st.doneCount} Done</span>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              onPageChange={setPage}
+            />
+          </div>
 
-      <p className="hint">
-        Contact details come from employee records and verified profiles. If something is missing or wrong, ask HR to update it.
-      </p>
+          <p className="hint">
+            Contact details come from employee records and verified profiles
+            {user.isManager && (
+              <>; averages cover this month&rsquo;s attendance so far and task counts
+              reflect current task statuses</>
+            )}.
+            If something is missing or wrong, ask HR to update it.
+          </p>
+        </div>
+      )}
 
       {rejectLeave && (
         <Modal onClose={() => setRejectLeave(null)} title="Reject leave request">

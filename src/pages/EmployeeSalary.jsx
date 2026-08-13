@@ -9,11 +9,20 @@ import {
 } from '../utils/salary.js'
 import html2pdf from 'html2pdf.js'
 
-// The employee's own salary slip, with a month picker.
+// The employee's own salary slip, with a month picker. The current month
+// is not offered because its slip is only finalized once the month ends.
 export default function EmployeeSalary() {
   const { user } = useAuth()
-  const months = useMemo(() => listRecentMonths(6), [])
-  const [selected, setSelected] = useState(() => monthKey())
+  const months = useMemo(
+    () => listRecentMonths(7).filter((m) => m.key !== monthKey()),
+    []
+  )
+  const [selected, setSelected] = useState(() => {
+    const lastMonth = new Date()
+    lastMonth.setDate(1)
+    lastMonth.setMonth(lastMonth.getMonth() - 1)
+    return monthKey(lastMonth)
+  })
   const payslipRef = useRef(null)
 
   const calc = useMemo(() => {
@@ -63,8 +72,8 @@ export default function EmployeeSalary() {
 
       <p className="hint">
         This is based on your attendance and approved leaves. Absent days and
-        approved unpaid leave reduce the pay. The current month is counted up to
-        yesterday, since today is still going on.
+        approved unpaid leave reduce the pay. The current month is not listed
+        because its salary slip is only finalized after the month ends.
       </p>
     </div>
   )

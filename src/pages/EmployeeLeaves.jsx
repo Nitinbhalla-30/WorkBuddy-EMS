@@ -383,7 +383,6 @@ export default function EmployeeLeaves() {
               <tr><td colSpan={8} className="muted">No leave requests match your filters.</td></tr>
             )}
             {leavesPage.map((lv) => {
-              const decision = leaveDecisionText(lv, nameOf)
               return (
               <tr key={lv.id}>
                 <td>{leaveTypeLabelWithPart(lv)}</td>
@@ -397,18 +396,11 @@ export default function EmployeeLeaves() {
                     : <span className="muted">--</span>}
                 </td>
                 <td>
+                  {/* Only the status tag here; stage and decision details
+                      are shown in the Open modal from the Action menu. */}
                   <span className={`tag ${statusTagClass(lv.status)}`}>
                     {leaveStatusLabel(lv.status)}
                   </span>
-                  {lv.status === 'pending' && (
-                    <div className="muted small">{leaveStageLabel(lv)}</div>
-                  )}
-                  {decision && (
-                    <div className="muted small">{decision.line}</div>
-                  )}
-                  {decision?.reason && (
-                    <div className="muted small">Reason: {decision.reason}</div>
-                  )}
                 </td>
                 <td>
                   <div className="task-menu-container">

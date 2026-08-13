@@ -6,7 +6,6 @@ import EmployeeDashboard from './pages/EmployeeDashboard.jsx'
 import EmployeeLeaves from './pages/EmployeeLeaves.jsx'
 import EmployeeSalary from './pages/EmployeeSalary.jsx'
 import EmployeeTasks from './pages/EmployeeTasks.jsx'
-import TeamTasks from './pages/TeamTasks.jsx'
 import EmployeeProfile from './pages/EmployeeProfile.jsx'
 import EmployeeTickets from './pages/EmployeeTickets.jsx'
 import EmployeeITHelpDesk from './pages/EmployeeITHelpDesk.jsx'
@@ -76,7 +75,6 @@ export default function App() {
         <Route path="/my-reimbursements" element={<EmployeeReimbursements />} />
         <Route path="/my-tasks" element={<EmployeeTasks />} />
         <Route path="/my-team" element={<MyTeam />} />
-        <Route path="/team-tasks" element={<TeamTasks />} />
         <Route path="/my-profile" element={<EmployeeProfile />} />
         <Route path="/help" element={<EmployeeTickets />} />
         <Route path="/it-help" element={<EmployeeITHelpDesk />} />

@@ -105,6 +105,7 @@ export function monthLabel(mKey) {
 
 export function lastMonthKey(d = new Date()) {
   const x = new Date(d)
+  x.setDate(1)
   x.setMonth(x.getMonth() - 1)
   return monthKey(x)
 }
@@ -210,6 +211,25 @@ export function computeAttendanceAverages(records) {
 export function computeMonthAverages(records, month = monthKey()) {
   const inMonth = records.filter((r) => r.date && r.date.startsWith(month))
   return computeAttendanceAverages(inMonth)
+}
+
+// Raw numeric month averages (null when no data), used to sort tables
+// whose displayed values are formatted strings.
+export function computeMonthRawAverages(records, month = monthKey()) {
+  const inMonth = records.filter((r) => r.date && r.date.startsWith(month))
+  const timeInMins = inMonth.filter((r) => r.timeIn).map((r) => clockMinutesFromIso(r.timeIn))
+  const timeOutMins = inMonth.filter((r) => r.timeOut).map((r) => clockMinutesFromIso(r.timeOut))
+  const breakMins = inMonth.filter((r) => r.timeIn).map((r) => totalBreakMinutes(r))
+  const workedMins = inMonth.filter((r) => r.timeIn).map((r) => workedMinutes(r))
+
+  const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null)
+
+  return {
+    avgTimeInMins: avg(timeInMins),
+    avgTimeOutMins: avg(timeOutMins),
+    avgBreakMins: avg(breakMins),
+    avgWorkedMins: avg(workedMins)
+  }
 }
 
 export function combineDateAndTime(dateStr, timeStr) {

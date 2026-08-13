@@ -411,7 +411,7 @@ export default function AdminTasks() {
 
       <p className="hint">
         Managers are set on the Employees page. A manager sees their own team
-        under &ldquo;Team Tasks&rdquo;; here you can see and manage everyone.
+        under &ldquo;My Team&rdquo; (My Team Tasks tab); here you can see and manage everyone.
       </p>
     </div>
   )

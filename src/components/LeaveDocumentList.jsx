@@ -12,7 +12,7 @@ export default function LeaveDocumentList({ documents, emptyLabel = '--' }) {
     <div className="leave-doc-list">
       {list.map((f, i) => (
         <span className="file-chip static" key={`${f.name}-${i}`}>
-          <span className="file-chip-name">{f.name}</span>
+          <span className="file-chip-name" title={f.name}>{f.name}</span>
           <span className="file-chip-size muted">{formatFileSize(f.size)}</span>
         </span>
       ))}
