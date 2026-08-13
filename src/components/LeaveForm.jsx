@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { LEAVE_TYPES } from '../data/sampleData.js'
-import { countLeaveDays, SICK_LEAVE_DOC_ACCEPT, sickLeaveRequiresDocument } from '../utils/leaves.js'
+import { countLeaveDays, isPartialLeaveType, leaveDayFraction, SICK_LEAVE_DOC_ACCEPT, sickLeaveRequiresDocument } from '../utils/leaves.js'
 import FileField from './FileField.jsx'
 
 // Form to apply for leave.
 // onApply({ type, fromDate, toDate, reason, supportingDocuments }).
 export default function LeaveForm({ onApply, onCancel, initial = null, submitLabel = 'Send request' }) {
   const [type, setType] = useState(initial?.type || 'casual')
+  const [halfDayPart, setHalfDayPart] = useState(initial?.halfDayPart || '')
   const [fromDate, setFromDate] = useState(initial?.fromDate || '')
   const [toDate, setToDate] = useState(initial?.toDate || '')
   const [reason, setReason] = useState(initial?.reason || '')
@@ -15,11 +16,14 @@ export default function LeaveForm({ onApply, onCancel, initial = null, submitLab
   )
   const [error, setError] = useState('')
 
-  const requestedDays = countLeaveDays(fromDate, toDate)
+  const partial = isPartialLeaveType(type)
+  const effectiveToDate = partial ? fromDate : toDate
+  const requestedDays = countLeaveDays(fromDate, effectiveToDate) * leaveDayFraction(type)
   const sickLeave = sickLeaveRequiresDocument(type)
 
   function changeType(nextType) {
     setType(nextType)
+    if (nextType !== 'halfday') setHalfDayPart('')
     if (!sickLeaveRequiresDocument(nextType)) {
       setSupportingDocuments([])
     }
@@ -29,8 +33,16 @@ export default function LeaveForm({ onApply, onCancel, initial = null, submitLab
     e.preventDefault()
     setError('')
 
-    if (!fromDate || !toDate) {
+    if (partial && !fromDate) {
+      setError('Please choose a date.')
+      return
+    }
+    if (!partial && (!fromDate || !toDate)) {
       setError('Please choose both a start and end date.')
+      return
+    }
+    if (type === 'halfday' && !halfDayPart) {
+      setError('Please choose whether the half day is the first half or the second half.')
       return
     }
     if (requestedDays <= 0) {
@@ -42,16 +54,22 @@ export default function LeaveForm({ onApply, onCancel, initial = null, submitLab
       return
     }
 
-    onApply({
+    const applyError = onApply({
       type,
       fromDate,
-      toDate,
+      toDate: effectiveToDate,
+      halfDayPart: type === 'halfday' ? halfDayPart : null,
       reason,
       supportingDocuments: sickLeave ? supportingDocuments : []
     })
+    if (applyError) {
+      setError(applyError)
+      return
+    }
 
     if (!initial) {
       setType('casual')
+      setHalfDayPart('')
       setFromDate('')
       setToDate('')
       setReason('')
@@ -70,7 +88,7 @@ export default function LeaveForm({ onApply, onCancel, initial = null, submitLab
           <select value={type} onChange={(e) => changeType(e.target.value)}>
             {LEAVE_TYPES.map((t) => (
               <option key={t.key} value={t.key}>
-                {t.label}{t.paid ? '' : ' (no pay)'}
+                {t.label}
               </option>
             ))}
           </select>
@@ -86,14 +104,26 @@ export default function LeaveForm({ onApply, onCancel, initial = null, submitLab
       </div>
 
       <div className="two-col">
+        {type === 'halfday' && (
+          <label className="field">
+            <span>Half of the day</span>
+            <select value={halfDayPart} onChange={(e) => setHalfDayPart(e.target.value)}>
+              <option value="">-- choose --</option>
+              <option value="first">First half</option>
+              <option value="second">Second half</option>
+            </select>
+          </label>
+        )}
         <label className="field">
-          <span>From date</span>
+          <span>{partial ? 'Date' : 'From date'}</span>
           <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
         </label>
-        <label className="field">
-          <span>To date</span>
-          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-        </label>
+        {!partial && (
+          <label className="field">
+            <span>To date</span>
+            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+          </label>
+        )}
       </div>
 
       {sickLeave && (
