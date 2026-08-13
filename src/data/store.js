@@ -24,6 +24,7 @@ import {
 } from './sampleData.js'
 import { blankProfile } from '../utils/profile.js'
 import { combineDateAndTime } from '../utils/attendance.js'
+import { isManagerLeaveExpired } from '../utils/leaves.js'
 
 const KEYS = {
   employees: 'hr_employees',
@@ -473,7 +474,21 @@ export function resolveAttendanceCorrection(id, status, decidedBy, reviewNote = 
 
 // ---- leaves ----
 export function getLeaves() {
-  return read(KEYS.leaves, [])
+  const all = read(KEYS.leaves, [])
+  // Auto-escalate manager-stage requests whose response window has passed.
+  const settings = getSettings()
+  const today = todayKey()
+  let changed = false
+  for (const lv of all) {
+    if (lv.status === 'pending' && lv.stage === 'manager' && isManagerLeaveExpired(lv, settings)) {
+      lv.stage = 'hr'
+      lv.managerStatus = 'escalated'
+      lv.escalatedOn = today
+      changed = true
+    }
+  }
+  if (changed) write(KEYS.leaves, all)
+  return all
 }
 
 export function getLeavesForEmployee(employeeId) {
@@ -489,20 +504,29 @@ export function applyLeave({
   fromDate,
   toDate,
   reason,
-  supportingDocuments = []
+  supportingDocuments = [],
+  halfDayPart = null
 }) {
   const all = getLeaves()
+  const employee = getEmployeeById(employeeId)
+  const stage = employee?.managerId ? 'manager' : 'hr'
   const request = {
     id: `LV${Date.now()}`,
     employeeId,
     type,
     fromDate,
     toDate,
+    halfDayPart: halfDayPart || null,
     reason: reason || '',
     supportingDocuments: Array.isArray(supportingDocuments) ? supportingDocuments : [],
     messages: [],
     rejectionReason: '',
     status: 'pending',
+    stage,
+    managerStatus: stage === 'manager' ? 'pending' : null,
+    managerDecidedBy: null,
+    managerDecidedOn: null,
+    escalatedOn: null,
     appliedOn: todayKey(),
     decidedBy: null,
     decidedOn: null
@@ -531,7 +555,8 @@ export function updateLeave(leaveId, employeeId, {
   fromDate,
   toDate,
   reason,
-  supportingDocuments = []
+  supportingDocuments = [],
+  halfDayPart = null
 }) {
   const all = getLeaves()
   const idx = all.findIndex((l) => l.id === leaveId)
@@ -544,11 +569,47 @@ export function updateLeave(leaveId, employeeId, {
     type,
     fromDate,
     toDate,
+    halfDayPart: halfDayPart || null,
     reason: reason || '',
     supportingDocuments: Array.isArray(supportingDocuments) ? supportingDocuments : [],
     rejectionReason: '',
     decidedBy: null,
     decidedOn: null
+  }
+  write(KEYS.leaves, all)
+  return all[idx]
+}
+
+// The employee's manager approves or rejects a manager-stage leave request.
+// Approval moves it to HR for final approval; rejection ends it.
+export function managerDecideLeave(leaveId, managerId, approve, rejectionReason = '') {
+  const all = getLeaves()
+  const idx = all.findIndex((l) => l.id === leaveId)
+  if (idx < 0) return null
+  const leave = all[idx]
+  if (leave.status !== 'pending' || leave.stage !== 'manager') return null
+  const employee = getEmployeeById(leave.employeeId)
+  if (!employee || employee.managerId !== managerId) return null
+
+  if (approve) {
+    all[idx] = {
+      ...leave,
+      stage: 'hr',
+      managerStatus: 'approved',
+      managerDecidedBy: managerId,
+      managerDecidedOn: todayKey()
+    }
+  } else {
+    all[idx] = {
+      ...leave,
+      status: 'rejected',
+      managerStatus: 'rejected',
+      managerDecidedBy: managerId,
+      managerDecidedOn: todayKey(),
+      rejectionReason,
+      decidedBy: managerId,
+      decidedOn: todayKey()
+    }
   }
   write(KEYS.leaves, all)
   return all[idx]
