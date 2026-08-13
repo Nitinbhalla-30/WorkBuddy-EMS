@@ -79,6 +79,45 @@ export function buildEmployeeNotifications(employeeId) {
     }
   }
 
+  // Two-stage flow: requests waiting on this person's manager approval, and
+  // updates about where the employee's own requests currently sit.
+  for (const lv of getLeaves()) {
+    if (
+      lv.status === 'pending' && lv.stage === 'manager' &&
+      getEmployeeById(lv.employeeId)?.managerId === employeeId
+    ) {
+      push(items, {
+        id: `leave-manager-pending-${lv.id}`,
+        category: 'leave',
+        title: 'Leave awaiting your approval',
+        body: `${getEmployeeById(lv.employeeId)?.name || 'An employee'} applied for ${leaveTypeLabel(lv.type)} leave.`,
+        on: lv.appliedOn,
+        href: '/my-team'
+      })
+    }
+    if (lv.employeeId !== employeeId) continue
+    if (lv.status === 'pending' && lv.stage === 'hr' && lv.managerStatus === 'approved') {
+      push(items, {
+        id: `leave-manager-approved-${lv.id}`,
+        category: 'leave',
+        title: 'Manager approved your leave',
+        body: `Your ${leaveTypeLabel(lv.type)} leave was approved by your manager and sent to HR for final approval.`,
+        on: lv.managerDecidedOn || lv.appliedOn,
+        href: '/my-leaves'
+      })
+    }
+    if (lv.status === 'pending' && lv.managerStatus === 'escalated') {
+      push(items, {
+        id: `leave-escalated-${lv.id}`,
+        category: 'leave',
+        title: 'Leave sent to HR',
+        body: `Your ${leaveTypeLabel(lv.type)} leave moved to HR for final approval.`,
+        on: lv.escalatedOn || lv.appliedOn,
+        href: '/my-leaves'
+      })
+    }
+  }
+
   for (const task of getTasksForAssignee(employeeId)) {
     if (task.createdById !== task.assigneeId) {
       push(items, {
@@ -265,11 +304,18 @@ export function buildAdminNotifications() {
         href: '/leave-requests'
       })
     } else {
+      const stageNote = lv.stage === 'manager'
+        ? ' — awaiting manager approval'
+        : lv.managerStatus === 'approved'
+          ? ' — manager approved, final approval needed'
+          : lv.managerStatus === 'escalated'
+            ? ' — auto-escalated, final approval needed'
+            : ' — final approval needed'
       push(items, {
         id: `leave-pending-${lv.id}`,
         category: 'leave',
-        title: 'Leave request pending',
-        body: `${nameOf(lv.employeeId)} applied for ${leaveTypeLabel(lv.type)} leave.`,
+        title: lv.stage === 'manager' ? 'Leave with manager' : 'Leave request pending',
+        body: `${nameOf(lv.employeeId)} applied for ${leaveTypeLabel(lv.type)} leave${stageNote}.`,
         on: lv.appliedOn,
         href: '/leave-requests'
       })

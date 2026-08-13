@@ -188,14 +188,14 @@ export default function AdminITHelpDesk() {
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '9%' }} />
-            <col style={{ width: '32%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '12%' }} />
+            <col style={{ width: '28%' }} />
             <col style={{ width: '9%' }} />
             <col style={{ width: '8%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '5%' }} />
           </colgroup>
           <thead>
             <tr>

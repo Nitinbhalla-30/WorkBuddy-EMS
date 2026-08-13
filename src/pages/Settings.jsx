@@ -216,8 +216,9 @@ export default function Settings() {
 
         <h3 className="section-title">Leave allowance (per year)</h3>
         <p className="hint first">
-          Paid-leave days given to every employee each year. Unpaid leave has
-          no limit.
+          Paid-leave days given to every employee each year. Half day and short
+          leave are counted per request (each approved request uses one). Unpaid
+          leave has no limit.
         </p>
         <div className="two-col">
           <label className="field">
@@ -245,6 +246,53 @@ export default function Settings() {
               min="0"
               value={form.leaveAllowance.earned}
               onChange={(e) => updateLeaveAllowance('earned', e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>Half day leaves</span>
+            <input
+              type="number"
+              min="0"
+              value={form.leaveAllowance.halfday}
+              onChange={(e) => updateLeaveAllowance('halfday', e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>Short leaves</span>
+            <input
+              type="number"
+              min="0"
+              value={form.leaveAllowance.short}
+              onChange={(e) => updateLeaveAllowance('short', e.target.value)}
+            />
+          </label>
+        </div>
+
+        <h3 className="section-title">Leave approval rules</h3>
+        <p className="hint first">
+          Employees can apply for paid leave only after their probation period
+          ends and only while they have balance left. New paid-leave requests go
+          to the employee's manager first; if the manager does not approve or
+          reject within the days set below, the request moves to HR
+          automatically for final approval.
+        </p>
+        <div className="two-col">
+          <label className="field">
+            <span>Probation period (months)</span>
+            <input
+              type="number"
+              min="0"
+              value={form.probationMonths}
+              onChange={(e) => update('probationMonths', Number(e.target.value))}
+            />
+          </label>
+          <label className="field">
+            <span>Days for manager to respond</span>
+            <input
+              type="number"
+              min="0"
+              value={form.leaveManagerDays}
+              onChange={(e) => update('leaveManagerDays', Number(e.target.value))}
             />
           </label>
         </div>

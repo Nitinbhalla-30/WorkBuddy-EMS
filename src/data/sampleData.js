@@ -20,8 +20,14 @@ export const DEFAULT_SETTINGS = {
   leaveAllowance: {
     casual: 12,
     sick: 8,
-    earned: 15
+    earned: 15,
+    halfday: 12,
+    short: 6
   },
+  // Probation period (months) after dateJoined; paid leave is blocked during it.
+  probationMonths: 6,
+  // Days a manager has to approve/reject a leave before it auto-escalates to HR.
+  leaveManagerDays: 2,
   // Salary rules (India). Delhi has no Professional Tax, so PT is not here.
   salary: {
     pfPercent: 12,        // Provident Fund: % of Basic (employee side)
@@ -52,6 +58,10 @@ export const LEAVE_TYPES = [
   { key: 'casual', label: 'Casual', paid: true },
   { key: 'sick',   label: 'Sick',   paid: true },
   { key: 'earned', label: 'Earned', paid: true },
+  // Partial-day leaves: a single date that consumes half a day. They are
+  // paid but are not tracked against the yearly day allowance.
+  { key: 'halfday', label: 'Half day', paid: true, partial: true },
+  { key: 'short',   label: 'Short leave', paid: true, partial: true },
   { key: 'unpaid', label: 'Unpaid', paid: false }
 ]
 

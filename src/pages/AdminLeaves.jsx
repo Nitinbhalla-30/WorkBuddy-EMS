@@ -9,8 +9,11 @@ import {
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
 import {
-  countLeaveDays,
+  leaveDays,
+  leaveHalfLabel,
+  leaveStageLabel,
   leaveTypeLabel,
+  leaveTypeLabelWithPart,
   leaveSupportingDocuments,
   statusTagClass
 } from '../utils/leaves.js'
@@ -75,14 +78,14 @@ export default function AdminLeaves() {
     getSearchText: (lv) => {
       const emp = getEmployeeById(lv.employeeId)
       return [
-        emp?.name, emp?.department, leaveTypeLabel(lv.type),
+        emp?.name, emp?.department, leaveTypeLabelWithPart(lv),
         lv.fromDate, lv.toDate, lv.reason, leaveStatusLabel(lv.status)
       ].join(' ')
     },
     getSortValue: (lv, key) => {
       if (key === 'employee') return getEmployeeById(lv.employeeId)?.name || lv.employeeId
-      if (key === 'type') return leaveTypeLabel(lv.type)
-      if (key === 'days') return countLeaveDays(lv.fromDate, lv.toDate)
+      if (key === 'type') return leaveTypeLabelWithPart(lv)
+      if (key === 'days') return leaveDays(lv)
       if (key === 'status') return leaveStatusLabel(lv.status)
       return lv[key]
     },
@@ -239,10 +242,10 @@ export default function AdminLeaves() {
                     <strong>{emp ? emp.name : lv.employeeId}</strong>
                     <div className="muted small">{emp ? emp.department : ''}</div>
                   </td>
-                  <td>{leaveTypeLabel(lv.type)}</td>
+                  <td>{leaveTypeLabelWithPart(lv)}</td>
                   <td>{formatDate(lv.fromDate)}</td>
                   <td>{formatDate(lv.toDate)}</td>
-                  <td>{countLeaveDays(lv.fromDate, lv.toDate)}</td>
+                  <td>{leaveDays(lv)}</td>
                   <td>{lv.reason || <span className="muted">--</span>}</td>
                   <td>
                     {lv.type === 'sick'
@@ -253,6 +256,9 @@ export default function AdminLeaves() {
                     <span className={`tag ${statusTagClass(lv.status)}`}>
                       {leaveStatusLabel(lv.status)}
                     </span>
+                    {lv.status === 'pending' && (
+                      <div className="muted small">{leaveStageLabel(lv)}</div>
+                    )}
                     {decision && (
                       <div className="muted small">{decision.line}</div>
                     )}
@@ -320,8 +326,15 @@ export default function AdminLeaves() {
                   {nameOf(openLeave.employeeId)}
                 </h3>
                 <div className="muted small">
-                  {leaveTypeLabel(openLeave.type)} · {formatDate(openLeave.fromDate)} – {formatDate(openLeave.toDate)}
-                  {' · '}{countLeaveDays(openLeave.fromDate, openLeave.toDate)} day(s)
+                  {leaveTypeLabel(openLeave.type)}
+                  {leaveHalfLabel(openLeave) && ` · ${leaveHalfLabel(openLeave)}`}
+                  {' · '}{openLeave.fromDate === openLeave.toDate
+                    ? formatDate(openLeave.fromDate)
+                    : `${formatDate(openLeave.fromDate)} – ${formatDate(openLeave.toDate)}`}
+                  {' · '}{leaveDays(openLeave)} day(s)
+                  {leaveStageLabel(openLeave) && ` · ${leaveStageLabel(openLeave)}`}
+                  {openLeave.managerStatus === 'approved' && ' · Manager approved'}
+                  {openLeave.managerStatus === 'escalated' && ' · Auto-escalated to HR'}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
