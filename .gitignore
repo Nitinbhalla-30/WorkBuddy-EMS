@@ -4,3 +4,4 @@ dist
 *.local
 .devin/
 .qoder/
+.env

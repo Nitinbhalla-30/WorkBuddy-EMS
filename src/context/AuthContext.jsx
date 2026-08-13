@@ -2,7 +2,7 @@
 // an ID + PIN. Real, secure login will come in a later phase.
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { getEmployeeById, getDriverById, seedIfEmpty } from '../data/store.js'
+import { getEmployeeById, getDriverById, initStore } from '../data/store.js'
 
 const AuthContext = createContext(null)
 
@@ -14,23 +14,26 @@ export function AuthProvider({ children }) {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    seedIfEmpty()
-    const savedId   = localStorage.getItem(SESSION_KEY)
-    const savedRole = localStorage.getItem(SESSION_ROLE_KEY)
-    if (savedId) {
-      if (savedRole === 'driver') {
-        const found = getDriverById(savedId)
-        if (found) setUser({ ...found, role: 'driver' })
-      } else {
-        const found = getEmployeeById(savedId)
-        if (found) {
-          // IT staff get admin-like access
-          const role = found.role === 'it' ? 'admin' : found.role
-          setUser({ ...found, role })
+    // Load the store first (from Supabase when configured), then restore
+    // the saved session. initStore always resolves, even if offline.
+    initStore().then(() => {
+      const savedId   = localStorage.getItem(SESSION_KEY)
+      const savedRole = localStorage.getItem(SESSION_ROLE_KEY)
+      if (savedId) {
+        if (savedRole === 'driver') {
+          const found = getDriverById(savedId)
+          if (found) setUser({ ...found, role: 'driver' })
+        } else {
+          const found = getEmployeeById(savedId)
+          if (found) {
+            // IT staff get admin-like access
+            const role = found.role === 'it' ? 'admin' : found.role
+            setUser({ ...found, role })
+          }
         }
       }
-    }
-    setReady(true)
+      setReady(true)
+    })
   }, [])
 
   // Try to log in with an ID and PIN. Returns an error message or null.

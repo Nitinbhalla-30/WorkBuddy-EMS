@@ -1,7 +1,9 @@
-// A small data store backed by the browser's local storage.
-// This lets the test buttons save data so it stays after a page refresh.
-// In a later phase this will be replaced by a real server + database.
+// The app's data store. When Supabase is configured (.env) it is the source
+// of truth: everything is loaded from Supabase at startup and every change
+// is written back to it. localStorage doubles as an offline cache. Without
+// Supabase the app falls back to the old localStorage-only mode.
 
+import { supabase } from './supabaseClient.js'
 import {
   DEFAULT_SETTINGS,
   SAMPLE_EMPLOYEES,
@@ -50,7 +52,13 @@ const KEYS = {
   notificationReads: 'hr_notification_reads'
 }
 
-function read(key, fallback) {
+// In-memory cache of every collection; reads hit this first.
+const mem = {}
+let remoteReady = false
+let initPromise = null
+const pendingPush = {}
+
+function readLocal(key, fallback) {
   try {
     const raw = localStorage.getItem(key)
     if (!raw) return fallback
@@ -60,96 +68,114 @@ function read(key, fallback) {
   }
 }
 
-function write(key, value) {
+function writeLocal(key, value) {
+  mem[key] = value
   localStorage.setItem(key, JSON.stringify(value))
+}
+
+function read(key, fallback) {
+  if (key in mem) return mem[key]
+  return readLocal(key, fallback)
+}
+
+// Save a collection locally and sync it to Supabase (debounced per key so a
+// burst of changes becomes one upsert).
+function write(key, value) {
+  writeLocal(key, value)
+  if (!supabase || !remoteReady) return
+  clearTimeout(pendingPush[key])
+  pendingPush[key] = setTimeout(() => {
+    supabase
+      .from('app_store')
+      .upsert({ key, value: mem[key], updated_at: new Date().toISOString() })
+      .then(({ error }) => {
+        if (error) console.warn(`Supabase write failed for ${key}:`, error.message)
+      })
+  }, 250)
+}
+
+// Defaults used to seed a brand-new store (sample data for most keys).
+const DEFAULTS = {
+  [KEYS.employees]: SAMPLE_EMPLOYEES,
+  [KEYS.attendance]: SAMPLE_ATTENDANCE,
+  [KEYS.leaves]: SAMPLE_LEAVES,
+  [KEYS.settings]: DEFAULT_SETTINGS,
+  [KEYS.tasks]: SAMPLE_TASKS,
+  [KEYS.profiles]: SAMPLE_PROFILES,
+  [KEYS.tickets]: SAMPLE_TICKETS,
+  [KEYS.vehicles]: SAMPLE_VEHICLES,
+  [KEYS.drivers]: SAMPLE_DRIVERS,
+  [KEYS.trips]: SAMPLE_TRIPS,
+  [KEYS.cabAssignments]: SAMPLE_CAB_ASSIGNMENTS,
+  [KEYS.cabRequests]: SAMPLE_CAB_REQUESTS,
+  [KEYS.cabMessages]: SAMPLE_CAB_MESSAGES,
+  [KEYS.itIssues]: SAMPLE_IT_ISSUES,
+  [KEYS.itStaff]: SAMPLE_IT_STAFF,
+  [KEYS.announcements]: SAMPLE_ANNOUNCEMENTS,
+  [KEYS.readAnnouncements]: {},
+  [KEYS.reimbursements]: SAMPLE_REIMBURSEMENTS,
+  [KEYS.attendanceCorrections]: SAMPLE_ATTENDANCE_CORRECTIONS,
+  [KEYS.notificationReads]: {}
+}
+
+// Bootstrap the store before the app renders. With Supabase: load every
+// collection from app_store, or upload the local data the first time.
+// Always resolves; on any failure the app keeps working from localStorage.
+export function initStore() {
+  if (initPromise) return initPromise
+  initPromise = (async () => {
+    if (!supabase) {
+      seedIfEmpty()
+      return
+    }
+    try {
+      const { data, error } = await supabase.from('app_store').select('key,value')
+      if (error) throw error
+      remoteReady = true
+      if (data && data.length > 0) {
+        for (const row of data) {
+          mem[row.key] = row.value
+          localStorage.setItem(row.key, JSON.stringify(row.value))
+        }
+      } else {
+        // First run on this project: migrate whatever this browser already
+        // has (or the sample data when there is nothing) up to Supabase.
+        seedIfEmpty()
+        const rows = Object.values(KEYS)
+          .map((key) => ({
+            key,
+            value: key in mem ? mem[key] : readLocal(key, null),
+            updated_at: new Date().toISOString()
+          }))
+          .filter((r) => r.value !== null && r.value !== undefined)
+        const { error: upErr } = await supabase.from('app_store').upsert(rows)
+        if (upErr) throw upErr
+      }
+      // Cover keys introduced by newer versions of the app.
+      seedIfEmpty()
+    } catch (err) {
+      console.warn('Supabase is not reachable; continuing with local storage.', err)
+      remoteReady = false
+      seedIfEmpty()
+    }
+  })()
+  return initPromise
 }
 
 // Put sample data in place the first time the app runs.
 export function seedIfEmpty() {
-  if (localStorage.getItem(KEYS.employees) === null) {
-    write(KEYS.employees, SAMPLE_EMPLOYEES)
-  }
-  if (localStorage.getItem(KEYS.attendance) === null) {
-    write(KEYS.attendance, SAMPLE_ATTENDANCE)
-  }
-  if (localStorage.getItem(KEYS.leaves) === null) {
-    write(KEYS.leaves, SAMPLE_LEAVES)
-  }
-  if (localStorage.getItem(KEYS.settings) === null) {
-    write(KEYS.settings, DEFAULT_SETTINGS)
-  }
-  if (localStorage.getItem(KEYS.tasks) === null) {
-    write(KEYS.tasks, SAMPLE_TASKS)
-  }
-  if (localStorage.getItem(KEYS.profiles) === null) {
-    write(KEYS.profiles, SAMPLE_PROFILES)
-  }
-  if (localStorage.getItem(KEYS.tickets) === null) {
-    write(KEYS.tickets, SAMPLE_TICKETS)
-  }
-  if (localStorage.getItem(KEYS.vehicles) === null) {
-    write(KEYS.vehicles, SAMPLE_VEHICLES)
-  }
-  if (localStorage.getItem(KEYS.drivers) === null) {
-    write(KEYS.drivers, SAMPLE_DRIVERS)
-  }
-  if (localStorage.getItem(KEYS.trips) === null) {
-    write(KEYS.trips, SAMPLE_TRIPS)
-  }
-  if (localStorage.getItem(KEYS.cabAssignments) === null) {
-    write(KEYS.cabAssignments, SAMPLE_CAB_ASSIGNMENTS)
-  }
-  if (localStorage.getItem(KEYS.cabRequests) === null) {
-    write(KEYS.cabRequests, SAMPLE_CAB_REQUESTS)
-  }
-  if (localStorage.getItem(KEYS.cabMessages) === null) {
-    write(KEYS.cabMessages, SAMPLE_CAB_MESSAGES)
-  }
-  if (localStorage.getItem(KEYS.itIssues) === null) {
-    write(KEYS.itIssues, SAMPLE_IT_ISSUES)
-  }
-  if (localStorage.getItem(KEYS.itStaff) === null) {
-    write(KEYS.itStaff, SAMPLE_IT_STAFF)
-  }
-  if (localStorage.getItem(KEYS.announcements) === null) {
-    write(KEYS.announcements, SAMPLE_ANNOUNCEMENTS)
-  }
-  if (localStorage.getItem(KEYS.readAnnouncements) === null) {
-    write(KEYS.readAnnouncements, {})
-  }
-  if (localStorage.getItem(KEYS.reimbursements) === null) {
-    write(KEYS.reimbursements, SAMPLE_REIMBURSEMENTS)
-  }
-  if (localStorage.getItem(KEYS.attendanceCorrections) === null) {
-    write(KEYS.attendanceCorrections, SAMPLE_ATTENDANCE_CORRECTIONS)
-  }
-  if (localStorage.getItem(KEYS.notificationReads) === null) {
-    write(KEYS.notificationReads, {})
+  for (const [key, value] of Object.entries(DEFAULTS)) {
+    if (!(key in mem) && localStorage.getItem(key) === null) {
+      writeLocal(key, value)
+    }
   }
 }
 
 // Wipe everything and load fresh sample data (handy while testing).
 export function resetToSampleData() {
-  write(KEYS.employees, SAMPLE_EMPLOYEES)
-  write(KEYS.attendance, SAMPLE_ATTENDANCE)
-  write(KEYS.leaves, SAMPLE_LEAVES)
-  write(KEYS.settings, DEFAULT_SETTINGS)
-  write(KEYS.tasks, SAMPLE_TASKS)
-  write(KEYS.profiles, SAMPLE_PROFILES)
-  write(KEYS.tickets, SAMPLE_TICKETS)
-  write(KEYS.vehicles, SAMPLE_VEHICLES)
-  write(KEYS.drivers, SAMPLE_DRIVERS)
-  write(KEYS.trips, SAMPLE_TRIPS)
-  write(KEYS.cabAssignments, SAMPLE_CAB_ASSIGNMENTS)
-  write(KEYS.cabRequests, SAMPLE_CAB_REQUESTS)
-  write(KEYS.cabMessages, SAMPLE_CAB_MESSAGES)
-  write(KEYS.itIssues, SAMPLE_IT_ISSUES)
-  write(KEYS.itStaff, SAMPLE_IT_STAFF)
-  write(KEYS.announcements, SAMPLE_ANNOUNCEMENTS)
-  write(KEYS.readAnnouncements, {})
-  write(KEYS.reimbursements, SAMPLE_REIMBURSEMENTS)
-  write(KEYS.attendanceCorrections, SAMPLE_ATTENDANCE_CORRECTIONS)
-  write(KEYS.notificationReads, {})
+  for (const [key, value] of Object.entries(DEFAULTS)) {
+    write(key, value)
+  }
 }
 
 // ---- employees ----
