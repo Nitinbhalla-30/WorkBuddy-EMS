@@ -86,6 +86,11 @@ export default function AdminLeaves() {
       if (key === 'employee') return getEmployeeById(lv.employeeId)?.name || lv.employeeId
       if (key === 'type') return leaveTypeLabelWithPart(lv)
       if (key === 'days') return leaveDays(lv)
+      if (key === 'doc') {
+        if (lv.type !== 'sick') return ''
+        const docs = leaveSupportingDocuments(lv)
+        return docs.length ? docs.map((d) => d.name || '').join(', ') : 'Not uploaded'
+      }
       if (key === 'status') return leaveStatusLabel(lv.status)
       return lv[key]
     },
@@ -224,7 +229,7 @@ export default function AdminLeaves() {
               <SortableTh label="To" keyName="toDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Days" keyName="days" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Reason" keyName="reason" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <th>Supporting doc</th>
+              <SortableTh label="Supporting doc" keyName="doc" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Action</th>
             </tr>

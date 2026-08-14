@@ -92,6 +92,7 @@ export default function EmployeeTasks() {
         if (t.createdById === t.assigneeId) return 'Myself'
         return getEmployeeById(t.createdById)?.name || t.createdById
       }
+      if (key === 'status') return statusLabel(t.status)
       return t[key]
     },
     initialSortKey: 'dueDate',
@@ -385,7 +386,7 @@ export default function EmployeeTasks() {
               <SortableTh label="Assigned by" keyName="createdBy" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Assigned on" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <th>Status</th>
+              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Due Date" keyName="dueDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
             </tr>

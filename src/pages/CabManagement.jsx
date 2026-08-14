@@ -26,8 +26,10 @@ import {
 } from '../data/store.js'
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
+import SortableTh from '../components/SortableTh.jsx'
 import TimeInput from '../components/TimeInput.jsx'
 import { usePagination } from '../hooks/usePagination.js'
+import { useTableControls } from '../hooks/useTableControls.js'
 import { formatDate } from '../utils/attendance.js'
 import {
   driverById,
@@ -102,6 +104,15 @@ function VehiclesTab({ vehicles, bump }) {
 
   const editVehicle = vehicles.find((v) => v.id === editId) || null
 
+  const vehiclesTable = useTableControls(vehicles, {
+    getSortValue: (v, key) => {
+      if (key === 'label') return v.label || ''
+      return v[key]
+    },
+    initialSortKey: 'number',
+    initialSortDir: 'asc'
+  })
+
   const {
     items: vehiclesPage,
     page: vehiclesPageNum,
@@ -110,7 +121,7 @@ function VehiclesTab({ vehicles, bump }) {
     startIndex: vehiclesStart,
     endIndex: vehiclesEnd,
     setPage: setVehiclesPage
-  } = usePagination(vehicles)
+  } = usePagination(vehiclesTable.rows)
 
   function toggleMenu(vehicleId) {
     setOpenMenuId(openMenuId === vehicleId ? null : vehicleId)
@@ -169,7 +180,13 @@ function VehiclesTab({ vehicles, bump }) {
         <button className="btn btn-primary btn-tiny" onClick={openAdd}>Add vehicle</button>
       </div>
       <table className="table">
-        <thead><tr><th>Vehicle No.</th><th>Label</th><th>Action</th></tr></thead>
+        <thead>
+          <tr>
+            <SortableTh label="Vehicle No." keyName="number" sortKey={vehiclesTable.sortKey} sortDir={vehiclesTable.sortDir} onSort={vehiclesTable.toggleSort} />
+            <SortableTh label="Label" keyName="label" sortKey={vehiclesTable.sortKey} sortDir={vehiclesTable.sortDir} onSort={vehiclesTable.toggleSort} />
+            <th>Action</th>
+          </tr>
+        </thead>
         <tbody>
           {vehiclesPage.map((v) => (
             <tr key={v.id}>
@@ -304,6 +321,11 @@ function DriversTab({ drivers, bump }) {
 
   const editDriver = drivers.find((d) => d.id === editId) || null
 
+  const driversTable = useTableControls(drivers, {
+    initialSortKey: 'name',
+    initialSortDir: 'asc'
+  })
+
   const {
     items: driversPage,
     page: driversPageNum,
@@ -312,7 +334,7 @@ function DriversTab({ drivers, bump }) {
     startIndex: driversStart,
     endIndex: driversEnd,
     setPage: setDriversPage
-  } = usePagination(drivers)
+  } = usePagination(driversTable.rows)
 
   function toggleMenu(driverId) {
     setOpenMenuId(openMenuId === driverId ? null : driverId)
@@ -391,9 +413,9 @@ function DriversTab({ drivers, bump }) {
       <table className="table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Mobile</th>
-            <th>WorkBuddy ID</th>
+            <SortableTh label="Name" keyName="name" sortKey={driversTable.sortKey} sortDir={driversTable.sortDir} onSort={driversTable.toggleSort} />
+            <SortableTh label="Mobile" keyName="mobile" sortKey={driversTable.sortKey} sortDir={driversTable.sortDir} onSort={driversTable.toggleSort} />
+            <SortableTh label="WorkBuddy ID" keyName="id" sortKey={driversTable.sortKey} sortDir={driversTable.sortDir} onSort={driversTable.toggleSort} />
             <th>PIN</th>
             <th>Action</th>
           </tr>
@@ -582,6 +604,20 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
 
   const editTrip = trips.find((t) => t.id === editId) || null
 
+  const tripsTable = useTableControls(trips, {
+    getSortValue: (t, key) => {
+      if (key === 'direction') return t.direction === 'drop' ? 'Drop' : 'Pickup'
+      if (key === 'officeTime') return t.direction === 'drop' ? (t.shiftEnd || '') : (t.shiftStart || '')
+      if (key === 'vehicle') return vehicleById(vehicles, t.vehicleId)?.number || ''
+      if (key === 'driver') return driverById(drivers, t.driverId)?.name || ''
+      if (key === 'gate') return t.officeGate || ''
+      if (key === 'supervisor') return t.supervisorName || ''
+      return t[key]
+    },
+    initialSortKey: 'direction',
+    initialSortDir: 'asc'
+  })
+
   const {
     items: tripsPage,
     page: tripsPageNum,
@@ -590,7 +626,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
     startIndex: tripsStart,
     endIndex: tripsEnd,
     setPage: setTripsPage
-  } = usePagination(trips)
+  } = usePagination(tripsTable.rows)
 
   function toggleMenu(tripId) {
     setOpenMenuId(openMenuId === tripId ? null : tripId)
@@ -735,7 +771,18 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
         <button className="btn btn-primary btn-tiny" onClick={openAdd}>Add trip</button>
       </div>
       <table className="table">
-        <thead><tr><th>Direction</th><th>Cab time</th><th>Office time</th><th>Vehicle</th><th>Driver</th><th>Office Gate</th><th>Supervisor</th><th>Action</th></tr></thead>
+        <thead>
+          <tr>
+            <SortableTh label="Direction" keyName="direction" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Cab time" keyName="time" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Office time" keyName="officeTime" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Vehicle" keyName="vehicle" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Driver" keyName="driver" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Office Gate" keyName="gate" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Supervisor" keyName="supervisor" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <th>Action</th>
+          </tr>
+        </thead>
         <tbody>
           {tripsPage.map((t) => {
             const v = vehicleById(vehicles, t.vehicleId)
@@ -861,6 +908,21 @@ function AssignTab({ employees, trips, assignments, bump }) {
   const pickupTrips = trips.filter((t) => t.direction === 'pickup')
   const dropTrips = trips.filter((t) => t.direction === 'drop')
 
+  const assignTable = useTableControls(employees, {
+    getSortValue: (emp, key) => {
+      if (key === 'pickup' || key === 'drop') {
+        const a = assignedTo(emp.id)
+        const list = key === 'pickup' ? pickupTrips : dropTrips
+        const tripId = key === 'pickup' ? a.pickupTripId : a.dropTripId
+        const t = list.find((x) => x.id === tripId)
+        return t ? tripLabel(t) : ''
+      }
+      return emp[key]
+    },
+    initialSortKey: 'name',
+    initialSortDir: 'asc'
+  })
+
   const {
     items: employeesPage,
     page: assignPageNum,
@@ -869,7 +931,7 @@ function AssignTab({ employees, trips, assignments, bump }) {
     startIndex: assignStart,
     endIndex: assignEnd,
     setPage: setAssignPage
-  } = usePagination(employees)
+  } = usePagination(assignTable.rows)
 
   function assignedTo(empId) {
     return assignments.find((a) => a.employeeId === empId) || { pickupTripId: '', dropTripId: '' }
@@ -884,7 +946,14 @@ function AssignTab({ employees, trips, assignments, bump }) {
     <div className="card">
       <h3 className="section-title first">Assign employees to trips</h3>
       <table className="table">
-        <thead><tr><th>Employee</th><th>Pickup trip</th><th>Drop trip</th><th></th></tr></thead>
+        <thead>
+          <tr>
+            <SortableTh label="Employee" keyName="name" sortKey={assignTable.sortKey} sortDir={assignTable.sortDir} onSort={assignTable.toggleSort} />
+            <SortableTh label="Pickup trip" keyName="pickup" sortKey={assignTable.sortKey} sortDir={assignTable.sortDir} onSort={assignTable.toggleSort} />
+            <SortableTh label="Drop trip" keyName="drop" sortKey={assignTable.sortKey} sortDir={assignTable.sortDir} onSort={assignTable.toggleSort} />
+            <th></th>
+          </tr>
+        </thead>
         <tbody>
           {employeesPage.map((emp) => {
             const a = assignedTo(emp.id)
@@ -945,11 +1014,21 @@ function RequestsTab({ requests, nameOf, bump }) {
     return a.raisedOn < b.raisedOn ? 1 : -1
   })
 
+  const {
+    items: requestsPage,
+    page: requestsPageNum,
+    totalPages: requestsTotalPages,
+    total: requestsTotal,
+    startIndex: requestsStart,
+    endIndex: requestsEnd,
+    setPage: setRequestsPage
+  } = usePagination(sorted)
+
   return (
     <div className="card">
       <h3 className="section-title first">Temporary change requests</h3>
       {sorted.length === 0 && <p className="muted">No requests yet.</p>}
-      {sorted.map((r) => (
+      {requestsPage.map((r) => (
         <div className="cab-request" key={r.id}>
           <div className="cab-request-head">
             <strong>{nameOf(r.employeeId)}</strong>
@@ -980,6 +1059,14 @@ function RequestsTab({ requests, nameOf, bump }) {
           )}
         </div>
       ))}
+      <Pagination
+        page={requestsPageNum}
+        totalPages={requestsTotalPages}
+        total={requestsTotal}
+        startIndex={requestsStart}
+        endIndex={requestsEnd}
+        onPageChange={setRequestsPage}
+      />
     </div>
   )
 }
@@ -1112,6 +1199,11 @@ function TodayTab({ employees, bump }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [openMenuId])
 
+  const runsTable = useTableControls(drivers, {
+    initialSortKey: 'name',
+    initialSortDir: 'asc'
+  })
+
   const {
     items: driversPage,
     page: runsPageNum,
@@ -1120,7 +1212,7 @@ function TodayTab({ employees, bump }) {
     startIndex: runsStart,
     endIndex: runsEnd,
     setPage: setRunsPage
-  } = usePagination(drivers)
+  } = usePagination(runsTable.rows)
 
   function nameOf(id) {
     return employees.find((e) => e.id === id)?.name || id
@@ -1174,9 +1266,9 @@ function TodayTab({ employees, bump }) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Driver</th>
-                  <th>Mobile</th>
-                  <th>WorkBuddy ID</th>
+                  <SortableTh label="Driver" keyName="name" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
+                  <SortableTh label="Mobile" keyName="mobile" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
+                  <SortableTh label="WorkBuddy ID" keyName="id" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
                   <th>Action</th>
                 </tr>
               </thead>

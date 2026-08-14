@@ -71,6 +71,7 @@ export default function TeamTasksPanel() {
     },
     getSortValue: (t, key) => {
       if (key === 'assignee') return people.find((p) => p.id === t.assigneeId)?.name || t.assigneeId
+      if (key === 'status') return statusLabel(t.status)
       return t[key]
     },
     initialSortKey: 'dueDate',
@@ -329,7 +330,7 @@ export default function TeamTasksPanel() {
               <SortableTh label="Description" keyName="description" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Assigned To" keyName="assignee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <th>Status</th>
+              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Due Date" keyName="dueDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
             </tr>

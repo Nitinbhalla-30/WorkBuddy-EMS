@@ -3,8 +3,10 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { getProfileForEmployee, getSettings, getUnreadAnnouncementCount } from '../data/store.js'
 import { profilePhotoUrl } from '../utils/profile.js'
 import Avatar from './Avatar.jsx'
+import Modal from './Modal.jsx'
 import NotificationBell from './NotificationBell.jsx'
 import CinematicThemeSwitcher from './ui/cinematic-theme-switcher.tsx'
+import { OriginButton } from './ui/origin-button.tsx'
 import { useState, useEffect } from 'react'
 
 // The shared frame: top bar with the company name, side menu, and content.
@@ -17,6 +19,7 @@ export default function Layout() {
   const isIT = user?.department === 'IT Support'
   const showAnnouncements = !isAdmin
   const [unreadCount, setUnreadCount] = useState(0)
+  const [confirmLogout, setConfirmLogout] = useState(false)
 
   useEffect(() => {
     if (user && showAnnouncements) {
@@ -41,6 +44,7 @@ export default function Layout() {
   }, [user, showAnnouncements])
 
   function handleLogout() {
+    setConfirmLogout(false)
     logout()
     navigate('/login', { replace: true })
   }
@@ -67,9 +71,13 @@ export default function Layout() {
           {user && (user.role === 'employee' || (user.role === 'admin' && !isIT)) && (
             <NotificationBell employeeId={user.id} viewerRole={user.role} />
           )}
-          <button className="btn btn-light" onClick={handleLogout}>
+          <OriginButton
+            className="h-10 rounded-lg px-4 text-[14px] data-[hovered=true]:text-white dark:data-[hovered=true]:text-white"
+            fillClassName="bg-[#e81123] dark:bg-[#e81123]"
+            onClick={() => setConfirmLogout(true)}
+          >
             Log out
-          </button>
+          </OriginButton>
         </div>
       </header>
 
@@ -129,6 +137,28 @@ export default function Layout() {
           </div>
         </main>
       </div>
+
+      {confirmLogout && (
+        <Modal onClose={() => setConfirmLogout(false)} title="Confirm Log out">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Log out</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmLogout(false)}>✕</button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to log out? You will need to sign in again to access your account.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={handleLogout}>
+                Log out
+              </button>
+              <button type="button" className="btn btn-light" onClick={() => setConfirmLogout(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

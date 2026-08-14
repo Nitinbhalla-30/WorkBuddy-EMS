@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   approveReimbursementClaim,
@@ -7,6 +7,7 @@ import {
   markReimbursementPaid,
   rejectReimbursementClaim
 } from '../data/store.js'
+import { REIMBURSEMENT_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import {
   categoryLabel,
@@ -16,28 +17,24 @@ import {
 } from '../utils/reimbursements.js'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import Modal from '../components/Modal.jsx'
+import Pagination from '../components/Pagination.jsx'
+import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+
+const STATUS_FILTER_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  ...REIMBURSEMENT_STATUSES.map((s) => ({ value: s.key, label: s.label }))
+]
 
 export default function AdminReimbursements() {
   const { user } = useAuth()
   const [claims, setClaims] = useState(() => getReimbursements())
-  const [filter, setFilter] = useState('pending')
   const [rejectId, setRejectId] = useState(null)
   const [rejectNote, setRejectNote] = useState('')
+  const [openMenuId, setOpenMenuId] = useState(null)
 
-  const tabFiltered = useMemo(() => {
-    let list = [...claims]
-    if (filter === 'approved_unpaid') {
-      list = list.filter((c) => c.status === 'approved_unpaid')
-    } else if (filter === 'paid') {
-      list = list.filter((c) => c.status === 'paid')
-    } else if (filter !== 'all') {
-      list = list.filter((c) => c.status === filter)
-    }
-    return list
-  }, [claims, filter])
-
-  const table = useTableControls(tabFiltered, {
+  const table = useTableControls(claims, {
     getSearchText: (c) => {
       const emp = getEmployeeById(c.employeeId)
       return [
@@ -53,11 +50,21 @@ export default function AdminReimbursements() {
       return c[key]
     },
     initialSortKey: 'appliedOn',
-    initialSortDir: 'desc'
+    initialSortDir: 'desc',
+    filterFns: {
+      status: (c, val) => c.status === val
+    },
+    initialFilters: { status: 'pending' }
   })
-
-  const pendingCount = claims.filter((c) => c.status === 'pending').length
-  const unpaidCount = claims.filter((c) => c.status === 'approved_unpaid').length
+  const {
+    items: claimsPage,
+    page: claimsPageNum,
+    totalPages: claimsTotalPages,
+    total: claimsTotal,
+    startIndex: claimsStart,
+    endIndex: claimsEnd,
+    setPage: setClaimsPage
+  } = usePagination(table.rows)
 
   function refresh() {
     setClaims(getReimbursements())
@@ -81,31 +88,30 @@ export default function AdminReimbursements() {
     refresh()
   }
 
-  const tabs = [
-    { key: 'pending', label: `Pending (${pendingCount})` },
-    { key: 'approved_unpaid', label: `Approved — unpaid (${unpaidCount})` },
-    { key: 'paid', label: 'Paid' },
-    { key: 'rejected', label: 'Rejected' },
-    { key: 'all', label: 'All' }
-  ]
+  function toggleMenu(claimId) {
+    setOpenMenuId(openMenuId === claimId ? null : claimId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
 
   return (
     <div>
       <div className="page-head">
         <h2>Reimbursement Claims</h2>
         <span className="muted">{table.count} shown</span>
-      </div>
-
-      <div className="tabs">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            className={`tab ${filter === t.key ? 'tab-active' : ''}`}
-            onClick={() => setFilter(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
       </div>
 
       <div className="card">
@@ -115,8 +121,25 @@ export default function AdminReimbursements() {
           showing={table.count}
           total={table.total}
           placeholder="Search claims..."
+          filters={[{
+            key: 'status',
+            label: 'Status',
+            value: table.filters.status || 'all',
+            options: STATUS_FILTER_OPTS
+          }]}
+          onFilterChange={table.setFilter}
         />
         <table className="table">
+          <colgroup>
+            <col style={{ width: '11.65%' }} />
+            <col style={{ width: '11.6%' }} />
+            <col style={{ width: '11.6%' }} />
+            <col style={{ width: '11.6%' }} />
+            <col style={{ width: '18.75%' }} />
+            <col style={{ width: '11.6%' }} />
+            <col style={{ width: '11.6%' }} />
+            <col style={{ width: '11.6%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -133,7 +156,7 @@ export default function AdminReimbursements() {
             {table.count === 0 && (
               <tr><td colSpan={8} className="muted">No claims match your filters.</td></tr>
             )}
-            {table.rows.map((c) => {
+            {claimsPage.map((c) => {
               const emp = getEmployeeById(c.employeeId)
               return (
                 <tr key={c.id}>
@@ -144,7 +167,9 @@ export default function AdminReimbursements() {
                   <td>{categoryLabel(c.category)}</td>
                   <td>{formatDate(c.expenseDate)}</td>
                   <td><strong>{formatAmount(c.amount)}</strong></td>
-                  <td>{c.description || <span className="muted">--</span>}</td>
+                  <td className="cell-ellipsis" title={c.description || ''}>
+                    {c.description || <span className="muted">--</span>}
+                  </td>
                   <td>{formatDate(c.appliedOn)}</td>
                   <td>
                     <span className={`tag ${statusTagClass(c.status)}`}>
@@ -158,34 +183,59 @@ export default function AdminReimbursements() {
                     )}
                   </td>
                   <td>
-                    {c.status === 'pending' && (
-                      <div className="button-row" style={{ marginTop: 0 }}>
+                    {(c.status === 'pending' || c.status === 'approved_unpaid') ? (
+                      <div className="task-menu-container">
                         <button
-                          className="btn btn-tiny btn-primary"
-                          onClick={() => handleApprove(c.id)}
+                          type="button"
+                          className="btn btn-tiny btn-light task-menu-button"
+                          onClick={() => toggleMenu(c.id)}
+                          aria-label="Claim actions"
                         >
-                          Approve
+                          ⋯
                         </button>
-                        <button
-                          className="btn btn-tiny btn-light"
-                          onClick={() => {
-                            setRejectId(c.id)
-                            setRejectNote('')
-                          }}
-                        >
-                          Reject
-                        </button>
+                        {openMenuId === c.id && (
+                          <div className="task-menu-dropdown">
+                            {c.status === 'pending' && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="task-menu-item"
+                                  onClick={() => {
+                                    handleApprove(c.id)
+                                    closeMenu()
+                                  }}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  className="task-menu-item task-menu-item-danger"
+                                  onClick={() => {
+                                    setRejectId(c.id)
+                                    setRejectNote('')
+                                    closeMenu()
+                                  }}
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                            {c.status === 'approved_unpaid' && (
+                              <button
+                                type="button"
+                                className="task-menu-item"
+                                onClick={() => {
+                                  handleMarkPaid(c.id)
+                                  closeMenu()
+                                }}
+                              >
+                                Mark paid
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {c.status === 'approved_unpaid' && (
-                      <button
-                        className="btn btn-tiny btn-primary"
-                        onClick={() => handleMarkPaid(c.id)}
-                      >
-                        Mark paid
-                      </button>
-                    )}
-                    {c.status !== 'pending' && c.status !== 'approved_unpaid' && (
+                    ) : (
                       <span className="muted">—</span>
                     )}
                   </td>
@@ -194,37 +244,52 @@ export default function AdminReimbursements() {
             })}
           </tbody>
         </table>
+        <Pagination
+          page={claimsPageNum}
+          totalPages={claimsTotalPages}
+          total={claimsTotal}
+          startIndex={claimsStart}
+          endIndex={claimsEnd}
+          onPageChange={setClaimsPage}
+        />
       </div>
 
       {rejectId && (
-        <div className="card">
-          <h3 className="section-title first">Reject claim</h3>
-          <p className="hint first">Please give a short reason so the employee knows why the claim was rejected.</p>
-          <label className="field">
-            <span>Reason</span>
-            <textarea
-              rows={3}
-              value={rejectNote}
-              onChange={(e) => setRejectNote(e.target.value)}
-              placeholder="e.g. Receipt not attached / not a reimbursable expense"
-            />
-          </label>
-          <div className="button-row">
-            <button
-              className="btn btn-danger"
-              disabled={!rejectNote.trim()}
-              onClick={() => handleReject(rejectId)}
-            >
-              Confirm reject
-            </button>
-            <button
-              className="btn btn-light"
-              onClick={() => { setRejectId(null); setRejectNote('') }}
-            >
-              Cancel
-            </button>
+        <Modal onClose={() => { setRejectId(null); setRejectNote('') }} title="Reject claim">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Reject claim</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => { setRejectId(null); setRejectNote('') }}>✕</button>
+            </div>
+            <p className="hint first">Please give a short reason so the employee knows why the claim was rejected.</p>
+            <label className="field">
+              <span>Reason</span>
+              <textarea
+                rows={3}
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+                placeholder="e.g. Receipt not attached / not a reimbursable expense"
+              />
+            </label>
+            <div className="button-row">
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={!rejectNote.trim()}
+                onClick={() => handleReject(rejectId)}
+              >
+                Confirm reject
+              </button>
+              <button
+                type="button"
+                className="btn btn-light"
+                onClick={() => { setRejectId(null); setRejectNote('') }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       <p className="hint">

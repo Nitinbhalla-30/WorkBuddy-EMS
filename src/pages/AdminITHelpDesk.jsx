@@ -10,7 +10,7 @@ import {
 } from '../data/store.js'
 import { IT_ISSUE_CATEGORIES, IT_ISSUE_PRIORITIES, IT_ISSUE_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
-import { itIssueCategoryLabel } from '../utils/itIssues.js'
+import { itIssueCategoryLabel, itIssueStatusLabel } from '../utils/itIssues.js'
 import ITIssueThread from '../components/ITIssueThread.jsx'
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
@@ -82,6 +82,7 @@ export default function AdminITHelpDesk() {
     getSortValue: (i, key) => {
       if (key === 'employee') return getEmployeeById(i.employeeId)?.name || i.employeeId
       if (key === 'assigned') return i.assignedTo || ''
+      if (key === 'status') return itIssueStatusLabel(i.status)
       return i[key]
     },
     initialSortKey: 'createdOn',
@@ -203,7 +204,7 @@ export default function AdminITHelpDesk() {
               <SortableTh label="Issue" keyName="issue" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Category" keyName="category" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <th>Status</th>
+              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Assigned To" keyName="assigned" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Expected Response Time" keyName="estimatedTime" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Reported On" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />

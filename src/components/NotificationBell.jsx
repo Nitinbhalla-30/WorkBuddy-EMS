@@ -82,7 +82,7 @@ export default function NotificationBell({ employeeId, viewerRole = 'employee' }
             <p className="muted notif-empty">No notifications yet.</p>
           ) : (
             <ul className="notif-list">
-              {feed.all.slice(0, 20).map((n) => (
+              {feed.all.map((n) => (
                 <li key={n.id}>
                   <button
                     type="button"

@@ -134,33 +134,27 @@ export default function Settings() {
           Employees are on time until office start plus the grace period. Example:
           start 10:30 with 20 minutes grace → late only after 10:50.
         </p>
-        <div className="two-col">
-          <label className="field">
-            <span>Standard work hours per day</span>
-            <input
-              type="number"
-              min="1"
-              max="24"
-              value={form.standardWorkHours}
-              onChange={(e) => update('standardWorkHours', Number(e.target.value))}
-            />
-          </label>
-          <div />
-        </div>
+        <label className="field">
+          <span>Standard work hours per day</span>
+          <input
+            type="number"
+            min="1"
+            max="24"
+            value={form.standardWorkHours}
+            onChange={(e) => update('standardWorkHours', Number(e.target.value))}
+          />
+        </label>
 
         <h3 className="section-title">Cab timing rules</h3>
-        <div className="two-col">
-          <label className="field">
-            <span>Maximum wait time for employees (minutes)</span>
-            <input
-              type="number"
-              min="0"
-              value={form.cabWaitingTime || ''}
-              onChange={(e) => update('cabWaitingTime', Number(e.target.value))}
-            />
-          </label>
-          <div />
-        </div>
+        <label className="field">
+          <span>Maximum wait time for employees (minutes)</span>
+          <input
+            type="number"
+            min="0"
+            value={form.cabWaitingTime || ''}
+            onChange={(e) => update('cabWaitingTime', Number(e.target.value))}
+          />
+        </label>
 
         <h3 className="section-title">Lunch policy</h3>
         <p className="hint first">

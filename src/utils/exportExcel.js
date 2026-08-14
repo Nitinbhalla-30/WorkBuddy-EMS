@@ -1,28 +1,20 @@
-// Download a CSV file that opens cleanly in Excel.
-export function downloadExcelCsv(filename, headers, rows) {
-  const escapeCell = (value) => {
-    const text = value == null ? '' : String(value)
-    if (/[",\n\r]/.test(text)) {
-      return `"${text.replace(/"/g, '""')}"`
-    }
-    return text
-  }
+import * as XLSX from 'xlsx'
 
-  const lines = [
-    headers.map(escapeCell).join(','),
-    ...rows.map((row) => row.map(escapeCell).join(','))
-  ]
-  const bom = '\uFEFF'
-  const blob = new Blob([bom + lines.join('\r\n')], {
-    type: 'text/csv;charset=utf-8;'
+// Download a native Excel (.xlsx) workbook with one sheet.
+export function downloadExcelXlsx(filename, headers, rows) {
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+
+  // Size each column to its longest cell so nothing shows truncated.
+  ws['!cols'] = headers.map((h, col) => {
+    const longest = rows.reduce(
+      (max, row) => Math.max(max, String(row[col] ?? '').length),
+      String(h ?? '').length
+    )
+    return { wch: Math.min(longest + 2, 60) }
   })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  const safeName = filename.endsWith('.csv') ? filename : `${filename}.csv`
-  link.href = url
-  link.download = safeName
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
+  const safeName = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`
+  XLSX.writeFile(wb, safeName)
 }

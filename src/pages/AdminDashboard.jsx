@@ -14,7 +14,9 @@ import {
 } from '../utils/attendance.js'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import Pagination from '../components/Pagination.jsx'
 import { AttendanceTodayChart } from '../components/dashboard/AttendanceTodayChart.tsx'
+import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 
 function todayKey() {
@@ -76,6 +78,15 @@ export default function AdminDashboard() {
       status: ({ rec }, val) => statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes) === val
     }
   })
+  const {
+    items: rowsPage,
+    page: rowsPageNum,
+    totalPages: rowsTotalPages,
+    total: rowsTotal,
+    startIndex: rowsStart,
+    endIndex: rowsEnd,
+    setPage: setRowsPage
+  } = usePagination(table.rows)
 
   const present = allRows.filter((r) => r.rec && r.rec.timeIn).length
   const late = allRows.filter(
@@ -137,7 +148,7 @@ export default function AdminDashboard() {
             {table.count === 0 && (
               <tr><td colSpan={7} className="muted">No employees match your filters.</td></tr>
             )}
-            {table.rows.map(({ emp, rec }) => (
+            {rowsPage.map(({ emp, rec }) => (
               <tr key={emp.id}>
                 <td>
                   <strong>{emp.name}</strong>
@@ -165,6 +176,14 @@ export default function AdminDashboard() {
             ))}
           </tbody>
         </table>
+        <Pagination
+          page={rowsPageNum}
+          totalPages={rowsTotalPages}
+          total={rowsTotal}
+          startIndex={rowsStart}
+          endIndex={rowsEnd}
+          onPageChange={setRowsPage}
+        />
       </div>
     </div>
   )

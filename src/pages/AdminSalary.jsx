@@ -13,6 +13,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { downloadExcelXlsx } from '../utils/exportExcel.js'
 import {
   computeSalary,
   formatRupees,
@@ -66,14 +67,16 @@ export default function AdminSalary() {
     getSearchText: ({ emp, calc }) =>
       [emp.name, emp.id, emp.department, calc.gross, calc.lopDays, calc.netPay].join(' '),
     getSortValue: ({ emp, calc }, key) => {
+      if (key === 'id') return emp.id
       if (key === 'employee') return emp.name
+      if (key === 'month') return selected
       if (key === 'gross') return calc.gross
       if (key === 'lopDays') return calc.lopDays
       if (key === 'deductions') return calc.lopDeduction + calc.totalDeductions
       if (key === 'netPay') return calc.netPay
       return ''
     },
-    initialSortKey: 'employee',
+    initialSortKey: 'id',
     initialSortDir: 'asc',
     filterFns: {
       employee: ({ emp }, val) => emp.id === val,
@@ -131,6 +134,30 @@ export default function AdminSalary() {
   const viewRow = allRows.find((r) => r.emp.id === viewId)
   const selectedMonthLabel = months.find((m) => m.key === selected)?.label || selected
 
+  function exportSalariesExcel() {
+    const headers = [
+      'Employee ID',
+      'Employee',
+      'Department',
+      'Month',
+      'Gross',
+      'LOP days',
+      'Deductions',
+      'Net pay'
+    ]
+    const rows = table.rows.map(({ emp, calc }) => [
+      emp.id,
+      emp.name,
+      emp.department || '',
+      selectedMonthLabel,
+      calc.gross,
+      calc.lopDays,
+      calc.lopDeduction + calc.totalDeductions,
+      calc.netPay
+    ])
+    downloadExcelXlsx(`salaries-${selected}`, headers, rows)
+  }
+
   return (
     <div>
       <div className="page-head">
@@ -172,13 +199,23 @@ export default function AdminSalary() {
               table.setFilter(key, val)
             }
           }}
+          actions={
+            <button
+              type="button"
+              className="btn btn-primary btn-tiny"
+              onClick={exportSalariesExcel}
+              disabled={table.rows.length === 0}
+            >
+              Export to Excel
+            </button>
+          }
         />
         <table className="table">
           <thead>
             <tr>
-              <th>Employee ID</th>
+              <SortableTh label="Employee ID" keyName="id" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <th>Month</th>
+              <SortableTh label="Month" keyName="month" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Gross" keyName="gross" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="LOP days" keyName="lopDays" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Deductions" keyName="deductions" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />

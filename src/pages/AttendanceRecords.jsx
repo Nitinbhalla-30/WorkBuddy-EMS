@@ -29,13 +29,21 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
 import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
-import { downloadExcelCsv } from '../utils/exportExcel.js'
+import { downloadExcelXlsx } from '../utils/exportExcel.js'
 
 const PERIOD_FILTER_OPTS = [
   { value: 'all', label: 'All period' },
   { value: 'this-month', label: 'This month' },
   { value: 'last-month', label: 'Last month' },
   { value: 'ytd', label: 'Year to date' }
+]
+
+const CORRECTION_STATUS_FILTER_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'withdrawn', label: 'Withdrawn' }
 ]
 
 // All attendance records with filters by employee, period, department, and manager.
@@ -45,6 +53,7 @@ export default function AttendanceRecords() {
   const employees = getEmployees().filter((e) => e.role === 'employee')
   const today = todayDateKey()
 
+  const [tab, setTab] = useState('all')
   const [corrections, setCorrections] = useState(() => getAttendanceCorrections())
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openId, setOpenId] = useState(null)
@@ -134,13 +143,31 @@ export default function AttendanceRecords() {
   })
 
   const correctionsTable = useTableControls(corrections, {
+    getSearchText: (c) => {
+      const emp = getEmployeeById(c.employeeId)
+      return [
+        emp?.name, c.date, correctionIssueLabel(c.issueType),
+        c.description, statusLabel(c.status)
+      ].join(' ')
+    },
     getSortValue: (c, key) => {
       if (key === 'employee') return getEmployeeById(c.employeeId)?.name || c.employeeId
       if (key === 'issue') return correctionIssueLabel(c.issueType)
+      if (key === 'details') return c.description || ''
+      if (key === 'suggested') return `${c.suggestedTimeIn || ''} ${c.suggestedTimeOut || ''}`.trim()
       return c[key]
     },
     initialSortKey: 'appliedOn',
-    initialSortDir: 'desc'
+    initialSortDir: 'desc',
+    filterFns: {
+      employeeId: (c, val) => c.employeeId === val,
+      period: (c, val) => filterRecordsForStatsPeriod([{ date: c.date }], val, {
+        joinDate: today,
+        todayDate: today
+      }).length > 0,
+      status: (c, val) => c.status === val
+    },
+    initialFilters: { employeeId: 'all', period: 'all', status: 'all' }
   })
   const {
     items: correctionsPage,
@@ -163,6 +190,7 @@ export default function AttendanceRecords() {
   } = usePagination(table.rows, 10)
 
   const openCorrection = corrections.find((c) => c.id === openId) || null
+  const pendingCorrectionCount = corrections.filter((c) => c.status === 'pending').length
 
   function nameOf(id) {
     if (!id) return ''
@@ -266,7 +294,7 @@ export default function AttendanceRecords() {
         statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)
       ]
     })
-    downloadExcelCsv(`attendance-records-${today}`, headers, rows)
+    downloadExcelXlsx(`attendance-records-${today}`, headers, rows)
   }
 
   const hasActiveFilters =
@@ -275,14 +303,28 @@ export default function AttendanceRecords() {
     (table.filters.reportsTo && table.filters.reportsTo !== 'all') ||
     (table.filters.period && table.filters.period !== 'all')
 
+  const hasActiveCorrectionFilters =
+    (correctionsTable.filters.employeeId && correctionsTable.filters.employeeId !== 'all') ||
+    (correctionsTable.filters.period && correctionsTable.filters.period !== 'all') ||
+    (correctionsTable.filters.status && correctionsTable.filters.status !== 'all')
+
   return (
     <div>
       <div className="page-head">
         <h2>Attendance Records</h2>
-        <span className="muted">{table.count} records</span>
+        <span className="muted">{tab === 'all' ? `${table.count} records` : `${corrections.length} requests`}</span>
       </div>
 
-      <h3 className="section-title first">All records</h3>
+      <div className="tabs">
+        <button type="button" className={`tab ${tab === 'all' ? 'tab-active' : ''}`} onClick={() => setTab('all')}>
+          All records
+        </button>
+        <button type="button" className={`tab ${tab === 'corrections' ? 'tab-active' : ''}`} onClick={() => setTab('corrections')}>
+          Correction requests{pendingCorrectionCount > 0 ? ` (${pendingCorrectionCount})` : ''}
+        </button>
+      </div>
+
+      {tab === 'all' && (
       <div className="card">
         <TableToolbar
           search={table.search}
@@ -315,15 +357,17 @@ export default function AttendanceRecords() {
             }
           ]}
           onFilterChange={table.setFilter}
+          actions={
+            <button
+              type="button"
+              className="btn btn-primary btn-tiny"
+              onClick={exportAttendanceExcel}
+              disabled={table.rows.length === 0}
+            >
+              Export to Excel
+            </button>
+          }
         >
-          <button
-            type="button"
-            className="btn btn-light btn-tiny table-toolbar-action"
-            onClick={exportAttendanceExcel}
-            disabled={table.rows.length === 0}
-          >
-            Export to Excel
-          </button>
           {hasActiveFilters && (
             <button
               type="button"
@@ -389,20 +433,58 @@ export default function AttendanceRecords() {
           onPageChange={setRecordsPage}
         />
       </div>
+      )}
 
-      <h3 className="section-title">
-        Correction requests
-      </h3>
-
+      {tab === 'corrections' && (
       <div className="card">
+        <TableToolbar
+          search={correctionsTable.search}
+          onSearchChange={correctionsTable.setSearch}
+          placeholder="Search correction requests..."
+          filters={[
+            {
+              key: 'employeeId',
+              label: 'Employee',
+              value: correctionsTable.filters.employeeId || 'all',
+              options: employeeFilterOpts
+            },
+            {
+              key: 'period',
+              label: 'Period',
+              value: correctionsTable.filters.period || 'all',
+              options: PERIOD_FILTER_OPTS
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              value: correctionsTable.filters.status || 'all',
+              options: CORRECTION_STATUS_FILTER_OPTS
+            }
+          ]}
+          onFilterChange={correctionsTable.setFilter}
+        >
+          {hasActiveCorrectionFilters && (
+            <button
+              type="button"
+              className="btn btn-light btn-tiny table-toolbar-action"
+              onClick={() => {
+                correctionsTable.setFilter('employeeId', 'all')
+                correctionsTable.setFilter('period', 'all')
+                correctionsTable.setFilter('status', 'all')
+              }}
+            >
+              Clear filters
+            </button>
+          )}
+        </TableToolbar>
         <table className="table">
           <thead>
             <tr>
               <SortableTh label="Employee" keyName="employee" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
               <SortableTh label="Date" keyName="date" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
               <SortableTh label="Issue" keyName="issue" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
-              <th>Details</th>
-              <th>Suggested</th>
+              <SortableTh label="Details" keyName="details" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
+              <SortableTh label="Suggested" keyName="suggested" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
               <th>Actions</th>
             </tr>
@@ -410,7 +492,7 @@ export default function AttendanceRecords() {
           <tbody>
             {correctionsTotal === 0 && (
               <tr>
-                <td colSpan={7} className="muted">No correction requests yet.</td>
+                <td colSpan={7} className="muted">No correction requests match your filters.</td>
               </tr>
             )}
             {correctionsPage.map((c) => {
@@ -498,6 +580,7 @@ export default function AttendanceRecords() {
           onPageChange={setCorrectionsPage}
         />
       </div>
+      )}
 
       {openCorrection && (
         <Modal onClose={closeReview} title="Review correction request">

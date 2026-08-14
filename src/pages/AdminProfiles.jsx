@@ -11,9 +11,11 @@ import {
 import { formatDate } from '../utils/attendance.js'
 import { profileStatusLabel, profileStatusTagClass } from '../utils/profile.js'
 import Modal from '../components/Modal.jsx'
+import Pagination from '../components/Pagination.jsx'
 import ProfileView from '../components/ProfileView.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 
 const ROLE_FILTER_OPTS = [
@@ -114,6 +116,15 @@ export default function EmployeeRecords() {
       }
     }
   })
+  const {
+    items: recordsPage,
+    page: recordsPageNum,
+    totalPages: recordsTotalPages,
+    total: recordsTotal,
+    startIndex: recordsStart,
+    endIndex: recordsEnd,
+    setPage: setRecordsPage
+  } = usePagination(table.rows)
 
   // Only real employees can be picked as a manager.
   const managers = employees.filter((e) => e.role === 'employee' && e.isManager)
@@ -254,6 +265,17 @@ export default function EmployeeRecords() {
           onFilterChange={table.setFilter}
         />
         <table className="table">
+          <colgroup>
+            <col style={{ width: '10.1375%' }} />
+            <col style={{ width: '10.1375%' }} />
+            <col style={{ width: '10.1375%' }} />
+            <col style={{ width: '10.1375%' }} />
+            <col style={{ width: '10.1375%' }} />
+            <col style={{ width: '10.1375%' }} />
+            <col style={{ width: '10.1375%' }} />
+            <col style={{ width: '18.9%' }} />
+            <col style={{ width: '10.1375%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="ID" keyName="id" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -271,7 +293,7 @@ export default function EmployeeRecords() {
             {table.count === 0 && (
               <tr><td colSpan={9} className="muted">No employees match your filters.</td></tr>
             )}
-            {table.rows.map((e) => {
+            {recordsPage.map((e) => {
               const profile = profileOf(e)
               return (
                 <tr key={e.id}>
@@ -329,6 +351,14 @@ export default function EmployeeRecords() {
             })}
           </tbody>
         </table>
+        <Pagination
+          page={recordsPageNum}
+          totalPages={recordsTotalPages}
+          total={recordsTotal}
+          startIndex={recordsStart}
+          endIndex={recordsEnd}
+          onPageChange={setRecordsPage}
+        />
       </div>
 
       {editEmp && form && (

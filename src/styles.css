@@ -429,6 +429,14 @@ textarea::placeholder {
 .table:has(.th-sortable) td {
   overflow-wrap: anywhere;
 }
+/* Single-line cell with trailing ellipsis (e.g. description columns) */
+.table td.cell-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+}
 
 /* Attendance history: stable proportions for date/time/status columns */
 .table-cols-attendance col.col-date { width: 16%; }
@@ -515,6 +523,13 @@ textarea::placeholder {
   align-self: flex-end;
   height: 42px;
   margin: 0;
+}
+.table-toolbar-right {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
@@ -1627,16 +1642,16 @@ textarea::placeholder {
   flex-wrap: wrap;
   gap: 8px;
 }
-.pickup-title  { background: #f0fdf4; color: #15803d; border-bottom: 1px solid #bbf7d0; }
-.drop-title    { background: #fff7ed; color: #c2410c; border-bottom: 1px solid #fed7aa; }
+.pickup-title  { background: #faf3f3; color: #9c4a4a; border-bottom: 1px solid #e5c8c8; }
+.drop-title    { background: #f2f7f3; color: #47705a; border-bottom: 1px solid #c9dccf; }
 .driver-vehicle-chip {
   font-size: 13px;
   padding: 4px 10px;
   border-radius: 20px;
   font-weight: 600;
 }
-.chip-pickup { background: #bbf7d0; color: #166534; }
-.chip-drop   { background: #fed7aa; color: #9a3412; }
+.chip-pickup { background: #e8cfcf; color: #8f4040; }
+.chip-drop   { background: #cfe0d4; color: #3f6350; }
 
 .driver-section-body {
   display: flex;
@@ -1754,23 +1769,23 @@ textarea::placeholder {
 }
 .stop-btn-nav:hover { background: #1e40af; }
 
-/* Pickup cards use a green palette, drop cards an orange palette, so the
+/* Pickup cards use a red palette, drop cards a green palette, so the
    driver can tell the two runs apart at a glance (the banner stays blue). */
-.stop-card-pickup { border-color: #bbf7d0; border-top: 4px solid #15803d; }
-.stop-card-pickup .stop-num { background: #15803d; }
-.stop-card-pickup .stop-tel { color: #15803d; }
-.stop-card-pickup .stop-btn-call { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
-.stop-card-pickup .stop-btn-call:hover { background: #dcfce7; }
-.stop-card-pickup .stop-btn-nav { background: #15803d; }
-.stop-card-pickup .stop-btn-nav:hover { background: #166534; }
+.stop-card-pickup { border-color: #e5c8c8; border-top: 4px solid #b95c5c; }
+.stop-card-pickup .stop-num { background: #b95c5c; }
+.stop-card-pickup .stop-tel { color: #a04848; }
+.stop-card-pickup .stop-btn-call { background: #faf3f3; color: #a04848; border-color: #e5c8c8; }
+.stop-card-pickup .stop-btn-call:hover { background: #f0e0e0; }
+.stop-card-pickup .stop-btn-nav { background: #ad4f4f; }
+.stop-card-pickup .stop-btn-nav:hover { background: #964343; }
 
-.stop-card-drop { border-color: #fed7aa; border-top: 4px solid #ea580c; }
-.stop-card-drop .stop-num { background: #ea580c; }
-.stop-card-drop .stop-tel { color: #c2410c; }
-.stop-card-drop .stop-btn-call { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
-.stop-card-drop .stop-btn-call:hover { background: #ffedd5; }
-.stop-card-drop .stop-btn-nav { background: #ea580c; }
-.stop-card-drop .stop-btn-nav:hover { background: #c2410c; }
+.stop-card-drop { border-color: #c9dccf; border-top: 4px solid #578a6b; }
+.stop-card-drop .stop-num { background: #578a6b; }
+.stop-card-drop .stop-tel { color: #47705a; }
+.stop-card-drop .stop-btn-call { background: #f2f7f3; color: #47705a; border-color: #c9dccf; }
+.stop-card-drop .stop-btn-call:hover { background: #e0ece4; }
+.stop-card-drop .stop-btn-nav { background: #4e7d61; }
+.stop-card-drop .stop-btn-nav:hover { background: #426b53; }
 
 .driver-cancelled-block {
   padding: 12px 14px;

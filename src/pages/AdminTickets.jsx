@@ -17,8 +17,10 @@ import {
 } from '../utils/tickets.js'
 import TicketThread from '../components/TicketThread.jsx'
 import Modal from '../components/Modal.jsx'
+import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 
 const TICKET_KIND_OPTS = [
@@ -59,6 +61,15 @@ export default function AdminTickets() {
       status: (t, val) => t.status === val
     }
   })
+  const {
+    items: ticketsPage,
+    page: ticketsPageNum,
+    totalPages: ticketsTotalPages,
+    total: ticketsTotal,
+    startIndex: ticketsStart,
+    endIndex: ticketsEnd,
+    setPage: setTicketsPage
+  } = usePagination(table.rows)
 
   const open = allTickets.find((t) => t.id === openId) || null
 
@@ -128,7 +139,7 @@ export default function AdminTickets() {
             {table.count === 0 && (
               <tr><td colSpan={7} className="muted">Nothing matches your filters.</td></tr>
             )}
-            {table.rows.map((t) => (
+            {ticketsPage.map((t) => (
               <tr key={t.id}>
                 <td>
                   <strong>{t.subject}</strong>
@@ -183,6 +194,14 @@ export default function AdminTickets() {
             ))}
           </tbody>
         </table>
+        <Pagination
+          page={ticketsPageNum}
+          totalPages={ticketsTotalPages}
+          total={ticketsTotal}
+          startIndex={ticketsStart}
+          endIndex={ticketsEnd}
+          onPageChange={setTicketsPage}
+        />
       </div>
 
       {/* Open one ticket */}

@@ -9,6 +9,8 @@ import { ANNOUNCEMENT_TYPES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import Pagination from '../components/Pagination.jsx'
+import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
 
@@ -45,6 +47,15 @@ export default function AdminAnnouncements() {
       type: (a, val) => a.type === val
     }
   })
+  const {
+    items: announcementsPage,
+    page: announcementsPageNum,
+    totalPages: announcementsTotalPages,
+    total: announcementsTotal,
+    startIndex: announcementsStart,
+    endIndex: announcementsEnd,
+    setPage: setAnnouncementsPage
+  } = usePagination(table.rows)
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -193,6 +204,12 @@ export default function AdminAnnouncements() {
           onFilterChange={table.setFilter}
         />
         <table className="table">
+          <colgroup>
+            <col style={{ width: '40%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '20%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -205,12 +222,12 @@ export default function AdminAnnouncements() {
             {table.count === 0 && (
               <tr><td colSpan={4} className="muted">No announcements match your filters.</td></tr>
             )}
-            {table.rows.map((announcement) => (
+            {announcementsPage.map((announcement) => (
               <tr key={announcement.id}>
                 <td>
                   <strong>{announcement.title}</strong>
                   <div className="muted small">
-                    {announcement.content.substring(0, 50)}...
+                    {announcement.content}
                   </div>
                 </td>
                 <td>
@@ -258,6 +275,14 @@ export default function AdminAnnouncements() {
             ))}
           </tbody>
         </table>
+        <Pagination
+          page={announcementsPageNum}
+          totalPages={announcementsTotalPages}
+          total={announcementsTotal}
+          startIndex={announcementsStart}
+          endIndex={announcementsEnd}
+          onPageChange={setAnnouncementsPage}
+        />
       </div>
 
       {open && (

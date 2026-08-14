@@ -74,6 +74,7 @@ export default function AdminTasks() {
       [t.title, t.description, nameOf(t.assigneeId), statusLabel(t.status), priorityLabel(t.priority), t.dueDate].join(' '),
     getSortValue: (t, key) => {
       if (key === 'assignee') return nameOf(t.assigneeId)
+      if (key === 'status') return statusLabel(t.status)
       return t[key]
     },
     initialSortKey: 'dueDate',
@@ -295,7 +296,7 @@ export default function AdminTasks() {
               <SortableTh label="Description" keyName="description" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Assigned to" keyName="assignee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <th>Status</th>
+              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Due Date" keyName="dueDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Action</th>
             </tr>

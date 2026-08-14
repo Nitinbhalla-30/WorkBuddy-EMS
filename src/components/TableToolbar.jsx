@@ -5,6 +5,7 @@ export default function TableToolbar({
   placeholder = 'Search table...',
   filters = [],
   onFilterChange,
+  actions,
   children
 }) {
   return (
@@ -36,6 +37,7 @@ export default function TableToolbar({
         ))}
         {children}
       </div>
+      {actions && <div className="table-toolbar-right">{actions}</div>}
     </div>
   )
 }
