@@ -290,6 +290,15 @@ export default function AdminTasks() {
           onFilterChange={table.setFilter}
         />
         <table className="table">
+          <colgroup>
+            <col style={{ width: '19%' }} />
+            <col style={{ width: '18.5%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '9.5%' }} />
+            <col style={{ width: '17%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '7%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -308,7 +317,7 @@ export default function AdminTasks() {
             {tasksPage.map((task) => (
               <tr key={task.id}>
                 <td><strong>{task.title}</strong></td>
-                <td>{task.description || <span className="muted">--</span>}</td>
+                <td className="cell-ellipsis" title={task.description || undefined}>{task.description || <span className="muted">--</span>}</td>
                 <td>{nameOf(task.assigneeId)}</td>
                 <td>
                   <span className={`tag ${priorityTagClass(task.priority)}`}>

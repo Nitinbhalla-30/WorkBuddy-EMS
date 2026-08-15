@@ -416,10 +416,16 @@ textarea::placeholder {
 /* ---------- Table ---------- */
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .table th, .table td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); }
+/* Tighter gutters for wide many-column tables on small laptop screens */
+.table-compact th, .table-compact td { padding: 11px 8px; }
 .table th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
 .table tr:last-child td { border-bottom: none; }
 .table td select, .table td input { max-width: 100%; }
-.table td .btn-tiny { margin-left: 0; }
+.table td .btn-tiny {
+  margin-left: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 /* Sortable tables paginate body rows, so auto layout reflows when sort changes the visible page. */
 .table:has(.th-sortable) {
@@ -430,7 +436,8 @@ textarea::placeholder {
   overflow-wrap: anywhere;
 }
 /* Single-line cell with trailing ellipsis (e.g. description columns) */
-.table td.cell-ellipsis {
+.table td.cell-ellipsis,
+.table .cell-ellipsis {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -447,7 +454,6 @@ textarea::placeholder {
 .th-sortable {
   cursor: pointer;
   user-select: none;
-  white-space: nowrap;
 }
 .th-sortable:hover { color: var(--ink); }
 .th-sort-active { color: var(--brand); }
@@ -514,6 +520,11 @@ textarea::placeholder {
 }
 .table-toolbar-filter select {
   min-width: 160px;
+}
+/* Drop the browser's white focus ring from dropdowns and toolbar controls app-wide */
+select:focus,
+.table-toolbar input:focus {
+  outline: none;
 }
 .table-toolbar-count {
   flex-shrink: 0;

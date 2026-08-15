@@ -33,6 +33,7 @@ export default function AdminReimbursements() {
   const [rejectId, setRejectId] = useState(null)
   const [rejectNote, setRejectNote] = useState('')
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [openId, setOpenId] = useState(null)
 
   const table = useTableControls(claims, {
     getSearchText: (c) => {
@@ -69,6 +70,8 @@ export default function AdminReimbursements() {
   function refresh() {
     setClaims(getReimbursements())
   }
+
+  const openClaim = openId ? claims.find((c) => c.id === openId) : null
 
   function handleApprove(id) {
     approveReimbursementClaim(id, user.id)
@@ -129,15 +132,15 @@ export default function AdminReimbursements() {
           }]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table table-compact">
           <colgroup>
             <col style={{ width: '11.65%' }} />
             <col style={{ width: '11.6%' }} />
             <col style={{ width: '11.6%' }} />
             <col style={{ width: '11.6%' }} />
-            <col style={{ width: '18.75%' }} />
+            <col style={{ width: '15.35%' }} />
             <col style={{ width: '11.6%' }} />
-            <col style={{ width: '11.6%' }} />
+            <col style={{ width: '15%' }} />
             <col style={{ width: '11.6%' }} />
           </colgroup>
           <thead>
@@ -175,69 +178,69 @@ export default function AdminReimbursements() {
                     <span className={`tag ${statusTagClass(c.status)}`}>
                       {statusLabel(c.status)}
                     </span>
-                    {c.status === 'paid' && c.paidOn && (
-                      <div className="muted small">Paid {formatDate(c.paidOn)}</div>
-                    )}
-                    {c.status === 'rejected' && c.reviewNote && (
-                      <div className="muted small">{c.reviewNote}</div>
-                    )}
                   </td>
                   <td>
-                    {(c.status === 'pending' || c.status === 'approved_unpaid') ? (
-                      <div className="task-menu-container">
-                        <button
-                          type="button"
-                          className="btn btn-tiny btn-light task-menu-button"
-                          onClick={() => toggleMenu(c.id)}
-                          aria-label="Claim actions"
-                        >
-                          ⋯
-                        </button>
-                        {openMenuId === c.id && (
-                          <div className="task-menu-dropdown">
-                            {c.status === 'pending' && (
-                              <>
-                                <button
-                                  type="button"
-                                  className="task-menu-item"
-                                  onClick={() => {
-                                    handleApprove(c.id)
-                                    closeMenu()
-                                  }}
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  type="button"
-                                  className="task-menu-item task-menu-item-danger"
-                                  onClick={() => {
-                                    setRejectId(c.id)
-                                    setRejectNote('')
-                                    closeMenu()
-                                  }}
-                                >
-                                  Reject
-                                </button>
-                              </>
-                            )}
-                            {c.status === 'approved_unpaid' && (
+                    <div className="task-menu-container">
+                      <button
+                        type="button"
+                        className="btn btn-tiny btn-light task-menu-button"
+                        onClick={() => toggleMenu(c.id)}
+                        aria-label="Claim actions"
+                      >
+                        ⋯
+                      </button>
+                      {openMenuId === c.id && (
+                        <div className="task-menu-dropdown">
+                          <button
+                            type="button"
+                            className="task-menu-item"
+                            onClick={() => {
+                              setOpenId(c.id)
+                              closeMenu()
+                            }}
+                          >
+                            Open
+                          </button>
+                          {c.status === 'pending' && (
+                            <>
                               <button
                                 type="button"
                                 className="task-menu-item"
                                 onClick={() => {
-                                  handleMarkPaid(c.id)
+                                  handleApprove(c.id)
                                   closeMenu()
                                 }}
                               >
-                                Mark paid
+                                Approve
                               </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="muted">—</span>
-                    )}
+                              <button
+                                type="button"
+                                className="task-menu-item task-menu-item-danger"
+                                onClick={() => {
+                                  setRejectId(c.id)
+                                  setRejectNote('')
+                                  closeMenu()
+                                }}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {c.status === 'approved_unpaid' && (
+                            <button
+                              type="button"
+                              className="task-menu-item"
+                              onClick={() => {
+                                handleMarkPaid(c.id)
+                                closeMenu()
+                              }}
+                            >
+                              Mark paid
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )
@@ -253,6 +256,57 @@ export default function AdminReimbursements() {
           onPageChange={setClaimsPage}
         />
       </div>
+
+      {openClaim && (
+        <Modal onClose={() => setOpenId(null)} title="Reimbursement claim">
+          <div className="modal-form">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>
+                  {categoryLabel(openClaim.category)}
+                </h3>
+                <div className="muted small">
+                  {getEmployeeById(openClaim.employeeId)?.name || openClaim.employeeId}
+                  {' · '}Submitted {formatDate(openClaim.appliedOn)}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={`tag ${statusTagClass(openClaim.status)}`}>
+                  {statusLabel(openClaim.status)}
+                </span>
+                <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenId(null)}>✕</button>
+              </div>
+            </div>
+            <ul className="lunch-policy-list first">
+              <li>
+                <span className="muted">Expense date</span>
+                <strong>{formatDate(openClaim.expenseDate)}</strong>
+              </li>
+              <li>
+                <span className="muted">Amount</span>
+                <strong>{formatAmount(openClaim.amount)}</strong>
+              </li>
+              {openClaim.status === 'paid' && openClaim.paidOn && (
+                <li>
+                  <span className="muted">Paid on</span>
+                  <strong>{formatDate(openClaim.paidOn)}</strong>
+                </li>
+              )}
+            </ul>
+            {openClaim.description && (
+              <p className="hint"><strong>Description:</strong> {openClaim.description}</p>
+            )}
+            {openClaim.status === 'rejected' && openClaim.reviewNote && (
+              <div className="info-box">Reason: {openClaim.reviewNote}</div>
+            )}
+            <div className="button-row">
+              <button type="button" className="btn btn-light" onClick={() => setOpenId(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {rejectId && (
         <Modal onClose={() => { setRejectId(null); setRejectNote('') }} title="Reject claim">

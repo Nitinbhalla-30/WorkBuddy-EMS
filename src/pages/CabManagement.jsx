@@ -411,6 +411,13 @@ function DriversTab({ drivers, bump }) {
         view their run sheet. Set or change a driver&rsquo;s PIN in the table below.
       </p>
       <table className="table">
+        <colgroup>
+          <col style={{ width: '18%' }} />
+          <col style={{ width: '13.5%' }} />
+          <col style={{ width: '16%' }} />
+          <col style={{ width: '42.5%' }} />
+          <col style={{ width: '10%' }} />
+        </colgroup>
         <thead>
           <tr>
             <SortableTh label="Name" keyName="name" sortKey={driversTable.sortKey} sortDir={driversTable.sortDir} onSort={driversTable.toggleSort} />
@@ -427,7 +434,7 @@ function DriversTab({ drivers, bump }) {
               <td>{d.mobile}</td>
               <td><code>{d.id}</code></td>
               <td>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input
                     className="inline-input"
                     style={{ width: 80 }}
@@ -1022,7 +1029,7 @@ function RequestsTab({ requests, nameOf, bump }) {
     startIndex: requestsStart,
     endIndex: requestsEnd,
     setPage: setRequestsPage
-  } = usePagination(sorted)
+  } = usePagination(sorted, 5)
 
   return (
     <div className="card">

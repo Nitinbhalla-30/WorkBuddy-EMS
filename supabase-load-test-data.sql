@@ -1,29 +1,33 @@
--- WorkBuddy EMS — heavy load test data
+-- WorkBuddy EMS — heavy load test data (3× volume, unique employee names)
 -- Paste into Supabase SQL Editor and press Run. Safe to run again (idempotent).
 -- It REPLACES the current data with a large generated dataset covering every
 -- case the app handles. Logins still work: EMP001/1111, ADM001/0000,
 -- IT001/5555, DRV01/1234. New employees use PIN 1234.
+-- 14 base + 123 generated = 137 people, every name unique.
 
 begin;
 
--- ============ 1. EMPLOYEES (14 base + 40 generated = 54) ============
+-- ============ 1. EMPLOYEES (14 base + 123 generated = 137, unique names) ============
+-- Names are indexed pairs of 23 first × 23 last names: fi = i % 23, li = (i / 23) % 23,
+-- so for i in 1..123 every (first, last) combination is distinct — no two
+-- employees (including the 14 base ones) can ever share a name.
 drop table if exists tmp_new_emps;
 create temp table tmp_new_emps as
 select
   'EMP' || lpad((10 + i)::text, 3, '0') as id,
-  (array['Aarav','Vivaan','Aditya','Arnav','Druv','Kabir','Reyansh','Krishna','Ishaan','Rohan','Aanya','Diya','Kiara','Myra','Sara','Tara','Zara','Ira','Nia','Riya'])[mod(i*7,20)+1]
+  (array['Aarav','Vivaan','Aditya','Arnav','Druv','Kabir','Reyansh','Krishna','Ishaan','Rohan','Aanya','Diya','Kiara','Myra','Sara','Tara','Zara','Ira','Nia','Riya','Dev','Lakshay','Parth'])[mod(i - 1, 23) + 1]
   || ' ' ||
-  (array['Sharma','Verma','Gupta','Patel','Nair','Iyer','Khan','Das','Sen','Mishra','Bhatt','Chauhan','Rana','Kapoor','Malik','Sood','Batra','Jain','Mehta','Chopra'])[mod(i*11,20)+1] as name,
+  (array['Sharma','Verma','Gupta','Patel','Nair','Iyer','Khan','Das','Sen','Mishra','Bhatt','Chauhan','Rana','Kapoor','Malik','Sood','Batra','Jain','Mehta','Chopra','Bansal','Gill','Sandhu'])[mod((i - 1) / 23, 23) + 1] as name,
   i,
   (array['Sales','Design','Support','Marketing','Operations','Quality'])[mod(i,6)+1] as dept,
   (array['Executive','Analyst','Associate','Specialist'])[mod(i,4)+1] as designation,
-  i in (11,21,31) as is_manager,
-  case when i in (11,21,31) then null
-       else (array['EMP001','EMP006','EMP021','EMP031'])[mod(i,4)+1] end as manager_id,
+  i in (11,21,31,41,51) as is_manager,
+  case when i in (11,21,31,41,51) then null
+       else (array['EMP001','EMP006','EMP021','EMP031','EMP041','EMP051'])[mod(i,6)+1] end as manager_id,
   to_char(current_date - (45 + mod(i*37, 900)), 'YYYY-MM-DD') as date_joined,
   12000 + mod(i*13, 30)*1000 as basic,
   mod(i,5) <> 0 as wants_cab
-from generate_series(1, 40) i;
+from generate_series(1, 123) i;
 
 insert into app_store (key, value)
 select 'hr_employees', (
@@ -68,7 +72,7 @@ select * from (values
 union all
 select id, i + 100, manager_id, wants_cab from tmp_new_emps;
 
--- ============ 2. ATTENDANCE (~7,000 rows, 200 days) ============
+-- ============ 2. ATTENDANCE (~25,000 rows, 200 days × 137 people) ============
 insert into app_store (key, value)
 select 'hr_attendance', coalesce(jsonb_agg(rec order by emp_id, day), '[]'::jsonb)
 from (
@@ -103,11 +107,11 @@ from (
 ) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
--- ============ 3. LEAVES (every type, status and stage) ============
+-- ============ 3. LEAVES (every type, status and stage, 9 per employee) ============
 insert into app_store (key, value)
 select 'hr_leaves', coalesce(jsonb_agg(rec order by rn), '[]'::jsonb)
 from (
-  -- generated: 3 per new employee
+  -- generated: 9 per new employee
   select row_number() over (order by p.id, k)::int as rn,
     jsonb_build_object(
       'id', 'LV' || lpad(row_number() over (order by p.id, k)::text, 4, '0'),
@@ -131,7 +135,7 @@ from (
       'withdrawnOn', case when (array['pending','approved','rejected','withdrawn'])[mod(p.i + k, 4) + 1] = 'withdrawn' then to_char(current_date - 1, 'YYYY-MM-DD') else null end,
       'messages', '[]'::jsonb
     ) as rec
-  from tmp_people p cross join generate_series(1, 3) k
+  from tmp_people p cross join generate_series(1, 9) k
   where p.id like 'EMP%'
   union all
   -- hand-picked cases for the demo logins
@@ -185,7 +189,7 @@ from (
 ) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
--- ============ 4. TASKS (~300, all statuses, overdue, threads) ============
+-- ============ 4. TASKS (~2,400, all statuses, overdue, threads) ============
 insert into app_store (key, value)
 select 'hr_tasks', coalesce(jsonb_agg(rec order by id, k), '[]'::jsonb)
 from (
@@ -208,11 +212,11 @@ from (
           'text', 'Please prioritise this before the review meeting.', 'on', to_char(current_date - 1, 'YYYY-MM-DD')))
         else '[]'::jsonb end
     ) as rec
-  from tmp_people p cross join generate_series(1, 6) k
+  from tmp_people p cross join generate_series(1, 18) k
 ) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
--- ============ 5. TICKETS (queries + grievances incl. POSH) ============
+-- ============ 5. TICKETS (queries + grievances incl. POSH, 6 per employee) ============
 insert into app_store (key, value)
 select 'hr_tickets', coalesce(jsonb_agg(rec order by id, k), '[]'::jsonb)
 from (
@@ -234,12 +238,12 @@ from (
         'id', 'MSG' || p.i || k, 'byId', p.id, 'byRole', 'employee',
         'text', 'I would like help with this matter please.', 'on', to_char(current_date - mod(p.i + k*3, 15), 'YYYY-MM-DD')))
     ) as rec
-  from tmp_people p cross join generate_series(1, 2) k
+  from tmp_people p cross join generate_series(1, 6) k
   where p.id like 'EMP%'
 ) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
--- ============ 6. IT ISSUES (all categories / statuses) ============
+-- ============ 6. IT ISSUES (all categories / statuses, 6 per employee) ============
 insert into app_store (key, value)
 select 'hr_it_issues', coalesce(jsonb_agg(rec order by id, k), '[]'::jsonb)
 from (
@@ -262,12 +266,12 @@ from (
       'createdOn', to_char(current_date - mod(p.i + k*2, 12), 'YYYY-MM-DD'),
       'updatedOn', to_char(current_date - mod(p.i + k, 4), 'YYYY-MM-DD')
     ) as rec
-  from tmp_people p cross join generate_series(1, 2) k
+  from tmp_people p cross join generate_series(1, 6) k
   where p.id like 'EMP%'
 ) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
--- ============ 7. REIMBURSEMENTS (all statuses) ============
+-- ============ 7. REIMBURSEMENTS (all statuses, 6 per employee) ============
 insert into app_store (key, value)
 select 'hr_reimbursements', coalesce(jsonb_agg(rec order by id, k), '[]'::jsonb)
 from (
@@ -286,12 +290,12 @@ from (
       'paidOn', case when mod(p.i + k, 5) = 2 then to_char(current_date - mod(p.i + k, 5), 'YYYY-MM-DD') else null end,
       'reviewNote', case when mod(p.i + k, 5) = 3 then 'Please use the office supply request process instead.' else '' end
     ) as rec
-  from tmp_people p cross join generate_series(1, 2) k
+  from tmp_people p cross join generate_series(1, 6) k
   where p.id like 'EMP%'
 ) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
--- ============ 8. ATTENDANCE CORRECTIONS (all issue types/statuses) ============
+-- ============ 8. ATTENDANCE CORRECTIONS (all issue types/statuses, 6 per employee) ============
 insert into app_store (key, value)
 select 'hr_attendance_corrections', coalesce(jsonb_agg(rec order by id, k), '[]'::jsonb)
 from (
@@ -311,12 +315,12 @@ from (
       'reviewNote', case when mod(p.i + k, 4) = 2 then 'Approved. Attendance updated.' else '' end,
       'messages', '[]'::jsonb
     ) as rec
-  from tmp_people p cross join generate_series(1, 2) k
+  from tmp_people p cross join generate_series(1, 6) k
   where p.id like 'EMP%'
 ) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
--- ============ 9. PROFILES (verified / submitted / returned) ============
+-- ============ 9. PROFILES (verified / submitted / returned for every new employee) ============
 insert into app_store (key, value)
 select 'hr_profiles', (
   (select coalesce(jsonb_agg(elem), '[]'::jsonb)
@@ -362,19 +366,41 @@ on conflict (key) do update set value = excluded.value, updated_at = now();
 -- ============ 10. CAB: vehicles, drivers, trips, assignments ============
 insert into app_store (key, value) values
 ('hr_vehicles', '[{"id":"VEH01","number":"DL 01 AB 1234","label":"Sedan / White"},{"id":"VEH02","number":"HR 26 CD 5678","label":"SUV / Silver"},{"id":"VEH03","number":"DL 03 EF 3456","label":"Sedan / Black"},{"id":"VEH04","number":"HR 27 GH 7890","label":"SUV / Grey"},{"id":"VEH05","number":"DL 05 IJ 2468","label":"Tempo / 12 seater"},{"id":"VEH06","number":"HR 29 KL 1357","label":"Sedan / Blue"}]'::jsonb),
-('hr_drivers', '[{"id":"DRV01","name":"Ramesh Kumar","mobile":"9811012345","pin":"1234"},{"id":"DRV02","name":"Suresh Yadav","mobile":"9822067890","pin":"5678"},{"id":"DRV03","name":"Mohan Lal","mobile":"9833011223","pin":"9012"},{"id":"DRV04","name":"Dinesh Pal","mobile":"9844022334","pin":"3456"},{"id":"DRV05","name":"Harish Chandra","mobile":"9855033445","pin":"7890"},{"id":"DRV06","name":"Balwant Singh","mobile":"9866044556","pin":"2345"}]'::jsonb),
-('hr_trips', '[{"id":"TRP01","vehicleId":"VEH01","driverId":"DRV01","direction":"pickup","time":"08:30","shiftStart":"10:00","officeGate":"","supervisorName":"Anil Singh","supervisorMobile":"9810055555"},
- {"id":"TRP02","vehicleId":"VEH01","driverId":"DRV01","direction":"drop","time":"18:30","shiftEnd":"18:00","officeGate":"Gate 2","supervisorName":"Anil Singh","supervisorMobile":"9810055555"},
- {"id":"TRP03","vehicleId":"VEH02","driverId":"DRV02","direction":"pickup","time":"14:00","shiftStart":"15:00","officeGate":"","supervisorName":"Meena Joshi","supervisorMobile":"9822077777"},
- {"id":"TRP04","vehicleId":"VEH02","driverId":"DRV02","direction":"drop","time":"23:00","shiftEnd":"22:30","officeGate":"Gate 1","supervisorName":"Meena Joshi","supervisorMobile":"9822077777"},
- {"id":"TRP05","vehicleId":"VEH03","driverId":"DRV03","direction":"pickup","time":"08:45","shiftStart":"10:00","officeGate":"","supervisorName":"Anil Singh","supervisorMobile":"9810055555"},
- {"id":"TRP06","vehicleId":"VEH03","driverId":"DRV03","direction":"drop","time":"18:45","shiftEnd":"18:00","officeGate":"Gate 3","supervisorName":"Anil Singh","supervisorMobile":"9810055555"},
- {"id":"TRP07","vehicleId":"VEH04","driverId":"DRV04","direction":"pickup","time":"14:15","shiftStart":"15:00","officeGate":"","supervisorName":"Meena Joshi","supervisorMobile":"9822077777"},
- {"id":"TRP08","vehicleId":"VEH04","driverId":"DRV04","direction":"drop","time":"23:15","shiftEnd":"22:30","officeGate":"Gate 4","supervisorName":"Meena Joshi","supervisorMobile":"9822077777"},
- {"id":"TRP09","vehicleId":"VEH05","driverId":"DRV05","direction":"pickup","time":"09:00","shiftStart":"10:00","officeGate":"","supervisorName":"Anil Singh","supervisorMobile":"9810055555"},
- {"id":"TRP10","vehicleId":"VEH05","driverId":"DRV05","direction":"drop","time":"19:00","shiftEnd":"18:00","officeGate":"Gate 5","supervisorName":"Anil Singh","supervisorMobile":"9810055555"},
- {"id":"TRP11","vehicleId":"VEH06","driverId":"DRV06","direction":"pickup","time":"14:30","shiftStart":"15:00","officeGate":"","supervisorName":"Meena Joshi","supervisorMobile":"9822077777"},
- {"id":"TRP12","vehicleId":"VEH06","driverId":"DRV06","direction":"drop","time":"23:30","shiftEnd":"22:30","officeGate":"Gate 6","supervisorName":"Meena Joshi","supervisorMobile":"9822077777"}]'::jsonb)
+('hr_drivers', '[{"id":"DRV01","name":"Ramesh Kumar","mobile":"9811012345","pin":"1234"},{"id":"DRV02","name":"Suresh Yadav","mobile":"9822067890","pin":"5678"},{"id":"DRV03","name":"Mohan Lal","mobile":"9833011223","pin":"9012"},{"id":"DRV04","name":"Dinesh Pal","mobile":"9844022334","pin":"3456"},{"id":"DRV05","name":"Harish Chandra","mobile":"9855033445","pin":"7890"},{"id":"DRV06","name":"Balwant Singh","mobile":"9866044556","pin":"2345"}]'::jsonb)
+on conflict (key) do update set value = excluded.value, updated_at = now();
+
+-- Trips: every driver runs 3 pickups and 3 drops in a day (morning,
+-- midday and night rounds) = 36 trips, each driver on their own vehicle.
+-- Trips per driver: TRP(6d-5)..TRP(6d) as pickup/drop pairs; cab times are
+-- staggered by 10 minutes per driver so sorting shows realistic variety.
+insert into app_store (key, value)
+select 'hr_trips', coalesce(jsonb_agg(rec order by t), '[]'::jsonb)
+from (
+  select t, (
+    jsonb_build_object(
+      'id', 'TRP' || lpad(t::text, 2, '0'),
+      'vehicleId', 'VEH' || lpad(((t - 1) / 6 + 1)::text, 2, '0'),
+      'driverId', 'DRV' || lpad(((t - 1) / 6 + 1)::text, 2, '0'),
+      'direction', case when mod(t - 1, 2) = 0 then 'pickup' else 'drop' end,
+      'time', to_char(make_interval(mins =>
+        (case when mod(t - 1, 2) = 0
+              then (array[450, 525, 840])[mod(t - 1, 6) / 2 + 1]
+              else (array[1110, 1155, 1380])[mod(t - 1, 6) / 2 + 1] end)
+        + ((t - 1) / 6) * 10), 'HH24:MI')
+    )
+    || case when mod(t - 1, 2) = 0 then jsonb_build_object(
+         'shiftStart', to_char(make_interval(mins => (array[540, 600, 930])[mod(t - 1, 6) / 2 + 1]), 'HH24:MI'),
+         'officeGate', '')
+       else jsonb_build_object(
+         'shiftEnd', to_char(make_interval(mins => (array[1080, 1125, 1350])[mod(t - 1, 6) / 2 + 1]), 'HH24:MI'),
+         'officeGate', 'Gate ' || (mod(t, 6) + 1))
+       end
+    || jsonb_build_object(
+      'supervisorName', (array['Anil Singh','Meena Joshi','Rakesh Arora'])[mod(t - 1, 6) / 2 + 1],
+      'supervisorMobile', (array['9810055555','9822077777','9833088888'])[mod(t - 1, 6) / 2 + 1])
+  ) as rec
+  from generate_series(1, 36) t
+) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
 insert into app_store (key, value)
@@ -382,14 +408,14 @@ select 'hr_cab_assignments', coalesce(jsonb_agg(rec order by id), '[]'::jsonb)
 from (
   select p.id, jsonb_build_object(
     'employeeId', p.id,
-    'pickupTripId', (array['TRP01','TRP03','TRP05','TRP07','TRP09','TRP11'])[mod(p.i, 6) + 1],
-    'dropTripId', (array['TRP02','TRP04','TRP06','TRP08','TRP10','TRP12'])[mod(p.i, 6) + 1]
+    'pickupTripId', (array['TRP01','TRP03','TRP05','TRP07','TRP09','TRP11','TRP13','TRP15','TRP17','TRP19','TRP21','TRP23','TRP25','TRP27','TRP29','TRP31','TRP33','TRP35'])[mod(p.i, 18) + 1],
+    'dropTripId', (array['TRP02','TRP04','TRP06','TRP08','TRP10','TRP12','TRP14','TRP16','TRP18','TRP20','TRP22','TRP24','TRP26','TRP28','TRP30','TRP32','TRP34','TRP36'])[mod(p.i, 18) + 1]
   ) as rec
   from tmp_people p where p.wants_cab and p.id like 'EMP%'
 ) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
--- ============ 11. CAB REQUESTS + MESSAGES ============
+-- ============ 11. CAB REQUESTS + MESSAGES (scale with people) ============
 insert into app_store (key, value)
 select 'hr_cab_requests', coalesce(jsonb_agg(rec order by id), '[]'::jsonb)
 from (
@@ -425,18 +451,25 @@ from (
 ) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
--- ============ 12. ANNOUNCEMENTS + read maps ============
+-- IT staff roster (used by the IT help desk assign dropdown) and an empty
+-- cab-cancellations list so both features work right after the load.
+insert into app_store (key, value) values
+('hr_it_staff', '[{"id":"IT001","name":"Rajesh Kumar","mobile":"9876543210","email":"rajesh.kumar@company.com"},{"id":"IT002","name":"Anita Desai","mobile":"9876543211","email":"anita.desai@company.com"},{"id":"IT003","name":"Vikram Singh","mobile":"9876543212","email":"vikram.singh@company.com"}]'::jsonb),
+('hr_cab_cancellations', '[]'::jsonb)
+on conflict (key) do update set value = excluded.value, updated_at = now();
+
+-- ============ 12. ANNOUNCEMENTS (36) + read maps ============
 insert into app_store (key, value)
 select 'hr_announcements', coalesce(jsonb_agg(jsonb_build_object(
     'id', 'ANN' || lpad(k::text, 2, '0'),
-    'title', (array['Office closure notice','Updated WFH policy','Internal job posting','Annual sports day','Server maintenance tonight','Quarterly townhall','Health checkup camp','New cafeteria menu','Festival celebration','Safety week','Training session','Team outing photos'])[k],
+    'title', (array['Office closure notice','Updated WFH policy','Internal job posting','Annual sports day','Server maintenance tonight','Quarterly townhall','Health checkup camp','New cafeteria menu','Festival celebration','Safety week','Training session','Team outing photos'])[mod(k - 1, 12) + 1],
     'content', 'Generated announcement body text number ' || k || '. It is long enough to test the read-more behaviour of the announcements screen in the application.',
     'type', (array['general','policy','job','event','urgent'])[mod(k, 5) + 1],
     'createdBy', case when mod(k, 5) = 4 then 'IT001' else 'ADM001' end,
     'createdOn', to_char(current_date - mod(k*3, 20), 'YYYY-MM-DD'),
     'excludedEmployees', case when mod(k, 6) = 0 then jsonb_build_array('IT003') else '[]'::jsonb end
   ) order by k), '[]'::jsonb)
-from generate_series(1, 12) k
+from generate_series(1, 36) k
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
 insert into app_store (key, value) values

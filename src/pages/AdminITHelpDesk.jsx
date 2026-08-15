@@ -186,17 +186,17 @@ export default function AdminITHelpDesk() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table" style={{ tableLayout: 'fixed' }}>
+        <table className="table table-compact" style={{ tableLayout: 'fixed' }}>
           <colgroup>
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '15.3%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '9.2%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '10.5%' }} />
+            <col style={{ width: '14.5%' }} />
             <col style={{ width: '9%' }} />
-            <col style={{ width: '28%' }} />
-            <col style={{ width: '9%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '5%' }} />
+            <col style={{ width: '5.5%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -230,7 +230,7 @@ export default function AdminITHelpDesk() {
                       <strong>{issue.issue}</strong>
                     </button>
                     {issue.description && (
-                      <div className="muted small">{issue.description}</div>
+                      <div className="muted small cell-ellipsis" title={issue.description}>{issue.description}</div>
                     )}
                   </td>
                   <td>{itIssueCategoryLabel(issue.category)}</td>

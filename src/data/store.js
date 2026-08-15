@@ -70,7 +70,12 @@ function readLocal(key, fallback) {
 
 function writeLocal(key, value) {
   mem[key] = value
-  localStorage.setItem(key, JSON.stringify(value))
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // Quota exceeded (the load-test dataset is larger than the browser's
+    // ~5 MB limit): keep working from the in-memory copy instead of failing.
+  }
 }
 
 function read(key, fallback) {
@@ -132,12 +137,23 @@ export function initStore() {
       const { data, error } = await supabase.from('app_store').select('key,value')
       if (error) throw error
       remoteReady = true
-      if (data && data.length > 0) {
+      if (data && data.some((row) => row.key === KEYS.employees)) {
+        // A real dataset is present — trust it fully. Overwrite every local
+        // copy (including stale sample data seeded after a failed load) so
+        // the browser can never drift away from what Supabase holds.
         for (const row of data) {
           mem[row.key] = row.value
-          localStorage.setItem(row.key, JSON.stringify(row.value))
+          try {
+            localStorage.setItem(row.key, JSON.stringify(row.value))
+          } catch {
+            // Storage quota exceeded: keep the value in memory only so the
+            // app still runs on the full dataset for this session.
+          }
         }
-      } else {
+        for (const key of Object.values(KEYS)) {
+          if (!(key in mem)) localStorage.removeItem(key)
+        }
+      } else if (data && data.length > 0) {
         // First run on this project: migrate whatever this browser already
         // has (or the sample data when there is nothing) up to Supabase.
         seedIfEmpty()
