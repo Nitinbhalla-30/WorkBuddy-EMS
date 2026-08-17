@@ -5,6 +5,7 @@ import {
   getAnnouncementsForEmployee,
   getAttendanceCorrections,
   getAttendanceCorrectionsForEmployee,
+  getDismissedNotificationIds,
   getEmployeeById,
   getITIssues,
   getITIssuesForEmployee,
@@ -451,10 +452,13 @@ function buildNotifications(userId, viewerRole) {
 
 export function getNotificationFeed(userId, viewerRole = 'employee') {
   const readIds = new Set(getReadNotificationIds(userId))
-  const all = buildNotifications(userId, viewerRole).map((n) => ({
-    ...n,
-    unread: !readIds.has(n.id)
-  }))
+  const dismissedIds = new Set(getDismissedNotificationIds(userId))
+  const all = buildNotifications(userId, viewerRole)
+    .filter((n) => !dismissedIds.has(n.id))
+    .map((n) => ({
+      ...n,
+      unread: !readIds.has(n.id)
+    }))
   const unread = all.filter((n) => n.unread)
   return {
     all,

@@ -49,7 +49,8 @@ const KEYS = {
   readAnnouncements: 'hr_read_announcements',
   reimbursements: 'hr_reimbursements',
   attendanceCorrections: 'hr_attendance_corrections',
-  notificationReads: 'hr_notification_reads'
+  notificationReads: 'hr_notification_reads',
+  notificationDismissed: 'hr_notification_dismissed'
 }
 
 // In-memory cache of every collection; reads hit this first.
@@ -120,7 +121,8 @@ const DEFAULTS = {
   [KEYS.readAnnouncements]: {},
   [KEYS.reimbursements]: SAMPLE_REIMBURSEMENTS,
   [KEYS.attendanceCorrections]: SAMPLE_ATTENDANCE_CORRECTIONS,
-  [KEYS.notificationReads]: {}
+  [KEYS.notificationReads]: {},
+  [KEYS.notificationDismissed]: {}
 }
 
 // Bootstrap the store before the app renders. With Supabase: load every
@@ -827,6 +829,38 @@ export function markReimbursementPaid(claimId, decidedBy) {
     status: 'paid',
     paidOn: todayKey(),
     decidedBy: decidedBy || all[idx].decidedBy
+  }
+  write(KEYS.reimbursements, all)
+  return all[idx]
+}
+
+// Q&A message on a reimbursement claim between HR/Admin and the employee.
+export function addReimbursementMessage(claimId, { byId, byRole, text }) {
+  const all = getReimbursements()
+  const idx = all.findIndex((r) => r.id === claimId)
+  if (idx < 0) return null
+
+  const claim = all[idx]
+  if (claim.status !== 'pending') return null
+
+  const trimmed = String(text || '').trim()
+  if (!trimmed) return null
+
+  if (byRole === 'employee' && byId !== claim.employeeId) return null
+  if (byRole !== 'employee' && byRole !== 'admin') return null
+
+  all[idx] = {
+    ...claim,
+    messages: [
+      ...(claim.messages || []),
+      {
+        id: `RMM${Date.now()}`,
+        byId,
+        byRole,
+        text: trimmed,
+        on: todayKey()
+      }
+    ]
   }
   write(KEYS.reimbursements, all)
   return all[idx]
@@ -1764,4 +1798,17 @@ export function markAllNotificationsRead(employeeId, notificationIds) {
   for (const id of notificationIds) existing.add(id)
   all[employeeId] = [...existing]
   write(KEYS.notificationReads, all)
+}
+
+// ---- employee notification dismissals ("clear all") ----
+export function getDismissedNotificationIds(employeeId) {
+  return read(KEYS.notificationDismissed, {})[employeeId] || []
+}
+
+export function dismissAllNotifications(employeeId, notificationIds) {
+  const all = read(KEYS.notificationDismissed, {})
+  const existing = new Set(all[employeeId] || [])
+  for (const id of notificationIds) existing.add(id)
+  all[employeeId] = [...existing]
+  write(KEYS.notificationDismissed, all)
 }
