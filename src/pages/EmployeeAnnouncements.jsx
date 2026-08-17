@@ -139,7 +139,7 @@ export default function EmployeeAnnouncements() {
                 <tr key={announcement.id}>
                   <td>
                     <strong>{announcement.title}</strong>
-                    <div className="muted small">
+                    <div className="muted small cell-ellipsis" title={announcement.content}>
                       {announcement.content}
                     </div>
                   </td>

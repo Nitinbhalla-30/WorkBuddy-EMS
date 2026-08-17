@@ -155,6 +155,23 @@ export default function Settings() {
             onChange={(e) => update('cabWaitingTime', Number(e.target.value))}
           />
         </label>
+        <label className="field">
+          <span>Today&rsquo;s cab changes close (hours before shift start / end)</span>
+          <input
+            type="number"
+            min="0"
+            max="12"
+            value={form.cabTodayCutoffHours ?? 3}
+            onChange={(e) => update('cabTodayCutoffHours', Number(e.target.value))}
+          />
+        </label>
+        <p className="hint">
+          Employees can skip or restore today&rsquo;s pickup until this many hours
+          before their shift starts, and today&rsquo;s drop until this many hours
+          before their shift ends. After that the buttons lock, giving drivers
+          enough time to plan stable run sheets. Example: 3 hours with a 09:30
+          shift start &rarr; pickup changes lock at 06:30 AM.
+        </p>
 
         <h3 className="section-title">Lunch policy</h3>
         <p className="hint first">

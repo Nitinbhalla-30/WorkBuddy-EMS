@@ -206,11 +206,11 @@ export default function EmployeeTickets() {
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '35%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} />
+            <col style={{ width: '25%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '26%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '13%' }} />
             <col style={{ width: '9%' }} />
           </colgroup>
           <thead>
@@ -229,7 +229,7 @@ export default function EmployeeTickets() {
             )}
             {ticketsPage.map((t) => (
               <tr key={t.id}>
-                <td>{t.subject}</td>
+                <td className="cell-ellipsis" title={t.subject}>{t.subject}</td>
                 <td>{kindLabel(t.kind)}{t.anonymous ? ' (anon)' : ''}</td>
                 <td>{categoryLabel(t.category)}</td>
                 <td><span className={`tag ${statusTagClass(t.status)}`}>{statusLabel(t.status)}</span></td>
