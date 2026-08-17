@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
+  addReimbursementMessage,
   approveReimbursementClaim,
   getEmployeeById,
   getReimbursements,
@@ -19,6 +20,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
+import ReimbursementThread from '../components/ReimbursementThread.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 
@@ -32,6 +34,7 @@ export default function AdminReimbursements() {
   const [claims, setClaims] = useState(() => getReimbursements())
   const [rejectId, setRejectId] = useState(null)
   const [rejectNote, setRejectNote] = useState('')
+  const [approveId, setApproveId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openId, setOpenId] = useState(null)
 
@@ -73,8 +76,23 @@ export default function AdminReimbursements() {
 
   const openClaim = openId ? claims.find((c) => c.id === openId) : null
 
+  function nameOf(id) {
+    return getEmployeeById(id)?.name || id
+  }
+
+  function handleReply(text) {
+    if (!openClaim) return
+    addReimbursementMessage(openClaim.id, {
+      byId: user.id,
+      byRole: 'admin',
+      text
+    })
+    refresh()
+  }
+
   function handleApprove(id) {
     approveReimbursementClaim(id, user.id)
+    setApproveId(null)
     refresh()
   }
 
@@ -138,10 +156,10 @@ export default function AdminReimbursements() {
             <col style={{ width: '11.6%' }} />
             <col style={{ width: '11.6%' }} />
             <col style={{ width: '11.6%' }} />
-            <col style={{ width: '15.35%' }} />
+            <col style={{ width: '21.35%' }} />
             <col style={{ width: '11.6%' }} />
             <col style={{ width: '15%' }} />
-            <col style={{ width: '11.6%' }} />
+            <col style={{ width: '5.6%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -207,7 +225,7 @@ export default function AdminReimbursements() {
                                 type="button"
                                 className="task-menu-item"
                                 onClick={() => {
-                                  handleApprove(c.id)
+                                  setApproveId(c.id)
                                   closeMenu()
                                 }}
                               >
@@ -299,9 +317,67 @@ export default function AdminReimbursements() {
             {openClaim.status === 'rejected' && openClaim.reviewNote && (
               <div className="info-box">Reason: {openClaim.reviewNote}</div>
             )}
+
+            {openClaim.status === 'pending' && (
+              <div className="button-row first">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setApproveId(openClaim.id)
+                    setOpenId(null)
+                  }}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => {
+                    setRejectId(openClaim.id)
+                    setRejectNote('')
+                    setOpenId(null)
+                  }}
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+
+            <ReimbursementThread
+              claim={openClaim}
+              viewerRole="admin"
+              viewerId={user.id}
+              nameOf={nameOf}
+              onReply={handleReply}
+              onClose={() => setOpenId(null)}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {approveId && (
+        <Modal onClose={() => setApproveId(null)} title="Confirm approval">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Approve claim</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setApproveId(null)}>✕</button>
+            </div>
+            <p className="hint first">Are you sure you want to approve this reimbursement claim?</p>
             <div className="button-row">
-              <button type="button" className="btn btn-light" onClick={() => setOpenId(null)}>
-                Close
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => handleApprove(approveId)}
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                className="btn btn-light"
+                onClick={() => setApproveId(null)}
+              >
+                Cancel
               </button>
             </div>
           </div>

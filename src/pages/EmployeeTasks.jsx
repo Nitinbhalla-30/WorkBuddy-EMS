@@ -398,7 +398,7 @@ export default function EmployeeTasks() {
             {tasksPage.map((task) => (
               <tr key={task.id}>
                 <td><strong>{task.title}</strong></td>
-                <td>{task.description || <span className="muted">--</span>}</td>
+                <td className="cell-ellipsis" title={task.description || undefined}>{task.description || <span className="muted">--</span>}</td>
                 <td>{assignerLabel(task)}</td>
                 <td>
                   {task.createdOn ? formatDate(task.createdOn) : <span className="muted">--</span>}

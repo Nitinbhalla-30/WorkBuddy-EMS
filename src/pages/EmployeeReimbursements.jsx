@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
+  addReimbursementMessage,
+  getEmployeeById,
   getReimbursementsForEmployee,
   submitReimbursementClaim,
   updateReimbursementClaim,
@@ -17,6 +19,7 @@ import {
   canWithdrawReimbursement
 } from '../utils/reimbursements.js'
 import ReimbursementForm from '../components/ReimbursementForm.jsx'
+import ReimbursementThread from '../components/ReimbursementThread.jsx'
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
@@ -71,6 +74,10 @@ export default function EmployeeReimbursements() {
   const openClaim = claims.find((c) => c.id === openId) || null
   const editClaim = claims.find((c) => c.id === editId) || null
 
+  function nameOf(id) {
+    return getEmployeeById(id)?.name || id
+  }
+
   const table = useTableControls(claims, {
     getSearchText: (c) =>
       [categoryLabel(c.category), c.expenseDate, c.description, c.amount, statusLabel(c.status)].join(' '),
@@ -100,6 +107,16 @@ export default function EmployeeReimbursements() {
 
   function refreshClaims() {
     setClaims(getReimbursementsForEmployee(user.id))
+  }
+
+  function handleReply(text) {
+    if (!openClaim) return
+    addReimbursementMessage(openClaim.id, {
+      byId: user.id,
+      byRole: 'employee',
+      text
+    })
+    refreshClaims()
   }
 
   function handleSubmit(data) {
@@ -254,11 +271,14 @@ export default function EmployeeReimbursements() {
             {openClaim.status === 'rejected' && openClaim.reviewNote && (
               <div className="info-box">Reason: {openClaim.reviewNote}</div>
             )}
-            <div className="button-row">
-              <button type="button" className="btn btn-light" onClick={() => setOpenId(null)}>
-                Close
-              </button>
-            </div>
+            <ReimbursementThread
+              claim={openClaim}
+              viewerRole="employee"
+              viewerId={user.id}
+              nameOf={nameOf}
+              onReply={handleReply}
+              onClose={() => setOpenId(null)}
+            />
           </div>
         </Modal>
       )}
@@ -314,10 +334,10 @@ export default function EmployeeReimbursements() {
             <col style={{ width: '13%' }} />
             <col style={{ width: '11%' }} />
             <col style={{ width: '9%' }} />
-            <col style={{ width: '30%' }} />
+            <col style={{ width: '35%' }} />
             <col style={{ width: '11%' }} />
             <col style={{ width: '16%' }} />
-            <col style={{ width: '10%' }} />
+            <col style={{ width: '5%' }} />
           </colgroup>
           <thead>
             <tr>

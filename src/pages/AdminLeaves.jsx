@@ -221,6 +221,17 @@ export default function AdminLeaves() {
           onFilterChange={table.setFilter}
         />
         <table className="table">
+          <colgroup>
+            <col style={{ width: '11.5%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '6.5%' }} />
+            <col style={{ width: '16.5%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '16.5%' }} />
+            <col style={{ width: '6%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -251,7 +262,7 @@ export default function AdminLeaves() {
                   <td>{formatDate(lv.fromDate)}</td>
                   <td>{formatDate(lv.toDate)}</td>
                   <td>{leaveDays(lv)}</td>
-                  <td>{lv.reason || <span className="muted">--</span>}</td>
+                  <td className="cell-ellipsis" title={lv.reason || undefined}>{lv.reason || <span className="muted">--</span>}</td>
                   <td>
                     {lv.type === 'sick'
                       ? <LeaveDocumentList documents={leaveSupportingDocuments(lv)} emptyLabel="Not uploaded" />
