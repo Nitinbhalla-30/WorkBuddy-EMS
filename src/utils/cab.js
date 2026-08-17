@@ -66,6 +66,30 @@ export function isWithinDeadline(forDate, pickupTime) {
   return diff >= 5 * 60 * 60 * 1000 // at least 5 hours away
 }
 
+// Today-change cutoff: an employee may skip (or un-skip) today's pickup until
+// `cutoffHours` before the shift start, and today's drop until `cutoffHours`
+// before the shift end. Returns true while the change is still allowed.
+export function isTodayChangeOpen(shiftTime, cutoffHours) {
+  if (!shiftTime) return true // no shift time known, allow
+  const [h, m] = shiftTime.split(':').map(Number)
+  const shift = new Date()
+  shift.setHours(h, m, 0, 0)
+  const cutoffMs = (Number(cutoffHours) || 0) * 60 * 60 * 1000
+  return shift.getTime() - Date.now() >= cutoffMs
+}
+
+// The clock time at which today's changes close, e.g. "06:30 AM".
+export function todayChangeDeadline(shiftTime, cutoffHours) {
+  if (!shiftTime) return null
+  const [h, m] = shiftTime.split(':').map(Number)
+  const shift = new Date()
+  shift.setHours(h, m, 0, 0)
+  const deadline = new Date(shift.getTime() - (Number(cutoffHours) || 0) * 60 * 60 * 1000)
+  const hh = String(deadline.getHours()).padStart(2, '0')
+  const mm = String(deadline.getMinutes()).padStart(2, '0')
+  return formatTime12(`${hh}:${mm}`)
+}
+
 // Turn a saved map point into a link that opens in Google Maps.
 // The driver taps this on their phone and presses "Navigate".
 export function googleMapsUrl(point) {

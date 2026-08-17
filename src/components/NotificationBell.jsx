@@ -2,16 +2,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell } from 'lucide-react'
 import {
+  dismissAllNotifications,
   markAllNotificationsRead,
   markNotificationRead
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
 import { getNotificationFeed } from '../utils/notifications.js'
+import Modal from './Modal.jsx'
 
 // Top-bar notification bell for employees and HR/Admin.
 export default function NotificationBell({ employeeId, viewerRole = 'employee' }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
   const [tick, setTick] = useState(0)
 
   const feed = useMemo(
@@ -50,6 +53,12 @@ export default function NotificationBell({ employeeId, viewerRole = 'employee' }
     refresh()
   }
 
+  function handleClearAll() {
+    dismissAllNotifications(employeeId, feed.all.map((n) => n.id))
+    setConfirmClear(false)
+    refresh()
+  }
+
   const badge = feed.unreadCount > 99 ? '99+' : String(feed.unreadCount)
 
   return (
@@ -71,11 +80,18 @@ export default function NotificationBell({ employeeId, viewerRole = 'employee' }
         <div className="notif-panel" role="menu">
           <div className="notif-panel-head">
             <strong>Notifications</strong>
-            {feed.unreadCount > 0 && (
-              <button type="button" className="btn btn-tiny btn-light" onClick={handleMarkAll}>
-                Mark all read
-              </button>
-            )}
+            <div className="notif-panel-actions">
+              {feed.unreadCount > 0 && (
+                <button type="button" className="btn btn-tiny btn-light" onClick={handleMarkAll}>
+                  Mark all read
+                </button>
+              )}
+              {feed.all.length > 0 && (
+                <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmClear(true)}>
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
 
           {feed.all.length === 0 ? (
@@ -100,6 +116,26 @@ export default function NotificationBell({ employeeId, viewerRole = 'employee' }
             </ul>
           )}
         </div>
+      )}
+
+      {confirmClear && (
+        <Modal onClose={() => setConfirmClear(false)} title="Clear notifications">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Clear all notifications</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmClear(false)}>✕</button>
+            </div>
+            <p className="hint first">Are you sure you want to clear your notification list? New activity will still show up again.</p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={handleClearAll}>
+                Clear all
+              </button>
+              <button type="button" className="btn btn-light" onClick={() => setConfirmClear(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )
