@@ -12,6 +12,10 @@ export const DEFAULT_SETTINGS = {
   standardWorkHours: 8,              // used to show a target per day
   officeIp: '',                      // office internet address (set by admin)
   cabWaitingTime: 20,                // max wait time in minutes for cabs
+  // Employees may skip or change today's pickup until this many hours before
+  // their shift starts, and today's drop until this many hours before their
+  // shift ends. After that the buttons lock so drivers get stable run sheets.
+  cabTodayCutoffHours: 3,
   // Test helper: when true, the office-internet check always passes.
   // Turn this OFF in the real office once officeIp is set.
   pretendOnOfficeNetwork: true,
