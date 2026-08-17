@@ -13,6 +13,8 @@ import Pagination from '../components/Pagination.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const ANNOUNCEMENT_TYPE_OPTS = [
   { value: 'all', label: 'All types' },
@@ -144,7 +146,7 @@ export default function AdminAnnouncements() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">New Announcement</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)} aria-label="Close"><X size={15} /></button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="field">
@@ -220,7 +222,7 @@ export default function AdminAnnouncements() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={4} className="muted">No announcements match your filters.</td></tr>
+              <TableEmpty colSpan={4} message="No announcements match your filters." />
             )}
             {announcementsPage.map((announcement) => (
               <tr key={announcement.id}>
@@ -243,9 +245,7 @@ export default function AdminAnnouncements() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(announcement.id)}
                       aria-label="Announcement actions"
-                    >
-                      ⋯
-                    </button>
+                     ><MoreHorizontal size={16} /></button>
                     {openMenuId === announcement.id && (
                       <div className="task-menu-dropdown">
                         <button
@@ -299,9 +299,7 @@ export default function AdminAnnouncements() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setOpenId(null)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <div className="announcement-content">
               <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', margin: 0 }}>
@@ -322,7 +320,7 @@ export default function AdminAnnouncements() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Delete</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Are you sure you want to delete this announcement? This action cannot be undone.

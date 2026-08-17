@@ -1,3 +1,5 @@
+import { Search } from 'lucide-react'
+
 export default function TableToolbar({
   search,
   onSearchChange,
@@ -14,12 +16,15 @@ export default function TableToolbar({
         {showSearch && onSearchChange && (
           <label className="table-toolbar-field table-toolbar-search">
             <span className="table-toolbar-label">Search</span>
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={placeholder}
-            />
+            <span className="search-control">
+              <Search size={15} className="search-control-icon" aria-hidden="true" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={placeholder}
+              />
+            </span>
           </label>
         )}
         {filters.map((f) => (

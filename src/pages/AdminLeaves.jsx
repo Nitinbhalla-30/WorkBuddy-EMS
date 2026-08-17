@@ -27,6 +27,8 @@ import LeaveThread from '../components/LeaveThread.jsx'
 import Modal from '../components/Modal.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -63,17 +65,6 @@ export default function AdminLeaves() {
       .map((e) => ({ value: e.id, label: e.name }))
   ], [employees])
 
-  const reasonFilterOpts = useMemo(() => {
-    const reasons = [...new Set(
-      leaves.map((l) => (l.reason || '').trim()).filter(Boolean)
-    )].sort((a, b) => a.localeCompare(b))
-    return [
-      { value: 'all', label: 'All reasons' },
-      { value: 'none', label: 'No reason' },
-      ...reasons.map((r) => ({ value: r, label: r }))
-    ]
-  }, [leaves])
-
   const table = useTableControls(leaves, {
     getSearchText: (lv) => {
       const emp = getEmployeeById(lv.employeeId)
@@ -99,11 +90,6 @@ export default function AdminLeaves() {
     filterFns: {
       employeeId: (lv, val) => lv.employeeId === val,
       type: (lv, val) => lv.type === val,
-      reason: (lv, val) => {
-        const reason = (lv.reason || '').trim()
-        if (val === 'none') return !reason
-        return reason === val
-      },
       status: (lv, val) => lv.status === val
     }
   })
@@ -206,12 +192,6 @@ export default function AdminLeaves() {
               options: TYPE_FILTER_OPTS
             },
             {
-              key: 'reason',
-              label: 'Reason',
-              value: table.filters.reason || 'all',
-              options: reasonFilterOpts
-            },
-            {
               key: 'status',
               label: 'Status',
               value: table.filters.status || 'all',
@@ -247,11 +227,12 @@ export default function AdminLeaves() {
           </thead>
           <tbody>
             {leavesTotal === 0 && (
-              <tr><td colSpan={9} className="muted">No requests match your filters.</td></tr>
+              <TableEmpty colSpan={9} message="No requests match your filters." />
             )}
             {leavesPage.map((lv) => {
               const emp = getEmployeeById(lv.employeeId)
-              const decision = leaveDecisionText(lv, nameOf)
+              const docs = lv.type === 'sick' ? leaveSupportingDocuments(lv) : []
+              const docNames = docs.map((d) => d.name).join(', ')
               return (
                 <tr key={lv.id}>
                   <td>
@@ -263,21 +244,15 @@ export default function AdminLeaves() {
                   <td>{formatDate(lv.toDate)}</td>
                   <td>{leaveDays(lv)}</td>
                   <td className="cell-ellipsis" title={lv.reason || undefined}>{lv.reason || <span className="muted">--</span>}</td>
-                  <td>
+                  <td className="cell-ellipsis" title={docNames || undefined}>
                     {lv.type === 'sick'
-                      ? <LeaveDocumentList documents={leaveSupportingDocuments(lv)} emptyLabel="Not uploaded" />
+                      ? (docNames || <span className="muted">Not uploaded</span>)
                       : <span className="muted">--</span>}
                   </td>
                   <td>
                     <span className={`tag ${statusTagClass(lv.status)}`}>
                       {leaveStatusLabel(lv.status)}
                     </span>
-                    {lv.status === 'pending' && (
-                      <div className="muted small">{leaveStageLabel(lv)}</div>
-                    )}
-                    {decision && (
-                      <div className="muted small">{decision.line}</div>
-                    )}
                   </td>
                   <td>
                     <div className="task-menu-container">
@@ -286,9 +261,7 @@ export default function AdminLeaves() {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(lv.id)}
                         aria-label="Leave actions"
-                      >
-                        ⋯
-                      </button>
+                       ><MoreHorizontal size={16} /></button>
                       {openMenuId === lv.id && (
                         <div className="task-menu-dropdown">
                           <button
@@ -357,7 +330,7 @@ export default function AdminLeaves() {
                 <span className={`tag ${statusTagClass(openLeave.status)}`}>
                   {leaveStatusLabel(openLeave.status)}
                 </span>
-                <button type="button" className="btn btn-tiny btn-light" onClick={closeReview}>✕</button>
+                <button type="button" className="btn btn-tiny btn-light" onClick={closeReview} aria-label="Close"><X size={15} /></button>
               </div>
             </div>
 

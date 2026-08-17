@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import {
   getAttendance,
   getEmployees,
+  getLeaves,
   getSettings
 } from '../data/store.js'
 import {
@@ -18,6 +19,7 @@ import Pagination from '../components/Pagination.jsx'
 import { AttendanceTodayChart } from '../components/dashboard/AttendanceTodayChart.tsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 function todayKey() {
   const d = new Date()
@@ -92,7 +94,15 @@ export default function AdminDashboard() {
   const late = allRows.filter(
     (r) => r.rec && isLate(r.rec, settings.officeStartTime, settings.lateGraceMinutes)
   ).length
-  const absent = employees.length - present
+  const onLeave = useMemo(() => {
+    const ids = new Set(
+      getLeaves()
+        .filter((l) => l.status === 'approved' && l.fromDate <= today && today <= l.toDate)
+        .map((l) => l.employeeId)
+    )
+    return allRows.filter(({ emp, rec }) => ids.has(emp.id) && !(rec && rec.timeIn)).length
+  }, [allRows, today])
+  const absent = employees.length - present - onLeave
 
   return (
     <div>
@@ -106,6 +116,7 @@ export default function AdminDashboard() {
         present={present}
         late={late}
         absent={absent}
+        onLeave={onLeave}
       />
 
       <h3 className="section-title">Today by employee</h3>
@@ -146,7 +157,7 @@ export default function AdminDashboard() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={7} className="muted">No employees match your filters.</td></tr>
+              <TableEmpty colSpan={7} message="No employees match your filters." />
             )}
             {rowsPage.map(({ emp, rec }) => (
               <tr key={emp.id}>

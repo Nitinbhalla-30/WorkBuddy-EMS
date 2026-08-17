@@ -1,6 +1,8 @@
+import { ArrowDown, ArrowUp } from 'lucide-react'
+
 export default function SortableTh({ label, keyName, sortKey, sortDir, onSort }) {
   const active = sortKey === keyName
-  const arrow = active && sortDir === 'desc' ? '▼' : '▲'
+  const Arrow = active && sortDir === 'desc' ? ArrowDown : ArrowUp
 
   return (
     <th
@@ -13,7 +15,7 @@ export default function SortableTh({ label, keyName, sortKey, sortDir, onSort })
           className={`th-sort-icon${active ? '' : ' th-sort-icon-placeholder'}`}
           aria-hidden="true"
         >
-          {arrow}
+          <Arrow size={12} strokeWidth={2.5} />
         </span>
       </span>
     </th>

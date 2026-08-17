@@ -23,6 +23,8 @@ import Pagination from '../components/Pagination.jsx'
 import ReimbursementThread from '../components/ReimbursementThread.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -175,7 +177,7 @@ export default function AdminReimbursements() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={8} className="muted">No claims match your filters.</td></tr>
+              <TableEmpty colSpan={8} message="No claims match your filters." />
             )}
             {claimsPage.map((c) => {
               const emp = getEmployeeById(c.employeeId)
@@ -204,9 +206,7 @@ export default function AdminReimbursements() {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(c.id)}
                         aria-label="Claim actions"
-                      >
-                        ⋯
-                      </button>
+                       ><MoreHorizontal size={16} /></button>
                       {openMenuId === c.id && (
                         <div className="task-menu-dropdown">
                           <button
@@ -292,7 +292,7 @@ export default function AdminReimbursements() {
                 <span className={`tag ${statusTagClass(openClaim.status)}`}>
                   {statusLabel(openClaim.status)}
                 </span>
-                <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenId(null)}>✕</button>
+                <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenId(null)} aria-label="Close"><X size={15} /></button>
               </div>
             </div>
             <ul className="lunch-policy-list first">
@@ -361,7 +361,7 @@ export default function AdminReimbursements() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Approve claim</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setApproveId(null)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setApproveId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">Are you sure you want to approve this reimbursement claim?</p>
             <div className="button-row">
@@ -389,7 +389,7 @@ export default function AdminReimbursements() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Reject claim</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => { setRejectId(null); setRejectNote('') }}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => { setRejectId(null); setRejectNote('') }} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">Please give a short reason so the employee knows why the claim was rejected.</p>
             <label className="field">

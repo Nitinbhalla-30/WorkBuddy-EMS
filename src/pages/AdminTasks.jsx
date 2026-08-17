@@ -13,6 +13,8 @@ import {
 import { TASK_PRIORITIES, TASK_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import {
+  QUICK_FILTER_LABELS,
+  chartBucketKey,
   isOverdue,
   priorityLabel,
   priorityTagClass,
@@ -20,12 +22,15 @@ import {
 } from '../utils/tasks.js'
 import TaskForm from '../components/TaskForm.jsx'
 import TaskThread from '../components/TaskThread.jsx'
+import { TaskStatusChart } from '../components/tasks/TaskStatusChart'
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -82,7 +87,8 @@ export default function AdminTasks() {
     filterFns: {
       assignee: (t, val) => t.assigneeId === val,
       status: (t, val) => t.status === val,
-      priority: (t, val) => t.priority === val
+      priority: (t, val) => t.priority === val,
+      quick: (t, val) => (val === 'overdue' ? isOverdue(t) : chartBucketKey(t) === val)
     }
   })
   const {
@@ -176,6 +182,14 @@ export default function AdminTasks() {
         </div>
       </div>
 
+      <TaskStatusChart
+        tasks={allTasks}
+        activeKey={table.filters.quick && table.filters.quick !== 'all' ? table.filters.quick : null}
+        onToggleKey={(key) =>
+          table.setFilter('quick', table.filters.quick === key ? 'all' : key)
+        }
+      />
+
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Create a task for anyone">
           <div className="modal-form">
@@ -185,9 +199,7 @@ export default function AdminTasks() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setShowForm(false)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Assign a task to any employee and track it through To do, In progress, and Done.
@@ -210,9 +222,7 @@ export default function AdminTasks() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setEditTaskId(null)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <TaskForm
               key={editTask.id}
@@ -240,9 +250,7 @@ export default function AdminTasks() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setFollowUpId(null)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             {followUpTask.description && (
               <p className="hint first">{followUpTask.description}</p>
@@ -288,6 +296,19 @@ export default function AdminTasks() {
             }
           ]}
           onFilterChange={table.setFilter}
+          actions={
+            table.filters.quick && table.filters.quick !== 'all' ? (
+              <button
+                type="button"
+                className="quick-filter-chip"
+                onClick={() => table.setFilter('quick', 'all')}
+                aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
+              >
+                {QUICK_FILTER_LABELS[table.filters.quick]}
+                <X size={13} aria-hidden="true" />
+              </button>
+            ) : null
+          }
         />
         <table className="table">
           <colgroup>
@@ -312,7 +333,7 @@ export default function AdminTasks() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={7} className="muted">No tasks match your filters.</td></tr>
+              <TableEmpty colSpan={7} message="No tasks match your filters." />
             )}
             {tasksPage.map((task) => (
               <tr key={task.id}>
@@ -326,7 +347,7 @@ export default function AdminTasks() {
                 </td>
                 <td>
                   <select
-                    className="inline-select"
+                    className="btn-tiny"
                     value={task.status}
                     aria-label={`Set status for ${task.title}`}
                     onChange={(e) => move(task.id, e.target.value)}
@@ -347,9 +368,7 @@ export default function AdminTasks() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(task.id)}
                       aria-label="Task actions"
-                    >
-                      ⋯
-                    </button>
+                     ><MoreHorizontal size={16} /></button>
                     {openMenuId === task.id && (
                       <div className="task-menu-dropdown">
                         <button
@@ -402,7 +421,7 @@ export default function AdminTasks() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Delete</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Are you sure you want to delete this task? This action cannot be undone.
@@ -420,6 +439,7 @@ export default function AdminTasks() {
       )}
 
       <p className="hint">
+        Tip: click the To do, In progress, Done, or Overdue cards above to show only those tasks; click again to see everything.
         Managers are set on the Employees page. A manager sees their own team
         under &ldquo;My Team&rdquo; (My Team Tasks tab); here you can see and manage everyone.
       </p>

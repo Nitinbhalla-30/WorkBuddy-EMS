@@ -7,6 +7,8 @@ import {
 import { fetchPublicIp } from '../utils/network.js'
 import Modal from '../components/Modal.jsx'
 import TimeInput from '../components/TimeInput.jsx'
+import { Inbox, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 // HR/Admin settings: branding, timing rules, and the office-internet check.
 export default function Settings() {
@@ -326,9 +328,7 @@ export default function Settings() {
           </thead>
           <tbody>
             {(form.companyHolidays || []).length === 0 && (
-              <tr>
-                <td colSpan={4} className="muted">No dates added yet.</td>
-              </tr>
+              <TableEmpty colSpan={4} message="No dates added yet." icon={Inbox} />
             )}
             {(form.companyHolidays || []).map((h) => (
               <tr key={h.id}>
@@ -445,7 +445,7 @@ export default function Settings() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Reset</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={cancelReset}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelReset} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               This will erase all changes and load the sample data again. Continue?

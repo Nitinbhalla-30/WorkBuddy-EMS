@@ -8,6 +8,7 @@ import {
   priorityLabel,
   priorityTagClass
 } from '../utils/tasks.js'
+import { X } from 'lucide-react'
 
 // A Planner-style board with three columns (To do / In progress / Done).
 // Props:
@@ -48,7 +49,7 @@ export default function TaskBoard({ tasks, nameOf, onMove, onDelete, showAssigne
                         title="Remove task"
                         onClick={() => onDelete(t.id)}
                       >
-                        &times;
+                        <X size={14} />
                       </button>
                     )}
                   </div>

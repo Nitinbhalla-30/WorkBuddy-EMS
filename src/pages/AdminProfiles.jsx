@@ -17,6 +17,8 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const ROLE_FILTER_OPTS = [
   { value: 'all', label: 'All roles' },
@@ -291,7 +293,7 @@ export default function EmployeeRecords() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={9} className="muted">No employees match your filters.</td></tr>
+              <TableEmpty colSpan={9} message="No employees match your filters." />
             )}
             {recordsPage.map((e) => {
               const profile = profileOf(e)
@@ -322,9 +324,7 @@ export default function EmployeeRecords() {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(e.id)}
                         aria-label="Employee actions"
-                      >
-                        ⋯
-                      </button>
+                       ><MoreHorizontal size={16} /></button>
                       {openMenuId === e.id && (
                         <div className="task-menu-dropdown">
                           <button
@@ -371,7 +371,7 @@ export default function EmployeeRecords() {
                 </h3>
                 <div className="muted small">{editEmp.name} · {editEmp.id}</div>
               </div>
-              <button type="button" className="btn btn-tiny btn-light" onClick={closeEdit}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={closeEdit} aria-label="Close"><X size={15} /></button>
             </div>
 
             <label className="checkbox-row">
@@ -421,7 +421,7 @@ export default function EmployeeRecords() {
                 <span className={`tag ${profileStatusTagClass(openProfile.status)}`}>
                   {profileStatusLabel(openProfile.status)}
                 </span>
-                <button type="button" className="btn btn-tiny btn-light" onClick={closeReview}>✕</button>
+                <button type="button" className="btn btn-tiny btn-light" onClick={closeReview} aria-label="Close"><X size={15} /></button>
               </div>
             </div>
 

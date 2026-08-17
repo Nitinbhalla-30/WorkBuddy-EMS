@@ -26,6 +26,8 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { CircleCheck, Hourglass, MoreHorizontal, Wallet, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All statuses' },
@@ -194,9 +196,7 @@ export default function EmployeeReimbursements() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setShowForm(false)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Claim expenses the company should cover — travel, conveyance, meals, and similar costs.
@@ -218,9 +218,7 @@ export default function EmployeeReimbursements() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setEditId(null)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               You can change claim details while it is still pending approval.
@@ -252,7 +250,7 @@ export default function EmployeeReimbursements() {
                 <span className={`tag ${statusTagClass(openClaim.status)}`}>
                   {statusLabel(openClaim.status)}
                 </span>
-                <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenId(null)}>✕</button>
+                <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenId(null)} aria-label="Close"><X size={15} /></button>
               </div>
             </div>
             <ul className="lunch-policy-list first">
@@ -285,6 +283,7 @@ export default function EmployeeReimbursements() {
 
       <div className="stat-grid">
         <div className="stat-card">
+          <span className="stat-chip"><Hourglass size={18} aria-hidden="true" /></span>
           <div className="stat-num">{summary.pendingCount}</div>
           <div className="stat-label">
             Pending approval
@@ -292,6 +291,7 @@ export default function EmployeeReimbursements() {
           </div>
         </div>
         <div className="stat-card">
+          <span className="stat-chip"><Wallet size={18} aria-hidden="true" /></span>
           <div className="stat-num">{summary.approvedUnpaidCount}</div>
           <div className="stat-label">
             Approved — yet to be paid
@@ -299,6 +299,7 @@ export default function EmployeeReimbursements() {
           </div>
         </div>
         <div className="stat-card stat-good">
+          <span className="stat-chip"><CircleCheck size={18} aria-hidden="true" /></span>
           <div className="stat-num">{formatAmount(summary.paidThisYear)}</div>
           <div className="stat-label">Paid this year</div>
         </div>
@@ -352,7 +353,7 @@ export default function EmployeeReimbursements() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={7} className="muted">No claims match your filters.</td></tr>
+              <TableEmpty colSpan={7} message="No claims match your filters." />
             )}
             {claimsPage.map((c) => (
               <tr key={c.id}>
@@ -379,9 +380,7 @@ export default function EmployeeReimbursements() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(c.id)}
                       aria-label="Claim actions"
-                    >
-                      ⋯
-                    </button>
+                     ><MoreHorizontal size={16} /></button>
                     {openMenuId === c.id && (
                       <div className="task-menu-dropdown">
                         <button
@@ -439,7 +438,7 @@ export default function EmployeeReimbursements() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Withdraw</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Are you sure you want to withdraw this reimbursement claim? This action cannot be undone.

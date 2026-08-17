@@ -20,6 +20,8 @@ import {
   listRecentMonths,
   monthKey
 } from '../utils/salary.js'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 // HR/Admin salary screen: everyone's pay for a month, edit structure, view slip.
 export default function AdminSalary() {
@@ -225,7 +227,7 @@ export default function AdminSalary() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={8} className="muted">No employees match your filters.</td></tr>
+              <TableEmpty colSpan={8} message="No employees match your filters." />
             )}
             {rowsPage.map(({ emp, calc }) => (
               <tr key={emp.id}>
@@ -246,9 +248,7 @@ export default function AdminSalary() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(emp.id)}
                       aria-label="Employee actions"
-                    >
-                      ⋯
-                    </button>
+                     ><MoreHorizontal size={16} /></button>
                     {openMenuId === emp.id && (
                       <div className="task-menu-dropdown">
                         <button
@@ -304,9 +304,7 @@ export default function AdminSalary() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => { setEditId(null); setForm(null) }}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <div className="two-col">
               <label className="field">
@@ -352,9 +350,7 @@ export default function AdminSalary() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setViewId(null)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <Payslip employee={viewRow.emp} monthKey={selected} calc={viewRow.calc} />
             <div className="button-row">

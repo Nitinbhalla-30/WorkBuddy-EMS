@@ -35,6 +35,17 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { LEAVE_TYPES } from '../data/sampleData.js'
+import { AlarmClock, Award, CalendarDays, HeartPulse, MoreHorizontal, Sun, Timer, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
+
+// Icon per leave type for the balance cards.
+const BALANCE_ICONS = {
+  casual: Sun,
+  sick: HeartPulse,
+  earned: Award,
+  halfday: Timer,
+  short: AlarmClock
+}
 
 const LEAVE_STATUS_FILTERS = [
   { value: 'all', label: 'All statuses' },
@@ -222,9 +233,7 @@ export default function EmployeeLeaves() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setShowHolidays(false)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Official company holidays when you do not need to work. Other public
@@ -271,9 +280,7 @@ export default function EmployeeLeaves() {
                   type="button"
                   className="btn btn-tiny btn-light"
                   onClick={() => setShowForm(false)}
-                >
-                  ✕
-                </button>
+                 aria-label="Close"><X size={15} /></button>
               </div>
               <p className="hint first">
                 Choose your leave type and dates. Weekends are not counted toward your request.
@@ -298,9 +305,7 @@ export default function EmployeeLeaves() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setEditId(null)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               You can change dates and details while the request is still pending.
@@ -318,15 +323,21 @@ export default function EmployeeLeaves() {
 
       {/* Balance cards */}
       <div className="stat-grid">
-        {balance.map((b) => (
-          <div className="stat-card" key={b.key}>
-            <div className="stat-num">{b.remaining}</div>
-            <div className="stat-label">
-              {b.label.toLowerCase().endsWith('leave') ? b.label : `${b.label} leave`} left{' '}
-              <span className="muted">/ {b.allowed}</span>
+        {balance.map((b) => {
+          const Icon = BALANCE_ICONS[b.key] || CalendarDays
+          const ratio = b.allowed > 0 ? b.remaining / b.allowed : 0
+          const tone = b.remaining === 0 ? ' stat-bad' : ratio <= 0.25 ? ' stat-warn' : ''
+          return (
+            <div className={`stat-card${tone}`} key={b.key}>
+              <span className="stat-chip"><Icon size={18} aria-hidden="true" /></span>
+              <div className="stat-num">{b.remaining}</div>
+              <div className="stat-label">
+                {b.label.toLowerCase().endsWith('leave') ? b.label : `${b.label} leave`} left{' '}
+                <span className="muted">/ {b.allowed}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* My requests */}
@@ -380,7 +391,7 @@ export default function EmployeeLeaves() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={8} className="muted">No leave requests match your filters.</td></tr>
+              <TableEmpty colSpan={8} message="No leave requests match your filters." />
             )}
             {leavesPage.map((lv) => {
               return (
@@ -409,9 +420,7 @@ export default function EmployeeLeaves() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(lv.id)}
                       aria-label="Leave actions"
-                    >
-                      ⋯
-                    </button>
+                     ><MoreHorizontal size={16} /></button>
                     {openMenuId === lv.id && (
                       <div className="task-menu-dropdown">
                         <button
@@ -487,7 +496,7 @@ export default function EmployeeLeaves() {
                 <span className={`tag ${statusTagClass(openLeave.status)}`}>
                   {leaveStatusLabel(openLeave.status)}
                 </span>
-                <button type="button" className="btn btn-tiny btn-light" onClick={closeLeaveModal}>✕</button>
+                <button type="button" className="btn btn-tiny btn-light" onClick={closeLeaveModal} aria-label="Close"><X size={15} /></button>
               </div>
             </div>
 
@@ -532,7 +541,7 @@ export default function EmployeeLeaves() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Withdraw</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Are you sure you want to withdraw this leave request? This action cannot be undone.

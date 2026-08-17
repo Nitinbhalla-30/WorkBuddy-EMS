@@ -22,6 +22,8 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const TICKET_KIND_OPTS = [
   { value: 'all', label: 'All types' },
@@ -124,6 +126,15 @@ export default function AdminTickets() {
           onFilterChange={table.setFilter}
         />
         <table className="table">
+          <colgroup>
+            <col style={{ width: '22%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '27%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '7%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Subject" keyName="subject" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -137,11 +148,11 @@ export default function AdminTickets() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={7} className="muted">Nothing matches your filters.</td></tr>
+              <TableEmpty colSpan={7} message="Nothing matches your filters." />
             )}
             {ticketsPage.map((t) => (
               <tr key={t.id}>
-                <td>
+                <td className="cell-ellipsis" title={t.subject}>
                   <strong>{t.subject}</strong>
                   {t.confidential && <span className="tag tag-high" style={{ marginLeft: 8 }}>Confidential</span>}
                 </td>
@@ -153,7 +164,7 @@ export default function AdminTickets() {
                 <td>{categoryLabel(t.category)}</td>
                 <td>
                   <select
-                    className="inline-select"
+                    className="btn-tiny"
                     value={t.status}
                     aria-label={`Set status for ${t.subject}`}
                     onChange={(e) => handleSetStatus(t.id, e.target.value)}
@@ -171,9 +182,7 @@ export default function AdminTickets() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(t.id)}
                       aria-label="Ticket actions"
-                    >
-                      ⋯
-                    </button>
+                     ><MoreHorizontal size={16} /></button>
                     {openMenuId === t.id && (
                       <div className="task-menu-dropdown">
                         <button
@@ -221,9 +230,7 @@ export default function AdminTickets() {
                   type="button"
                   className="btn btn-tiny btn-light"
                   onClick={() => setOpenId(null)}
-                >
-                  ✕
-                </button>
+                 aria-label="Close"><X size={15} /></button>
               </div>
             </div>
             <TicketThread

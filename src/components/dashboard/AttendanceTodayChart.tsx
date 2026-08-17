@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { AlarmClock, Plane, UserCheck, Users, UserX } from 'lucide-react'
 import { DonutChart } from '@/components/ui/donut-chart'
 import { cn } from '@/lib/utils'
 
@@ -22,13 +23,15 @@ interface AttendanceTodayChartProps {
   present: number
   late: number
   absent: number
+  onLeave?: number
 }
 
 export function AttendanceTodayChart({
   employees,
   present,
   late,
-  absent
+  absent,
+  onLeave = 0
 }: AttendanceTodayChartProps) {
   const [hovered, setHovered] = useState<string | null>(null)
   const onTime = Math.max(0, present - late)
@@ -67,6 +70,7 @@ export function AttendanceTodayChart({
           onMouseEnter={() => setHovered('Employees')}
           onMouseLeave={() => setHovered(null)}
         >
+          <span className="stat-chip"><Users size={18} aria-hidden="true" /></span>
           <div className="stat-num">{employees}</div>
           <div className="stat-label">Employees</div>
         </div>
@@ -84,10 +88,21 @@ export function AttendanceTodayChart({
             onMouseEnter={() => setHovered(segment.label)}
             onMouseLeave={() => setHovered(null)}
           >
+            <span className="stat-chip">
+              {segment.key === 'ontime' && <UserCheck size={18} aria-hidden="true" />}
+              {segment.key === 'late' && <AlarmClock size={18} aria-hidden="true" />}
+              {segment.key === 'absent' && <UserX size={18} aria-hidden="true" />}
+            </span>
             <div className="stat-num">{segment.value}</div>
             <div className="stat-label">{segment.label}</div>
           </div>
         ))}
+
+        <div className="stat-card task-status-stat-card">
+          <span className="stat-chip"><Plane size={18} aria-hidden="true" /></span>
+          <div className="stat-num">{onLeave}</div>
+          <div className="stat-label">On leave</div>
+        </div>
       </div>
 
       <div

@@ -12,9 +12,11 @@ import {
 import { TASK_STATUSES, TASK_PRIORITIES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import {
+  QUICK_FILTER_LABELS,
   canEmployeeAskQuestion,
   canEmployeeDeleteTask,
   canEmployeeEditTask,
+  chartBucketKey,
   closureNotice,
   employeeStatusOptions,
   isEmployeeStatusLocked,
@@ -32,6 +34,8 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -100,7 +104,8 @@ export default function EmployeeTasks() {
     filterFns: {
       status: (t, val) => t.status === val,
       priority: (t, val) => t.priority === val,
-      assignedDuring: (t, val) => inAssignedDuring(t.createdOn, val)
+      assignedDuring: (t, val) => inAssignedDuring(t.createdOn, val),
+      quick: (t, val) => (val === 'overdue' ? isOverdue(t) : chartBucketKey(t) === val)
     }
   })
   const {
@@ -188,7 +193,6 @@ export default function EmployeeTasks() {
   function toggleMenu(taskId) {
     setOpenMenuId(openMenuId === taskId ? null : taskId)
   }
-
   function closeMenu() {
     setOpenMenuId(null)
   }
@@ -252,7 +256,13 @@ export default function EmployeeTasks() {
         </div>
       </div>
 
-      <TaskStatusChart tasks={tasks} />
+      <TaskStatusChart
+        tasks={tasks}
+        activeKey={table.filters.quick && table.filters.quick !== 'all' ? table.filters.quick : null}
+        onToggleKey={(key) =>
+          table.setFilter('quick', table.filters.quick === key ? 'all' : key)
+        }
+      />
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Add a task for myself">
@@ -263,9 +273,7 @@ export default function EmployeeTasks() {
                   type="button"
                   className="btn btn-tiny btn-light"
                   onClick={() => setShowForm(false)}
-                >
-                  ✕
-                </button>
+                 aria-label="Close"><X size={15} /></button>
               </div>
               <p className="hint first">
                 Create a personal task and track it through To do, In progress, and Done.
@@ -288,9 +296,7 @@ export default function EmployeeTasks() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setEditTaskId(null)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <TaskForm
               defaultAssigneeId={user.id}
@@ -317,9 +323,7 @@ export default function EmployeeTasks() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setOpenTaskId(null)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             {openTask.description && (
               <p className="hint first">{openTask.description}</p>
@@ -367,6 +371,19 @@ export default function EmployeeTasks() {
             }
           ]}
           onFilterChange={table.setFilter}
+          actions={
+            table.filters.quick && table.filters.quick !== 'all' ? (
+              <button
+                type="button"
+                className="quick-filter-chip"
+                onClick={() => table.setFilter('quick', 'all')}
+                aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
+              >
+                {QUICK_FILTER_LABELS[table.filters.quick]}
+                <X size={13} aria-hidden="true" />
+              </button>
+            ) : null
+          }
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
@@ -393,7 +410,7 @@ export default function EmployeeTasks() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={8} className="muted">No tasks match your filters.</td></tr>
+              <TableEmpty colSpan={8} message="No tasks match your filters." />
             )}
             {tasksPage.map((task) => (
               <tr key={task.id}>
@@ -418,9 +435,7 @@ export default function EmployeeTasks() {
                     <button
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(task.id)}
-                    >
-                      ⋯
-                    </button>
+                     aria-label="More actions"><MoreHorizontal size={16} /></button>
                     {openMenuId === task.id && (
                       <div className="task-menu-dropdown">
                         {!isSelfAssigned(task) && (
@@ -479,7 +494,7 @@ export default function EmployeeTasks() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Delete</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Are you sure you want to delete this task? This action cannot be undone.
@@ -497,10 +512,11 @@ export default function EmployeeTasks() {
       )}
 
       <p className="hint">
+        Tip: click the To do, In progress, Done, or Overdue cards above to show only those tasks; click again to see everything.
         Tasks you create for yourself can be edited, deleted, and marked done from the status dropdown.
         Tasks from your manager can be marked done from the status dropdown when finished, and changed back to To do or In progress if needed.
         Your manager must approve before the task is closed.
-        Use the <strong>⋯</strong> menu on manager-assigned tasks to ask questions while the task is still open.
+        Use the <strong>three-dot</strong> menu on manager-assigned tasks to ask questions while the task is still open.
       </p>
     </div>
   )

@@ -13,6 +13,8 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
+import { X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const ANNOUNCEMENT_TYPE_OPTS = [
   { value: 'all', label: 'All types' },
@@ -130,7 +132,7 @@ export default function EmployeeAnnouncements() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={5} className="muted">No announcements match your filters.</td></tr>
+              <TableEmpty colSpan={5} message="No announcements match your filters." />
             )}
             {announcementsPage.map((announcement) => {
               const isRead = isAnnouncementRead(user.id, announcement.id)
@@ -191,9 +193,7 @@ export default function EmployeeAnnouncements() {
                   type="button"
                   className="btn btn-tiny btn-light"
                   onClick={closeModal}
-                >
-                  ✕
-                </button>
+                 aria-label="Close"><X size={15} /></button>
               </div>
               <div className="announcement-content">
                 <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', margin: 0 }}>

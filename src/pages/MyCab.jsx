@@ -33,6 +33,8 @@ import {
   tripById,
   vehicleById
 } from '../utils/cab.js'
+import { Check, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 // Employee's "My Cab" page: see assigned pickup/drop details and raise
 // temporary change requests.
@@ -149,7 +151,7 @@ export default function MyCab() {
               disabled={!pickupOpen}
               onClick={() => toggleCancellation('pickup')}
             >
-              {skipPickup ? '✓ Skipping pickup today' : 'Skip pickup today'}
+              {skipPickup ? (<><Check size={14} /> Skipping pickup today</>) : 'Skip pickup today'}
             </button>
             <button
               id="btn-skip-drop"
@@ -157,7 +159,7 @@ export default function MyCab() {
               disabled={!dropOpen}
               onClick={() => toggleCancellation('drop')}
             >
-              {skipDrop ? '✓ Skipping drop today' : 'Skip drop today'}
+              {skipDrop ? (<><Check size={14} /> Skipping drop today</>) : 'Skip drop today'}
             </button>
           </div>
           {(!pickupOpen || !dropOpen) && (
@@ -274,7 +276,7 @@ export default function MyCab() {
               </thead>
               <tbody>
                 {requestsTable.count === 0 && (
-                  <tr><td colSpan={5} className="muted">No requests match your search.</td></tr>
+                  <TableEmpty colSpan={5} message="No requests match your search." />
                 )}
                 {requestsTable.rows.map((r) => (
                   <tr key={r.id}>
@@ -339,7 +341,7 @@ function RequestForm({ pickupTrip, onSubmit, onCancel }) {
     <div className="modal-form">
       <div className="modal-header">
         <h3 className="section-title first">Request a temporary change</h3>
-        <button type="button" className="btn btn-tiny btn-light" onClick={onCancel}>✕</button>
+        <button type="button" className="btn btn-tiny btn-light" onClick={onCancel} aria-label="Close"><X size={15} /></button>
       </div>
       <form onSubmit={submit}>
         <p className="hint first">

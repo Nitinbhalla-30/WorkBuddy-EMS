@@ -40,6 +40,7 @@ import {
   tripLabel,
   vehicleById
 } from '../utils/cab.js'
+import { Check, MoreHorizontal, X } from 'lucide-react'
 
 const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Requests', 'Messages', 'Today']
 
@@ -199,9 +200,7 @@ function VehiclesTab({ vehicles, bump }) {
                     className="btn btn-tiny btn-light task-menu-button"
                     onClick={() => toggleMenu(v.id)}
                     aria-label="Vehicle actions"
-                  >
-                    ⋯
-                  </button>
+                   ><MoreHorizontal size={16} /></button>
                   {openMenuId === v.id && (
                     <div className="task-menu-dropdown">
                       <button
@@ -246,7 +245,7 @@ function VehiclesTab({ vehicles, bump }) {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Add vehicle</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)} aria-label="Close"><X size={15} /></button>
             </div>
             <label className="field">
               <span>Vehicle no.</span>
@@ -269,7 +268,7 @@ function VehiclesTab({ vehicles, bump }) {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Edit vehicle — {editVehicle.number}</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <label className="field">
               <span>Vehicle no.</span>
@@ -292,7 +291,7 @@ function VehiclesTab({ vehicles, bump }) {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Delete</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Are you sure you want to delete this vehicle? This action cannot be undone.
@@ -449,7 +448,7 @@ function DriversTab({ drivers, bump }) {
                     onClick={() => savePin(d.id)}
                     disabled={!(pins[d.id] || '').trim()}
                   >
-                    {pinSaved[d.id] ? '✓ Saved' : 'Save PIN'}
+                    {pinSaved[d.id] ? (<><Check size={14} /> Saved</>) : 'Save PIN'}
                   </button>
                 </div>
               </td>
@@ -460,9 +459,7 @@ function DriversTab({ drivers, bump }) {
                     className="btn btn-tiny btn-light task-menu-button"
                     onClick={() => toggleMenu(d.id)}
                     aria-label="Driver actions"
-                  >
-                    ⋯
-                  </button>
+                   ><MoreHorizontal size={16} /></button>
                   {openMenuId === d.id && (
                     <div className="task-menu-dropdown">
                       <button
@@ -507,7 +504,7 @@ function DriversTab({ drivers, bump }) {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Add driver</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)} aria-label="Close"><X size={15} /></button>
             </div>
             <label className="field">
               <span>Driver name</span>
@@ -536,7 +533,7 @@ function DriversTab({ drivers, bump }) {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Edit driver — {editDriver.name}</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <label className="field">
               <span>Driver name</span>
@@ -565,7 +562,7 @@ function DriversTab({ drivers, bump }) {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Delete</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Are you sure you want to delete this driver? This action cannot be undone.
@@ -814,9 +811,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(t.id)}
                       aria-label="Trip actions"
-                    >
-                      ⋯
-                    </button>
+                     ><MoreHorizontal size={16} /></button>
                     {openMenuId === t.id && (
                       <div className="task-menu-dropdown">
                         <button
@@ -862,7 +857,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Add trip</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)} aria-label="Close"><X size={15} /></button>
             </div>
             {tripFormFields()}
             <div className="button-row">
@@ -878,7 +873,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Edit trip</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             {tripFormFields()}
             <div className="button-row">
@@ -894,7 +889,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Delete</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Are you sure you want to delete this trip? This action cannot be undone.
@@ -1292,9 +1287,7 @@ function TodayTab({ employees, bump }) {
                           className="btn btn-tiny btn-light task-menu-button"
                           onClick={() => toggleMenu(d.id)}
                           aria-label="Run sheet actions"
-                        >
-                          ⋯
-                        </button>
+                         ><MoreHorizontal size={16} /></button>
                         {openMenuId === d.id && (
                           <div className="task-menu-dropdown">
                             <a
@@ -1311,7 +1304,7 @@ function TodayTab({ employees, bump }) {
                               className="task-menu-item"
                               onClick={() => copyRunSheetLink(d)}
                             >
-                              {copiedId === d.id ? 'Link copied ✓' : 'Copy link'}
+                              {copiedId === d.id ? (<>Link copied <Check size={14} /></>) : 'Copy link'}
                             </button>
                           </div>
                         )}
@@ -1339,7 +1332,7 @@ function TodayTab({ employees, bump }) {
           <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Cancellation summary</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowCancellation(false)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowCancellation(false)} aria-label="Close"><X size={15} /></button>
             </div>
 
             <h4 className="sub-title">Not taking pickup today</h4>

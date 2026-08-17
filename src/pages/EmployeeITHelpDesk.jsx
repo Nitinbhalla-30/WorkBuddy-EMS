@@ -26,6 +26,8 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import ITIssueThread from '../components/ITIssueThread.jsx'
 import Modal from '../components/Modal.jsx'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const IT_STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -327,7 +329,7 @@ export default function EmployeeITHelpDesk() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Report IT Issue</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)} aria-label="Close"><X size={15} /></button>
             </div>
             <ITIssueForm
               formData={formData}
@@ -344,7 +346,7 @@ export default function EmployeeITHelpDesk() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Edit IT issue</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               You can edit an issue while it is open and not yet assigned to IT staff.
@@ -368,7 +370,7 @@ export default function EmployeeITHelpDesk() {
                 <h3 className="section-title first" style={{ margin: 0 }}>{openIssue.issue}</h3>
                 <div className="muted small">Reported {formatDate(openIssue.createdOn)}</div>
               </div>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenId(null)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <ul className="lunch-policy-list first">
               <li>
@@ -472,7 +474,7 @@ export default function EmployeeITHelpDesk() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={8} className="muted">No IT issues match your filters.</td></tr>
+              <TableEmpty colSpan={8} message="No IT issues match your filters." />
             )}
             {issuesPage.map((issue) => {
               const assignedStaff = issue.assignedTo ? getITStaffById(issue.assignedTo) : null
@@ -518,9 +520,7 @@ export default function EmployeeITHelpDesk() {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(issue.id)}
                         aria-label="IT issue actions"
-                      >
-                        ⋯
-                      </button>
+                       ><MoreHorizontal size={16} /></button>
                       {openMenuId === issue.id && (
                         <div className="task-menu-dropdown">
                           <button
@@ -590,7 +590,7 @@ export default function EmployeeITHelpDesk() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Withdraw</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Are you sure you want to withdraw this IT issue? This action cannot be undone.

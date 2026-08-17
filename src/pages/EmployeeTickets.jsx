@@ -18,6 +18,8 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const TICKET_KIND_OPTS = [
   { value: 'all', label: 'All types' },
@@ -156,7 +158,7 @@ export default function EmployeeTickets() {
           <div className="modal-form">
               <div className="modal-header">
                 <h3 className="section-title first">Raise Query or Grievance</h3>
-                <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)}>✕</button>
+                <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)} aria-label="Close"><X size={15} /></button>
               </div>
               <p className="hint first">
                 Raise a routine question (payslip, leave, PF, policy, IT) or a
@@ -173,7 +175,7 @@ export default function EmployeeTickets() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Edit ticket</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               You can edit details while the ticket is still open and HR has not started working on it.
@@ -225,7 +227,7 @@ export default function EmployeeTickets() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={7} className="muted">No tickets match your filters.</td></tr>
+              <TableEmpty colSpan={7} message="No tickets match your filters." />
             )}
             {ticketsPage.map((t) => (
               <tr key={t.id}>
@@ -241,9 +243,7 @@ export default function EmployeeTickets() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(t.id)}
                       aria-label="Ticket actions"
-                    >
-                      ⋯
-                    </button>
+                     ><MoreHorizontal size={16} /></button>
                     {openMenuId === t.id && (
                       <div className="task-menu-dropdown">
                         <button
@@ -313,9 +313,7 @@ export default function EmployeeTickets() {
                   type="button"
                   className="btn btn-tiny btn-light"
                   onClick={closeTicket}
-                >
-                  ✕
-                </button>
+                 aria-label="Close"><X size={15} /></button>
               </div>
             </div>
             <TicketThread
@@ -334,7 +332,7 @@ export default function EmployeeTickets() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Withdraw</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               {withdrawTicket?.kind === 'grievance'

@@ -40,6 +40,8 @@ import Modal from '../components/Modal.jsx'
 import AttendanceCorrectionForm from '../components/AttendanceCorrectionForm.jsx'
 import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
 import { formatTime12 } from '../utils/cab.js'
+import { Briefcase, Coffee, LogIn, LogOut, MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 // The employee's own screen: live buttons + their history.
 export default function EmployeeDashboard() {
@@ -407,18 +409,22 @@ export default function EmployeeDashboard() {
       </p>
       <div className="stat-grid">
         <div className="stat-card">
+          <span className="stat-chip"><LogIn size={18} aria-hidden="true" /></span>
           <div className="stat-num">{periodStats.avgTimeIn}</div>
           <div className="stat-label">Avg time in</div>
         </div>
         <div className="stat-card">
+          <span className="stat-chip"><LogOut size={18} aria-hidden="true" /></span>
           <div className="stat-num">{periodStats.avgTimeOut}</div>
           <div className="stat-label">Avg time out</div>
         </div>
         <div className="stat-card">
+          <span className="stat-chip"><Coffee size={18} aria-hidden="true" /></span>
           <div className="stat-num">{periodStats.avgBreak}</div>
           <div className="stat-label">Avg break</div>
         </div>
         <div className="stat-card stat-good">
+          <span className="stat-chip"><Briefcase size={18} aria-hidden="true" /></span>
           <div className="stat-num">{periodStats.avgWorked}</div>
           <div className="stat-label">Avg hours worked</div>
         </div>
@@ -477,7 +483,7 @@ export default function EmployeeDashboard() {
           </thead>
           <tbody>
             {historyTable.count === 0 && (
-              <tr><td colSpan="6" className="muted">No attendance records for {monthLabel(selectedHistoryMonth)}.</td></tr>
+              <TableEmpty colSpan="6" message={`No attendance records for ${monthLabel(selectedHistoryMonth)}.`} />
             )}
             {historyPage.map((r) => (
               <tr key={r.id}>
@@ -530,7 +536,7 @@ export default function EmployeeDashboard() {
               </thead>
               <tbody>
                 {correctionsPage.length === 0 && (
-                  <tr><td colSpan={6} className="muted">No correction requests.</td></tr>
+                  <TableEmpty colSpan={6} message="No correction requests." />
                 )}
                 {correctionsPage.map((c) => (
                   <tr key={c.id}>
@@ -565,9 +571,7 @@ export default function EmployeeDashboard() {
                           className="btn btn-tiny btn-light task-menu-button"
                           onClick={() => toggleMenu(c.id)}
                           aria-label="Correction actions"
-                        >
-                          ⋯
-                        </button>
+                         ><MoreHorizontal size={16} /></button>
                         {openMenuId === c.id && (
                           <div className="task-menu-dropdown">
                             <button
@@ -628,9 +632,7 @@ export default function EmployeeDashboard() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setShowCorrectionForm(false)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Tell HR if you forgot to time in or out, or if your attendance record looks wrong.
@@ -653,9 +655,7 @@ export default function EmployeeDashboard() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setEditCorrectionId(null)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               You can update this request while it is still pending HR review.
@@ -690,9 +690,7 @@ export default function EmployeeDashboard() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setOpenCorrectionId(null)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             {openCorrection.description && (
               <p className="hint first">{openCorrection.description}</p>
@@ -728,9 +726,7 @@ export default function EmployeeDashboard() {
                   type="button"
                   className="btn btn-tiny btn-light"
                   onClick={() => setShowLunchPolicy(false)}
-                >
-                  ✕
-                </button>
+                 aria-label="Close"><X size={15} /></button>
               </div>
               <ul className="lunch-policy-list">
                 <li>

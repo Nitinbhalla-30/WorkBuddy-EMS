@@ -30,6 +30,8 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
 import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
 import { downloadExcelXlsx } from '../utils/exportExcel.js'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const PERIOD_FILTER_OPTS = [
   { value: 'all', label: 'All period' },
@@ -399,7 +401,7 @@ export default function AttendanceRecords() {
           </thead>
           <tbody>
             {recordsTotal === 0 && (
-              <tr><td colSpan="9" className="muted">No records match your filters.</td></tr>
+              <TableEmpty colSpan="9" message="No records match your filters." />
             )}
             {recordsPage.map((r) => {
               const emp = getEmployeeById(r.employeeId)
@@ -500,9 +502,7 @@ export default function AttendanceRecords() {
           </thead>
           <tbody>
             {correctionsTotal === 0 && (
-              <tr>
-                <td colSpan={7} className="muted">No correction requests match your filters.</td>
-              </tr>
+              <TableEmpty colSpan={7} message="No correction requests match your filters." />
             )}
             {correctionsPage.map((c) => {
               const emp = getEmployeeById(c.employeeId)
@@ -530,9 +530,7 @@ export default function AttendanceRecords() {
                         className="btn btn-tiny btn-light task-menu-button corrections-menu-button"
                         onClick={() => toggleMenu(c.id)}
                         aria-label="Correction actions"
-                      >
-                        ⋯
-                      </button>
+                       ><MoreHorizontal size={16} /></button>
                       {openMenuId === c.id && (
                         <div className="task-menu-dropdown">
                           <button
@@ -597,9 +595,7 @@ export default function AttendanceRecords() {
                 <span className={`tag ${statusClass(openCorrection.status)}`}>
                   {statusLabel(openCorrection.status)}
                 </span>
-                <button type="button" className="btn btn-tiny btn-light" onClick={closeReview}>
-                  ✕
-                </button>
+                <button type="button" className="btn btn-tiny btn-light" onClick={closeReview} aria-label="Close"><X size={15} /></button>
               </div>
             </div>
 

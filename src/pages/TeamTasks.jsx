@@ -30,6 +30,8 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { MoreHorizontal, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -234,9 +236,7 @@ export default function TeamTasksPanel() {
                   type="button"
                   className="btn btn-tiny btn-light"
                   onClick={() => setShowForm(false)}
-                >
-                  ✕
-                </button>
+                 aria-label="Close"><X size={15} /></button>
               </div>
               <p className="hint first">
                 Assign a task to anyone on your team or to yourself.
@@ -264,9 +264,7 @@ export default function TeamTasksPanel() {
                 type="button"
                 className="btn btn-tiny btn-light"
                 onClick={() => setOpenTaskId(null)}
-              >
-                ✕
-              </button>
+               aria-label="Close"><X size={15} /></button>
             </div>
             {openTask.description && (
               <p className="hint first">{openTask.description}</p>
@@ -337,7 +335,7 @@ export default function TeamTasksPanel() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={7} className="muted">No tasks match your filters.</td></tr>
+              <TableEmpty colSpan={7} message="No tasks match your filters." />
             )}
             {tasksPage.map((task) => (
               <tr key={task.id}>
@@ -359,9 +357,7 @@ export default function TeamTasksPanel() {
                     <button
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(task.id)}
-                    >
-                      ⋯
-                    </button>
+                     aria-label="More actions"><MoreHorizontal size={16} /></button>
                     {openMenuId === task.id && (
                       <div className="task-menu-dropdown">
                         {/* For a task the manager assigned to themself only
@@ -422,7 +418,7 @@ export default function TeamTasksPanel() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Delete</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Are you sure you want to delete this task? This action cannot be undone.
@@ -441,7 +437,7 @@ export default function TeamTasksPanel() {
 
       <p className="hint">
         Assign tasks to your team from here. When an employee marks a task done,
-        you will see <strong>Done</strong> with the completion date and can approve closure from the <strong>⋯</strong> menu.
+        you will see <strong>Done</strong> with the completion date and can approve closure from the <strong>three-dot</strong> menu.
         The task becomes <strong>Closed</strong> for the employee only after you approve.
       </p>
     </div>

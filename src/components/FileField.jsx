@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { formatFileSize } from '../utils/profile.js'
+import { X } from 'lucide-react'
 
 // A PDF upload control. In this test phase it keeps only the file details
 // (name, size), not the actual PDF bytes. Real storage comes with the server.
@@ -90,7 +91,7 @@ export default function FileField({
               <span className="file-chip-size muted">{formatFileSize(f.size)}</span>
               {!disabled && (
                 <button type="button" className="file-chip-x" title="Remove" onClick={() => removeAt(i)}>
-                  &times;
+                  <X size={14} />
                 </button>
               )}
             </li>

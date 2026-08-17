@@ -18,6 +18,8 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
 const IT_STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -213,9 +215,10 @@ export default function AdminITHelpDesk() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr><td colSpan={canAssign ? 9 : 8} className="muted">
-                {isITStaff ? 'No IT issues are assigned to you right now.' : 'No IT issues match your filters.'}
-              </td></tr>
+              <TableEmpty
+                colSpan={canAssign ? 9 : 8}
+                message={isITStaff ? 'No IT issues are assigned to you right now.' : 'No IT issues match your filters.'}
+              />
             )}
             {pageRows.map((issue) => {
               const employee = getEmployeeById(issue.employeeId)
@@ -337,7 +340,7 @@ export default function AdminITHelpDesk() {
                 <h3 className="section-title first" style={{ margin: 0 }}>{viewIssue.issue}</h3>
                 <div className="muted small">Reported {formatDate(viewIssue.createdOn)}</div>
               </div>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setViewId(null)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setViewId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <ul className="lunch-policy-list first">
               <li>

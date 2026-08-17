@@ -26,51 +26,69 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      <div className="login-card">
-        <div className="login-card-head">
-          <h1 className="login-brand">WorkBuddy - {settings.companyName}</h1>
-          <div className="cinematic-theme-switcher-wrap cinematic-theme-switcher-wrap--login">
-            <CinematicThemeSwitcher />
-          </div>
-        </div>
-        <p className="login-sub">Please log in to continue</p>
-
-        <form onSubmit={handleSubmit}>
-          <label className="field">
-            <span>WorkBuddy ID</span>
-            <input
-              value={id}
-              onChange={(e) => setId(e.target.value)}
-              placeholder="e.g. EMP001 or DRV01"
-              autoFocus
-            />
-          </label>
-
-          <label className="field">
-            <span>PIN</span>
-            <input
-              type="password"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              placeholder="Your PIN"
-            />
-          </label>
-
-          {error && <div className="error-box">{error}</div>}
-
-          <button className="btn btn-primary btn-block" type="submit">
-            Log in
-          </button>
-        </form>
-
-        <div className="login-help">
-          <strong>Test logins:</strong>
-          <ul>
-            <li>Employee &mdash; <code>EMP001</code> / PIN <code>1111</code></li>
-            <li>HR / Admin &mdash; <code>ADM001</code> / PIN <code>0000</code></li>
-            <li>IT Support &mdash; <code>IT001</code> / PIN <code>5555</code></li>
-            <li>Driver &mdash; <code>DRV01</code> / PIN <code>1234</code></li>
+      <div className="login-brand-panel">
+        <div className="login-brand-logo">WorkBuddy</div>
+        <div>
+          <h1 className="login-brand-headline">Everything your team needs, in one place.</h1>
+          <p className="login-brand-sub">
+            Attendance, leaves, salaries, tasks and more — managed without the busywork.
+          </p>
+          <ul className="login-brand-points">
+            <li>Track attendance and leaves in real time</li>
+            <li>Approvals and reimbursements without emails</li>
+            <li>Tasks, announcements and team updates</li>
           </ul>
+        </div>
+        <div className="login-brand-footer">{settings.companyName}</div>
+      </div>
+
+      <div className="login-form-panel">
+        <div className="login-card">
+          <div className="login-card-head">
+            <h2 className="login-brand">Welcome back</h2>
+            <div className="cinematic-theme-switcher-wrap cinematic-theme-switcher-wrap--login">
+              <CinematicThemeSwitcher />
+            </div>
+          </div>
+          <p className="login-sub">Log in to WorkBuddy — {settings.companyName}</p>
+
+          <form onSubmit={handleSubmit}>
+            <label className="field">
+              <span>WorkBuddy ID</span>
+              <input
+                value={id}
+                onChange={(e) => setId(e.target.value)}
+                placeholder="e.g. EMP001 or DRV01"
+                autoFocus
+              />
+            </label>
+
+            <label className="field">
+              <span>PIN</span>
+              <input
+                type="password"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                placeholder="Your PIN"
+              />
+            </label>
+
+            {error && <div className="error-box">{error}</div>}
+
+            <button className="btn btn-primary btn-block" type="submit">
+              Log in
+            </button>
+          </form>
+
+          <div className="login-help">
+            <strong>Test logins:</strong>
+            <ul>
+              <li>Employee &mdash; <code>EMP001</code> / PIN <code>1111</code></li>
+              <li>HR / Admin &mdash; <code>ADM001</code> / PIN <code>0000</code></li>
+              <li>IT Support &mdash; <code>IT001</code> / PIN <code>5555</code></li>
+              <li>Driver &mdash; <code>DRV01</code> / PIN <code>1234</code></li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>

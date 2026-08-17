@@ -1,22 +1,34 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { CalendarX2, CircleCheck, Hourglass, ListTodo } from 'lucide-react'
 import { DonutChart } from '@/components/ui/donut-chart'
-import { TASK_CHART_BUCKETS, chartBucketKey } from '@/utils/tasks.js'
+import { TASK_CHART_BUCKETS, chartBucketKey, isOverdue } from '@/utils/tasks.js'
 import { cn } from '@/lib/utils'
 
 export type TaskStatusKey = 'todo' | 'inprogress' | 'done'
 
 export interface TaskForChart {
   status: string
+  dueDate?: string
+  createdById?: string
+  assigneeId?: string
 }
 
 const STATUS_COLORS: Record<TaskStatusKey, string> = {
-  todo: 'var(--brand)',
+  todo: 'var(--accent-blue)',
   inprogress: 'var(--warn)',
   done: 'var(--good)'
 }
 
-export function TaskStatusChart({ tasks }: { tasks: TaskForChart[] }) {
+export function TaskStatusChart({
+  tasks,
+  activeKey = null,
+  onToggleKey
+}: {
+  tasks: TaskForChart[]
+  activeKey?: string | null
+  onToggleKey?: (key: string) => void
+}) {
   const [hovered, setHovered] = useState<string | null>(null)
 
   const data = useMemo(() => {
@@ -38,6 +50,10 @@ export function TaskStatusChart({ tasks }: { tasks: TaskForChart[] }) {
   }, [tasks])
 
   const total = tasks.length
+  const overdueCount = useMemo(
+    () => tasks.filter((t) => isOverdue(t)).length,
+    [tasks]
+  )
   const active = data.find((d) => d.label === hovered)
 
   const handleSegmentHover = useCallback((segment: { label: string } | null) => {
@@ -48,20 +64,45 @@ export function TaskStatusChart({ tasks }: { tasks: TaskForChart[] }) {
     <div className="task-status-overview">
       <div className="stat-grid task-status-stat-grid">
         {data.map((segment) => (
-          <div
+          <button
+            type="button"
             key={segment.key}
             className={cn(
               'stat-card task-status-stat-card',
+              segment.key === 'todo' && 'stat-info',
               segment.key === 'done' && 'stat-good',
-              hovered === segment.label && 'task-status-stat-card-active'
+              segment.key === 'inprogress' && 'stat-warn',
+              (hovered === segment.label || activeKey === segment.key) && 'task-status-stat-card-active'
             )}
+            aria-pressed={activeKey === segment.key}
+            onClick={() => onToggleKey?.(segment.key)}
             onMouseEnter={() => setHovered(segment.label)}
             onMouseLeave={() => setHovered(null)}
           >
+            <span className="stat-chip">
+              {segment.key === 'todo' && <ListTodo size={18} aria-hidden="true" />}
+              {segment.key === 'inprogress' && <Hourglass size={18} aria-hidden="true" />}
+              {segment.key === 'done' && <CircleCheck size={18} aria-hidden="true" />}
+            </span>
             <div className="stat-num">{segment.value}</div>
             <div className="stat-label">{segment.label}</div>
-          </div>
+          </button>
         ))}
+        <button
+          type="button"
+          className={cn(
+            'stat-card task-status-stat-card stat-bad',
+            activeKey === 'overdue' && 'task-status-stat-card-active'
+          )}
+          aria-pressed={activeKey === 'overdue'}
+          onClick={() => onToggleKey?.('overdue')}
+        >
+          <span className="stat-chip">
+            <CalendarX2 size={18} aria-hidden="true" />
+          </span>
+          <div className="stat-num">{overdueCount}</div>
+          <div className="stat-label">Overdue</div>
+        </button>
       </div>
 
       <div

@@ -14,6 +14,15 @@ export const EMPLOYEE_SELF_STATUSES = ['todo', 'inprogress', 'done']
 export const EMPLOYEE_ASSIGNED_STATUSES = ['todo', 'inprogress', 'done']
 export const MANAGER_ASSIGNED_STATUSES = ['todo', 'inprogress']
 
+// Labels for the quick-filter cards (To do / In progress / Done / Overdue)
+// used by the task stat cards on the employee and admin task pages.
+export const QUICK_FILTER_LABELS = {
+  todo: 'To do',
+  inprogress: 'In progress',
+  done: 'Done',
+  overdue: 'Overdue only'
+}
+
 // Turn a status key into its label ('todo' -> 'To do').
 export function statusLabel(key) {
   if (key === 'pending_closure') return 'Done' // legacy sample data

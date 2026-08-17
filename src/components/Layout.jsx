@@ -8,6 +8,7 @@ import NotificationBell from './NotificationBell.jsx'
 import CinematicThemeSwitcher from './ui/cinematic-theme-switcher.tsx'
 import { OriginButton } from './ui/origin-button.tsx'
 import { useState, useEffect } from 'react'
+import { Banknote, Briefcase, CalendarDays, CarFront, CircleUser, Clock, Contact, LayoutDashboard, ListTodo, Megaphone, MessageSquareText, ReceiptText, Settings, Users, Wrench, X } from 'lucide-react'
 
 // The shared frame: top bar with the company name, side menu, and content.
 export default function Layout() {
@@ -51,10 +52,45 @@ export default function Layout() {
 
   const photoUrl = user ? profilePhotoUrl(getProfileForEmployee(user.id)) : ''
 
+  const employeeNav = [
+    { to: '/my-profile', label: 'My Details', icon: CircleUser },
+    { to: '/me', label: 'My Attendance', icon: Clock },
+    { to: '/my-leaves', label: 'My Leaves', icon: CalendarDays },
+    { to: '/my-salary', label: 'My Salary', icon: Banknote },
+    { to: '/my-reimbursements', label: 'My Reimbursements', icon: ReceiptText },
+    { to: '/my-tasks', label: 'My Tasks', icon: ListTodo },
+    { to: '/my-team', label: 'My Team', icon: Users },
+    { to: '/my-cab', label: 'My Cab', icon: CarFront },
+    { to: '/it-help', label: 'My IT Issues', icon: Wrench },
+    { to: '/help', label: 'My Queries & Grievances', icon: MessageSquareText },
+    { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: true }
+  ]
+  const adminNav = [
+    { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/records-profiles', label: 'Employee Records', icon: Contact },
+    { to: '/records', label: 'Attendance Records', icon: Clock },
+    { to: '/leave-requests', label: 'Leave Requests', icon: CalendarDays },
+    { to: '/reimbursements', label: 'Reimbursements', icon: ReceiptText },
+    { to: '/salary', label: 'Salaries', icon: Banknote },
+    { to: '/tasks', label: 'Tasks', icon: ListTodo },
+    { to: '/cab-management', label: 'Cab Management', icon: CarFront },
+    { to: '/it-help-desk', label: 'IT Issues', icon: Wrench },
+    { to: '/queries', label: 'Queries & Grievances', icon: MessageSquareText },
+    { to: '/company-announcements', label: 'Announcements', icon: Megaphone, badge: true },
+    { to: '/settings', label: 'Settings', icon: Settings }
+  ]
+  const itNav = [{ to: '/it-help-desk', label: 'IT Issues', icon: Wrench }]
+  const navItems = !isAdmin ? employeeNav : isIT ? itNav : adminNav
+
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="brand">WorkBuddy - {settings.companyName}</div>
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            <Briefcase size={16} strokeWidth={2.25} />
+          </span>
+          WorkBuddy - {settings.companyName}
+        </div>
         <div className="topbar-right">
           <div className="cinematic-theme-switcher-wrap">
             <CinematicThemeSwitcher />
@@ -83,52 +119,15 @@ export default function Layout() {
 
       <div className="body">
         <nav className="sidebar">
-          {!isAdmin && (
-            <>
-              <NavLink to="/my-profile" className="nav-item">My Details</NavLink>
-              <NavLink to="/me" className="nav-item">My Attendance</NavLink>
-              <NavLink to="/my-leaves" className="nav-item">My Leaves</NavLink>
-              <NavLink to="/my-salary" className="nav-item">My Salary</NavLink>
-              <NavLink to="/my-reimbursements" className="nav-item">My Reimbursements</NavLink>
-              <NavLink to="/my-tasks" className="nav-item">My Tasks</NavLink>
-              <NavLink to="/my-team" className="nav-item">My Team</NavLink>
-              <NavLink to="/my-cab" className="nav-item">My Cab</NavLink>
-              <NavLink to="/it-help" className="nav-item">My IT Issues</NavLink>
-              <NavLink to="/help" className="nav-item">My Queries &amp; Grievances</NavLink>
-              <NavLink to="/announcements" className="nav-item">
-                Announcements
-                {unreadCount > 0 && (
-                  <span className="notification-badge">{unreadCount}</span>
-                )}
-              </NavLink>
-            </>
-          )}
-          {isAdmin && !isIT && (
-            <>
-              <NavLink to="/admin" className="nav-item">Dashboard</NavLink>
-              <NavLink to="/records-profiles" className="nav-item">Employee Records</NavLink>
-              <NavLink to="/records" className="nav-item">Attendance Records</NavLink>
-              <NavLink to="/leave-requests" className="nav-item">Leave Requests</NavLink>
-              <NavLink to="/reimbursements" className="nav-item">Reimbursements</NavLink>
-              <NavLink to="/salary" className="nav-item">Salaries</NavLink>
-              <NavLink to="/tasks" className="nav-item">Tasks</NavLink>
-              <NavLink to="/cab-management" className="nav-item">Cab Management</NavLink>
-              <NavLink to="/it-help-desk" className="nav-item">IT Issues</NavLink>
-              <NavLink to="/queries" className="nav-item">Queries &amp; Grievances</NavLink>
-              <NavLink to="/company-announcements" className="nav-item">
-                Announcements
-                {unreadCount > 0 && (
-                  <span className="notification-badge">{unreadCount}</span>
-                )}
-              </NavLink>
-              <NavLink to="/settings" className="nav-item">Settings</NavLink>
-            </>
-          )}
-          {isIT && (
-            <>
-              <NavLink to="/it-help-desk" className="nav-item">IT Issues</NavLink>
-            </>
-          )}
+          {navItems.map(({ to, label, icon: Icon, badge }) => (
+            <NavLink key={to} to={to} className="nav-item">
+              <Icon className="nav-icon" size={17} aria-hidden="true" />
+              <span className="nav-label">{label}</span>
+              {badge && unreadCount > 0 && (
+                <span className="notification-badge">{unreadCount}</span>
+              )}
+            </NavLink>
+          ))}
         </nav>
 
         <main className="content">
@@ -143,7 +142,7 @@ export default function Layout() {
           <div className="modal-form">
             <div className="modal-header">
               <h3 className="section-title first">Confirm Log out</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmLogout(false)}>✕</button>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmLogout(false)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
               Are you sure you want to log out? You will need to sign in again to access your account.

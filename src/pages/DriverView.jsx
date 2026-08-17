@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useParams } from 'react-router-dom'
+import { Ban, CarFront, House, LogOut, Navigation, Phone, TriangleAlert } from 'lucide-react'
 import { getDriverRunSheet, getSettings } from '../data/store.js'
 import { formatTime12, googleMapsUrl } from '../utils/cab.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -61,7 +62,9 @@ export default function DriverView() {
         <div className="driver-topbar-row">
           <span className="driver-brand">WorkBuddy — Driver View</span>
           {user?.role === 'driver' && (
-            <button className="driver-logout" onClick={logout}>Log out</button>
+            <button className="driver-logout" onClick={logout}>
+              <LogOut size={14} aria-hidden="true" /> Log out
+            </button>
           )}
         </div>
         <div className="driver-topbar-driver">
@@ -73,15 +76,19 @@ export default function DriverView() {
       <main className="driver-content">
         {/* Waiting policy notice */}
         <div className="driver-notice">
-          <strong>⚠️ Waiting Policy:</strong> Do not wait for more than{' '}
-          <strong>{cabWaitingTime} minutes</strong> at any pickup or drop stop.
-          Please leave after this duration to ensure you are not late for
-          subsequent stops or shifts.
+          <TriangleAlert size={18} className="driver-notice-icon" aria-hidden="true" />
+          <div>
+            <strong>Waiting Policy:</strong> Do not wait for more than{' '}
+            <strong>{cabWaitingTime} minutes</strong> at any pickup or drop stop.
+            Please leave after this duration to ensure you are not late for
+            subsequent stops or shifts.
+          </div>
         </div>
 
         {/* ---- PICKUP SECTION ---- */}
         <RunSection
-          title="🚗 Pickup — Home to Office"
+          title="Pickup — Home to Office"
+          icon={CarFront}
           titleClass="pickup-title"
           vehicles={pickupVehicles}
           stops={pickupStops}
@@ -93,7 +100,8 @@ export default function DriverView() {
 
         {/* ---- DROP SECTION ---- */}
         <RunSection
-          title="🏠 Drop — Office to Home"
+          title="Drop — Office to Home"
+          icon={House}
           titleClass="drop-title"
           vehicles={dropVehicles}
           stops={dropStops}
@@ -109,12 +117,15 @@ export default function DriverView() {
 
 // ---- One section (pickup or drop) with its stop cards ----
 function RunSection({
-  title, titleClass, vehicles, stops, activeStops, cancelledStops, direction, emptyText
+  title, icon: Icon, titleClass, vehicles, stops, activeStops, cancelledStops, direction, emptyText
 }) {
   return (
     <section className="driver-section">
       <div className={`driver-section-title ${titleClass}`}>
-        <span>{title}</span>
+        <span className="driver-section-title-text">
+          <Icon size={17} aria-hidden="true" />
+          {title}
+        </span>
         {vehicles.length > 0 && (
           <span className={`driver-vehicle-chip ${direction === 'drop' ? 'chip-drop' : 'chip-pickup'}`}>
             Vehicle: {vehicles.join(', ')}
@@ -132,7 +143,8 @@ function RunSection({
         {cancelledStops.length > 0 && (
           <div className="driver-cancelled-block">
             <div className="driver-cancelled-label">
-              ⛔ Not riding today ({direction})
+              <Ban size={14} aria-hidden="true" />
+              Not riding today ({direction})
             </div>
             {cancelledStops.map((stop) => (
               <div key={stop.employee.id} className="driver-cancelled-row">
@@ -198,7 +210,7 @@ function StopCard({ index, stop, direction }) {
         <div className="stop-actions">
           {hasMobile && (
             <a className="stop-btn stop-btn-call" href={`tel:${info.mobile}`}>
-              📞 Call
+              <Phone size={16} aria-hidden="true" /> Call
             </a>
           )}
           {mapUrl && (
@@ -208,7 +220,7 @@ function StopCard({ index, stop, direction }) {
               target="_blank"
               rel="noreferrer"
             >
-              📍 Navigate
+              <Navigation size={16} aria-hidden="true" /> Navigate
             </a>
           )}
         </div>

@@ -16,6 +16,7 @@ import {
 import ProfileWizard from '../components/ProfileWizard.jsx'
 import ProfileView from '../components/ProfileView.jsx'
 import Modal from '../components/Modal.jsx'
+import { X } from 'lucide-react'
 
 // The employee's own details. Onboarding, or update-after-verification with HR approval.
 export default function EmployeeProfile() {
@@ -137,9 +138,7 @@ export default function EmployeeProfile() {
                       type="button"
                       className="btn btn-tiny btn-light"
                       onClick={() => setShowRequestForm(false)}
-                    >
-                      ✕
-                    </button>
+                     aria-label="Close"><X size={15} /></button>
                   </div>
                   <p className="hint first">
                     Your details are locked after HR verification. Send a request
