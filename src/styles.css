@@ -445,6 +445,17 @@ textarea::placeholder {
   word-break: normal;
 }
 
+/* Correction requests table: keep row height consistent with All Records */
+.table-corrections td { white-space: nowrap; }
+.table-corrections td.cell-ellipsis { white-space: nowrap; }
+.corrections-menu-button,
+.table-corrections .corrections-menu-button {
+  font-size: 12px;
+  padding: 3px 10px;
+  min-width: 0;
+  line-height: 1.5;
+}
+
 /* Attendance history: stable proportions for date/time/status columns */
 .table-cols-attendance col.col-date { width: 16%; }
 .table-cols-attendance col.col-time { width: 14%; }
@@ -755,7 +766,7 @@ select:focus,
 .file-chip-x:hover { color: var(--bad); }
 
 /* ---------- Read-only profile view ---------- */
-.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 4px 24px; }
+.info-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 24px; }
 .info-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
 .info-label { color: var(--label-text); }
 .info-value a,
@@ -769,6 +780,9 @@ select:focus,
   text-decoration: underline;
 }
 .info-value { text-align: right; font-weight: 600; }
+@media (max-width: 720px) {
+  .info-grid { grid-template-columns: 1fr; }
+}
 .doc-summary { padding: 8px 20px; }
 .doc-summary-row { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px dashed var(--line); }
 .doc-summary-row:last-child { border-bottom: none; }
@@ -1166,7 +1180,7 @@ select:focus,
 
 /* Map picker (Leaflet) */
 .map-picker {
-  height: 280px;
+  height: 480px;
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -1335,6 +1349,11 @@ select:focus,
   gap: 10px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--line);
+}
+.notif-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .notif-empty {
   padding: 18px 14px;
@@ -1839,92 +1858,4 @@ select:focus,
   font-weight: 700;
   color: #111;
   margin-bottom: 2px;
-}
-
-/* ---- Toggle date field (cab temporary-change form) ----
-   Custom calendar popover so the icon click toggles open/closed, unlike the
-   native date picker which reopens on every click. */
-.toggle-date-field {
-  position: relative;
-}
-.toggle-date-field input {
-  cursor: pointer;
-  padding-right: 40px;
-}
-.toggle-date-icon {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  padding: 4px;
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-}
-.toggle-date-cal {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 60;
-  width: 216px;
-  background: var(--card-bg, #fff);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  padding: 8px;
-}
-.toggle-date-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-.toggle-date-head span {
-  font-size: 12px;
-  font-weight: 700;
-}
-.toggle-date-head button {
-  background: none;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  width: 22px;
-  height: 22px;
-  font-size: 13px;
-  line-height: 1;
-  cursor: pointer;
-}
-.toggle-date-head button:hover {
-  background: var(--hover, #f1f5f9);
-}
-.toggle-date-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-}
-.toggle-date-grid .cal-dow {
-  text-align: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--muted);
-  padding: 2px 0;
-}
-.toggle-date-grid .cal-day {
-  background: none;
-  border: none;
-  border-radius: 6px;
-  padding: 4px 0;
-  font-size: 12px;
-  cursor: pointer;
-}
-.toggle-date-grid .cal-day:hover {
-  background: var(--hover, #eef2ff);
-}
-.toggle-date-grid .cal-today {
-  outline: 1px solid var(--brand, #1d4ed8);
-}
-.toggle-date-grid .cal-selected {
-  background: var(--brand, #1d4ed8);
-  color: #fff;
 }

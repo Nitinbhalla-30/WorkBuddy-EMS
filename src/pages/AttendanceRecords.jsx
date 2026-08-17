@@ -177,7 +177,7 @@ export default function AttendanceRecords() {
     startIndex: correctionsStart,
     endIndex: correctionsEnd,
     setPage: setCorrectionsPage
-  } = usePagination(correctionsTable.rows, 5)
+  } = usePagination(correctionsTable.rows, 10)
 
   const {
     items: recordsPage,
@@ -477,7 +477,16 @@ export default function AttendanceRecords() {
             </button>
           )}
         </TableToolbar>
-        <table className="table">
+        <table className="table table-corrections">
+          <colgroup>
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '21.5%' }} />
+            <col style={{ width: '13.5%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '7%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Employee" keyName="employee" sortKey={correctionsTable.sortKey} sortDir={correctionsTable.sortDir} onSort={correctionsTable.toggleSort} />
@@ -502,33 +511,23 @@ export default function AttendanceRecords() {
                   <td>{emp?.name || c.employeeId}</td>
                   <td>{formatDate(c.date)}</td>
                   <td>{correctionIssueLabel(c.issueType)}</td>
-                  <td>{c.description || <span className="muted">--</span>}</td>
+                  <td className="cell-ellipsis" title={c.description || undefined}>{c.description || <span className="muted">--</span>}</td>
                   <td className="small">
-                    {c.suggestedTimeIn && <>In: {c.suggestedTimeIn}<br /></>}
-                    {c.suggestedTimeOut && <>Out: {c.suggestedTimeOut}</>}
+                    {c.suggestedTimeIn && c.suggestedTimeOut && `In: ${c.suggestedTimeIn} · Out: ${c.suggestedTimeOut}`}
+                    {c.suggestedTimeIn && !c.suggestedTimeOut && `In: ${c.suggestedTimeIn}`}
+                    {!c.suggestedTimeIn && c.suggestedTimeOut && `Out: ${c.suggestedTimeOut}`}
                     {!c.suggestedTimeIn && !c.suggestedTimeOut && <span className="muted">--</span>}
                   </td>
                   <td>
                     <span className={`tag ${statusClass(c.status)}`}>
                       {statusLabel(c.status)}
                     </span>
-                    {c.decidedBy && (
-                      <div className="muted small">By {nameOf(c.decidedBy)}</div>
-                    )}
-                    {c.status === 'rejected' && c.reviewNote && (
-                      <div className="muted small">Reason: {c.reviewNote}</div>
-                    )}
-                    {(c.messages || []).length > 0 && (
-                      <div className="muted small">
-                        {(c.messages || []).length} message(s)
-                      </div>
-                    )}
                   </td>
                   <td>
                     <div className="task-menu-container">
                       <button
                         type="button"
-                        className="btn btn-tiny btn-light task-menu-button"
+                        className="btn btn-tiny btn-light task-menu-button corrections-menu-button"
                         onClick={() => toggleMenu(c.id)}
                         aria-label="Correction actions"
                       >
