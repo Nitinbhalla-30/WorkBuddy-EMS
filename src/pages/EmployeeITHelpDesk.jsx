@@ -499,7 +499,9 @@ export default function EmployeeITHelpDesk() {
                     {assignedStaff ? (
                       <div>
                         <div>{assignedStaff.name}</div>
-                        <div className="muted small">{assignedStaff.mobile}</div>
+                        {assignedStaff.mobile
+                          ? <a href={`tel:${assignedStaff.mobile}`} className="phone-link small">({assignedStaff.mobile})</a>
+                          : null}
                       </div>
                     ) : (
                       <span className="muted">Not assigned</span>
