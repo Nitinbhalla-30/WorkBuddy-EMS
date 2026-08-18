@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { DOCUMENT_TYPES } from '../data/sampleData.js'
+import { getSettings } from '../data/store.js'
 import { validateForSubmit } from '../utils/profile.js'
 import FileField from './FileField.jsx'
 import MapPicker from './MapPicker.jsx'
@@ -46,7 +47,7 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
   }
 
   function submit() {
-    const found = validateForSubmit(form)
+    const found = validateForSubmit(form, cabCharge)
     setProblems(found)
     if (found.length === 0) onSubmit(form)
   }
@@ -54,6 +55,10 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
   const p = form.personal
   const b = form.bank
   const s = form.statutory
+
+  // Monthly cab charge set by the admin; opting-in employees must agree to it.
+  const cabCharge = getSettings().cabMonthlyCharge ?? 0
+  const agreedCurrent = p.cabChargeAgreed === true && p.cabChargeAgreedAmount === cabCharge
 
   return (
     <div>
@@ -132,6 +137,27 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
 
           {p.wantsCabService === true && (
             <>
+              {cabCharge > 0 ? (
+                <>
+                  <div className="info-box first">
+                    Cab service charge: <strong>₹{cabCharge.toLocaleString('en-IN')} per month</strong>,
+                    deducted from your salary while you are opted in.
+                  </div>
+                  <label className="checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={agreedCurrent}
+                      onChange={(e) => {
+                        setPersonal('cabChargeAgreed', e.target.checked)
+                        setPersonal('cabChargeAgreedAmount', e.target.checked ? cabCharge : 0)
+                      }}
+                    />
+                    <span>I agree to pay ₹{cabCharge.toLocaleString('en-IN')} per month for cab service. *</span>
+                  </label>
+                </>
+              ) : (
+                <p className="hint first">The company provides cab service free of charge.</p>
+              )}
               <p className="hint first">
                 Drag the pin (or tap the map) to your exact pickup location. This
                 Google Map point is mandatory and your driver uses it to navigate

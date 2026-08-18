@@ -16,6 +16,10 @@ export const DEFAULT_SETTINGS = {
   // their shift starts, and today's drop until this many hours before their
   // shift ends. After that the buttons lock so drivers get stable run sheets.
   cabTodayCutoffHours: 3,
+  // Monthly amount charged to employees who opt in to the company cab service.
+  // Shown in My Details while opting in; the employee must agree to it there.
+  // 0 means the service is free of charge.
+  cabMonthlyCharge: 1200,
   // Test helper: when true, the office-internet check always passes.
   // Turn this OFF in the real office once officeIp is set.
   pretendOnOfficeNetwork: true,

@@ -147,7 +147,22 @@ export default function Settings() {
           />
         </label>
 
-        <h3 className="section-title">Cab timing rules</h3>
+        <h3 className="section-title">Cab service rules</h3>
+        <label className="field">
+          <span>Monthly cab service charge per employee (₹)</span>
+          <input
+            type="number"
+            min="0"
+            step="50"
+            value={form.cabMonthlyCharge ?? 0}
+            onChange={(e) => update('cabMonthlyCharge', Number(e.target.value))}
+          />
+        </label>
+        <p className="hint">
+          Employees who opt in to the company cab service see this amount in
+          My Details and must agree to it before their profile can be submitted.
+          Set 0 to offer the service free of charge.
+        </p>
         <label className="field">
           <span>Maximum wait time for employees (minutes)</span>
           <input

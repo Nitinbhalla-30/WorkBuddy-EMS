@@ -32,6 +32,8 @@ export function blankProfile(employeeId) {
       pickupPoint: null,        // { lat, lng } map point for cab pickup
       dropPoint: null,          // { lat, lng } map point for cab drop
       dropSameAsPickup: true,   // drop point is same as pickup by default
+      cabChargeAgreed: false,   // employee agreed to the monthly cab charge
+      cabChargeAgreedAmount: 0, // amount agreed to (must re-agree if it changes)
       photo: null               // { name, size, type, uploadedOn, dataUrl }
     },
     bank: {
@@ -77,7 +79,7 @@ export function docCount(profile, key) {
 
 // Check everything needed before the employee can submit.
 // Returns an array of problem messages (empty means good to go).
-export function validateForSubmit(profile) {
+export function validateForSubmit(profile, cabMonthlyCharge = 0) {
   const problems = []
   const p = profile.personal
 
@@ -93,8 +95,13 @@ export function validateForSubmit(profile) {
 
   if (p.wantsCabService == null) {
     problems.push('Please answer whether you want cab service for pickup and drop.')
-  } else if (p.wantsCabService && !p.pickupPoint) {
-    problems.push('Pickup point (Google Map location) is required for cab service.')
+  } else if (p.wantsCabService) {
+    if (!p.pickupPoint) {
+      problems.push('Pickup point (Google Map location) is required for cab service.')
+    }
+    if (cabMonthlyCharge > 0 && (p.cabChargeAgreed !== true || p.cabChargeAgreedAmount !== cabMonthlyCharge)) {
+      problems.push(`Please agree to the ₹${cabMonthlyCharge.toLocaleString('en-IN')} per month cab service charge.`)
+    }
   }
 
   const b = profile.bank

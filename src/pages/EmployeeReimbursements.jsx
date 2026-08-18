@@ -262,6 +262,12 @@ export default function EmployeeReimbursements() {
                 <span className="muted">Amount</span>
                 <strong>{formatAmount(openClaim.amount)}</strong>
               </li>
+              {openClaim.status === 'paid' && openClaim.paidOn && (
+                <li>
+                  <span className="muted">Paid on</span>
+                  <strong>{formatDate(openClaim.paidOn)}</strong>
+                </li>
+              )}
             </ul>
             {openClaim.description && (
               <p className="hint"><strong>Description:</strong> {openClaim.description}</p>
@@ -360,18 +366,14 @@ export default function EmployeeReimbursements() {
                 <td>{categoryLabel(c.category)}</td>
                 <td>{formatDate(c.expenseDate)}</td>
                 <td><strong>{formatAmount(c.amount)}</strong></td>
-                <td>{c.description || <span className="muted">--</span>}</td>
+                <td className="cell-ellipsis" title={c.description || undefined}>
+                  {c.description || <span className="muted">--</span>}
+                </td>
                 <td>{formatDate(c.appliedOn)}</td>
                 <td>
                   <span className={`tag ${statusTagClass(c.status)}`}>
                     {statusLabel(c.status)}
                   </span>
-                  {c.status === 'paid' && c.paidOn && (
-                    <div className="muted small">Paid {formatDate(c.paidOn)}</div>
-                  )}
-                  {c.status === 'rejected' && c.reviewNote && (
-                    <div className="muted small">{c.reviewNote}</div>
-                  )}
                 </td>
                 <td>
                   <div className="task-menu-container">

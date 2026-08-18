@@ -45,6 +45,13 @@ export default function ProfileView({ profile }) {
               : (p.wantsCabService === true || p.pickupPoint ? 'Opted in' : <span className="muted">--</span>)}
           </span>
         </div>
+        {p.wantsCabService === true && (
+          <Row label="Monthly cab charge agreed" value={
+            p.cabChargeAgreed
+              ? `Yes — ₹${Number(p.cabChargeAgreedAmount || 0).toLocaleString('en-IN')}/month`
+              : 'Not agreed yet'
+          } />
+        )}
         <div className="info-row">
           <span className="info-label">Cab pickup point</span>
           <span className="info-value">

@@ -449,15 +449,15 @@ export default function EmployeeITHelpDesk() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table" style={{ tableLayout: 'fixed' }}>
+        <table className="table table-compact" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '40%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '11%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '10%' }} />
             <col style={{ width: '12%' }} />
-            <col style={{ width: '9%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '11%' }} />
             <col style={{ width: '5%' }} />
           </colgroup>
           <thead>
@@ -483,7 +483,7 @@ export default function EmployeeITHelpDesk() {
                   <td>
                     <strong>{issue.issue}</strong>
                     {issue.description && (
-                      <div className="muted small">{issue.description}</div>
+                      <div className="muted small cell-ellipsis" title={issue.description}>{issue.description}</div>
                     )}
                   </td>
                   <td>{itIssueCategoryLabel(issue.category)}</td>

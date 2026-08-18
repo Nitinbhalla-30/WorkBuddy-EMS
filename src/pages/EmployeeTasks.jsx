@@ -202,32 +202,22 @@ export default function EmployeeTasks() {
 
     if (isEmployeeStatusLocked(task)) {
       return (
-        <div>
-          <span className={`tag ${statusTagClass(task.status)}`}>
-            {statusLabel(task.status)}
-          </span>
-          {closureNotice(task, nameOf) && (
-            <div className="muted small">{closureNotice(task, nameOf)}</div>
-          )}
-        </div>
+        <span className={`tag ${statusTagClass(task.status)}`}>
+          {statusLabel(task.status)}
+        </span>
       )
     }
 
     return (
-      <div>
-        <select
-          value={task.status}
-          onChange={(e) => move(task.id, e.target.value)}
-          className="btn-tiny"
-        >
-          {options.map((s) => (
-            <option key={s.key} value={s.key}>{s.label}</option>
-          ))}
-        </select>
-        {closureNotice(task, nameOf) && (
-          <div className="muted small">{closureNotice(task, nameOf)}</div>
-        )}
-      </div>
+      <select
+        value={task.status}
+        onChange={(e) => move(task.id, e.target.value)}
+        className="btn-tiny"
+      >
+        {options.map((s) => (
+          <option key={s.key} value={s.key}>{s.label}</option>
+        ))}
+      </select>
     )
   }
 
@@ -414,7 +404,7 @@ export default function EmployeeTasks() {
             )}
             {tasksPage.map((task) => (
               <tr key={task.id}>
-                <td><strong>{task.title}</strong></td>
+                <td className="cell-ellipsis" title={task.title}><strong>{task.title}</strong></td>
                 <td className="cell-ellipsis" title={task.description || undefined}>{task.description || <span className="muted">--</span>}</td>
                 <td>{assignerLabel(task)}</td>
                 <td>

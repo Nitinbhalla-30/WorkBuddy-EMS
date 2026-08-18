@@ -348,7 +348,7 @@ code {
   transform: translateY(0.06em);
 }
 .person-cell {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 10px;
 }
@@ -392,7 +392,7 @@ code {
 }
 .sidebar {
   flex-shrink: 0;
-  width: 264px;
+  width: 235px;
   background: var(--card);
   border-right: 1px solid var(--line);
   padding: 14px 12px;
@@ -547,7 +547,7 @@ textarea::placeholder {
 .saved-note { color: var(--good); font-size: 14px; }
 
 .error-box { background: var(--error-bg); color: var(--bad); padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
-.info-box { background: var(--info-bg); color: var(--info-text); padding: 10px 12px; border-radius: 8px; font-size: 14px; margin-top: 14px; }
+.info-box { background: var(--info-bg); color: var(--info-text); padding: 10px 12px; border-radius: 8px; font-size: 14px; line-height: 1.5; margin-top: 14px; margin-bottom: 16px; }
 .filters { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
 
 /* ---------- Status card ---------- */
@@ -757,7 +757,7 @@ textarea::placeholder {
   flex-shrink: 0;
 }
 
-.tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .tag-ok { background: #e6f5ec; color: var(--good); }
 .tag-late { background: #fdf0e2; color: var(--warn); }
 .tag-absent { background: #f0f2f6; color: var(--muted); }
@@ -1072,12 +1072,15 @@ textarea::placeholder {
   color: var(--link);
 }
 
+.cab-chat-hint { margin-bottom: 12px; }
+
 /* Today's cab preference (cancellation panel) */
 .cab-cancellation-panel {
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
+  background: var(--card);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 18px 20px;
+  padding: 20px;
+  box-shadow: var(--shadow);
   margin-bottom: 20px;
 }
 .cab-cancellation-panel .hint,
@@ -1097,6 +1100,11 @@ textarea::placeholder {
   margin-top: 12px;
 }
 .cab-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 218px;
   padding: 9px 20px;
   border-radius: 8px;
   font-size: 14px;
@@ -1104,25 +1112,29 @@ textarea::placeholder {
   cursor: pointer;
   transition: all 0.15s ease;
 }
+/* Skipped (pressed) state: caution tint matching the notice below, so the
+   toggle and the notice read as one visual language, not a primary action. */
 .cab-cancel-btn-active {
-  background: var(--brand);
-  color: var(--on-brand);
-  border: 1px solid var(--brand);
+  background: var(--notice-caution-bg);
+  color: var(--notice-caution-text);
+  border: 1px solid var(--notice-caution-border);
 }
-.cab-cancel-btn-active:hover {
-  background: var(--brand-dark);
-  border-color: var(--brand-dark);
-  color: var(--on-brand);
-}
-/* Ensure cab buttons maintain proper hover states */
 .btn.cab-cancel-btn.cab-cancel-btn-active:hover {
-  background: var(--brand-dark) !important;
-  border-color: var(--brand-dark) !important;
-  color: var(--on-brand) !important;
+  background: color-mix(in srgb, var(--notice-caution-border) 35%, var(--notice-caution-bg));
+  border-color: var(--notice-caution-border);
+  color: var(--notice-caution-text);
 }
 .btn.cab-cancel-btn:not(.cab-cancel-btn-active):hover {
   background: var(--btn-hover-bg);
   color: var(--ink);
+}
+/* Skipped state echoed on the matching pickup/drop card */
+.cab-skip-tag {
+  margin-left: 10px;
+  vertical-align: 2px;
+}
+.cab-card-skipped .cab-detail {
+  opacity: 0.55;
 }
 
 .phone-link {

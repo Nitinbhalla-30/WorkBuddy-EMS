@@ -1,5 +1,9 @@
 // Circular avatar: photo when available, otherwise initials.
+// Seed data ships placeholder "photos" as SVG data URLs while real uploads
+// are raster images (JPG/PNG/WebP/GIF). Placeholders fall back to the brand
+// initials avatar so everyone without a real photo looks consistent.
 export default function Avatar({ src, name = '', size = 32, className = '' }) {
+  const isPlaceholderPhoto = typeof src === 'string' && src.startsWith('data:image/svg')
   const initials = String(name || '')
     .split(/\s+/)
     .filter(Boolean)
@@ -14,7 +18,7 @@ export default function Avatar({ src, name = '', size = 32, className = '' }) {
     fontSize: Math.max(11, Math.round(size * 0.36))
   }
 
-  if (src) {
+  if (src && !isPlaceholderPhoto) {
     return (
       <img
         className={`avatar ${className}`.trim()}

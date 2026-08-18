@@ -15,8 +15,10 @@ import {
   setCabCancellation
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
+import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
 import TimeInput from '../components/TimeInput.jsx'
@@ -36,12 +38,15 @@ import {
 import { Check, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
-// Employee's "My Cab" page: see assigned pickup/drop details and raise
-// temporary change requests.
+const TABS = ["Today's Cab", 'My Change Requests', 'Chat with Transport Desk']
+
+// Employee's "My Cab" page: three tabs — today's cab reference with
+// pickup/drop cards, change requests, and chat with the transport desk.
 export default function MyCab() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
   const [showForm, setShowForm] = useState(false)
+  const [tab, setTab] = useState(0)
 
   // Today's date key, e.g. "2026-08-05"
   const todayKey = new Date().toISOString().slice(0, 10)
@@ -73,6 +78,15 @@ export default function MyCab() {
     initialSortKey: 'dates',
     initialSortDir: 'desc'
   })
+  const {
+    items: requestsPage,
+    page: requestsPageNum,
+    totalPages: requestsTotalPages,
+    total: requestsTotal,
+    startIndex: requestsStart,
+    endIndex: requestsEnd,
+    setPage: setRequestsPage
+  } = usePagination(requestsTable.rows)
   const messages = useMemo(
     () => getCabMessagesForEmployee(user.id),
     [user.id, refresh]
@@ -120,121 +134,214 @@ export default function MyCab() {
     <div>
       <div className="page-head">
         <h2>My Cab</h2>
-        <button
-          className="btn btn-primary btn-tiny"
-          onClick={() => setShowForm((s) => !s)}
-        >
-          {showForm ? 'Close' : 'Request temporary change'}
-        </button>
       </div>
 
-      {!assignment && (
-        <div className="info-box first">
-          You have not been assigned a cab yet. Please check with HR.
+      <div className="tabs">
+        {TABS.map((t, i) => (
+          <button
+            key={t}
+            className={`tab ${i === tab ? 'tab-active' : ''}`}
+            onClick={() => setTab(i)}
+          >
+            {t}
+            {i === 1 && requests.length > 0 ? ` (${requests.length})` : ''}
+          </button>
+        ))}
+      </div>
+
+      {tab === 0 && (
+        <>
+          {!assignment && (
+            <div className="info-box first">
+              You have not been assigned a cab yet. Please check with HR.
+            </div>
+          )}
+
+          {/* Today's cancellation panel — only shown when a cab is assigned */}
+          {assignment && (
+            <div className="cab-cancellation-panel">
+              <div className="cab-cancellation-title">Today&rsquo;s cab preference</div>
+              <p className="hint first">
+                Let the driver know in advance if you don&rsquo;t need a pickup or drop today.
+                Toggle a button below and the driver&rsquo;s list will update automatically.
+                Changes lock {cutoffHours} hour{cutoffHours === 1 ? '' : 's'} before your shift
+                starts (pickup) and ends (drop).
+              </p>
+              <div className="cab-cancellation-actions">
+                <button
+                  id="btn-skip-pickup"
+                  className={`btn cab-cancel-btn ${skipPickup ? 'cab-cancel-btn-active' : 'btn-light'}`}
+                  aria-pressed={skipPickup}
+                  disabled={!pickupOpen}
+                  onClick={() => toggleCancellation('pickup')}
+                >
+                  {skipPickup ? (<><Check size={14} /> Skipping pickup today</>) : 'Skip pickup today'}
+                </button>
+                <button
+                  id="btn-skip-drop"
+                  className={`btn cab-cancel-btn ${skipDrop ? 'cab-cancel-btn-active' : 'btn-light'}`}
+                  aria-pressed={skipDrop}
+                  disabled={!dropOpen}
+                  onClick={() => toggleCancellation('drop')}
+                >
+                  {skipDrop ? (<><Check size={14} /> Skipping drop today</>) : 'Skip drop today'}
+                </button>
+              </div>
+              {(!pickupOpen || !dropOpen) && (
+                <div className="cab-cancellation-notice">
+                  {!pickupOpen && !dropOpen
+                    ? `Today's changes are locked. Pickup closed at ${todayChangeDeadline(pickupTrip?.shiftStart, cutoffHours)} and drop closed at ${todayChangeDeadline(dropTrip?.shiftEnd, cutoffHours)}.`
+                    : !pickupOpen
+                    ? `Pickup changes for today are locked since ${todayChangeDeadline(pickupTrip?.shiftStart, cutoffHours)} (${cutoffHours} hours before shift start).`
+                    : `Drop changes for today are locked since ${todayChangeDeadline(dropTrip?.shiftEnd, cutoffHours)} (${cutoffHours} hours before shift end).`}
+                </div>
+              )}
+              {(skipPickup || skipDrop) && (
+                <div className="cab-cancellation-notice">
+                  {skipPickup && skipDrop
+                    ? 'You have skipped both pickup and drop for today. The driver will not collect or drop you.'
+                    : skipPickup
+                    ? 'You have skipped pickup for today. The driver will not collect you this morning.'
+                    : 'You have skipped drop for today. The driver will not drop you this evening.'}
+                </div>
+              )}
+            </div>
+          )}
+
+          {assignment && (
+            <div className="cab-grid">
+              {/* Pickup card */}
+              <div className={`card cab-card${skipPickup ? ' cab-card-skipped' : ''}`}>
+                <h3 className="section-title first">
+                  Pickup (Home &rarr; Office)
+                  {skipPickup && <span className="tag tag-medium cab-skip-tag">Skipped today</span>}
+                </h3>
+                <div className="cab-detail"><span>Pickup time</span><strong>{formatTime12(pickupTrip?.time)}</strong></div>
+                <div className="cab-detail"><span>Office starts</span><strong>{formatTime12(pickupTrip?.shiftStart)}</strong></div>
+                <div className="cab-detail"><span>Vehicle</span><strong>{pickupVehicle?.number || '--'}</strong></div>
+                <div className="cab-detail"><span>Driver</span><strong>{pickupDriver?.name || '--'}</strong></div>
+                <div className="cab-detail"><span>Driver mobile</span><strong>{pickupDriver?.mobile ? <a href={`tel:${pickupDriver.mobile}`} className="phone-link">{pickupDriver.mobile}</a> : '--'}</strong></div>
+                <div className="cab-detail"><span>Your address</span><strong>{homeAddress}</strong></div>
+                <div className="cab-detail"><span>Your gate</span><strong>{homeGate}</strong></div>
+                <div className="cab-detail">
+                  <span>Pickup point</span>
+                  <strong>
+                    {pickupPoint
+                      ? <a href={googleMapsUrl(pickupPoint)} target="_blank" rel="noreferrer">Open in Google Maps</a>
+                      : 'Not set'}
+                    <span className="tip" data-tip="To change this location, update it in My Details.">&#9432;</span>
+                  </strong>
+                </div>
+                <div className="cab-detail cab-supervisor">
+                  <span>Cab late / driver not answering? Call</span>
+                  <strong>{pickupTrip?.supervisorName || '--'} {pickupTrip?.supervisorMobile ? <a href={`tel:${pickupTrip.supervisorMobile}`} className="phone-link">({pickupTrip.supervisorMobile})</a> : ''}</strong>
+                </div>
+              </div>
+
+              {/* Drop card */}
+              <div className={`card cab-card${skipDrop ? ' cab-card-skipped' : ''}`}>
+                <h3 className="section-title first">
+                  Drop (Office &rarr; Home)
+                  {skipDrop && <span className="tag tag-medium cab-skip-tag">Skipped today</span>}
+                </h3>
+                <div className="cab-detail"><span>Office ends</span><strong>{formatTime12(dropTrip?.shiftEnd)}</strong></div>
+                <div className="cab-detail"><span>Cab leaves office</span><strong>{formatTime12(dropTrip?.time)}</strong></div>
+                <div className="cab-detail"><span>Vehicle</span><strong>{dropVehicle?.number || '--'}</strong></div>
+                <div className="cab-detail"><span>Driver</span><strong>{dropDriver?.name || '--'}</strong></div>
+                <div className="cab-detail"><span>Driver mobile</span><strong>{dropDriver?.mobile ? <a href={`tel:${dropDriver.mobile}`} className="phone-link">{dropDriver.mobile}</a> : '--'}</strong></div>
+                <div className="cab-detail"><span>Drop address</span><strong>{homeAddress}</strong></div>
+                <div className="cab-detail"><span>Office gate</span><strong>{dropTrip?.officeGate || '--'}</strong></div>
+                <div className="cab-detail">
+                  <span>Drop point</span>
+                  <strong>
+                    {dropPoint
+                      ? <a href={googleMapsUrl(dropPoint)} target="_blank" rel="noreferrer">Open in Google Maps</a>
+                      : 'Not set'}
+                    <span className="tip" data-tip="To change this location, update it in My Details.">&#9432;</span>
+                  </strong>
+                </div>
+                <div className="cab-detail cab-supervisor">
+                  <span>Cab late / driver not answering? Call</span>
+                  <strong>{dropTrip?.supervisorName || '--'} {dropTrip?.supervisorMobile ? <a href={`tel:${dropTrip.supervisorMobile}`} className="phone-link">({dropTrip.supervisorMobile})</a> : ''}</strong>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === 1 && (
+        <div className="card">
+          <TableToolbar
+            search={requestsTable.search}
+            onSearchChange={requestsTable.setSearch}
+            placeholder="Search requests..."
+            actions={
+              <button
+                type="button"
+                className="btn btn-primary btn-tiny"
+                onClick={() => setShowForm(true)}
+              >
+                Request temporary change
+              </button>
+            }
+          />
+          <table className="table">
+            <thead>
+              <tr>
+                <SortableTh label="Date(s)" keyName="dates" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+                <th>Changes</th>
+                <SortableTh label="Reason" keyName="reason" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+                <SortableTh label="Status" keyName="status" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+                <SortableTh label="Admin note" keyName="adminNote" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+              </tr>
+            </thead>
+            <tbody>
+              {requestsTable.count === 0 && (
+                <TableEmpty
+                  colSpan={5}
+                  message={
+                    requests.length === 0
+                      ? 'No change requests yet. Use "Request temporary change" to raise one.'
+                      : 'No requests match your search.'
+                  }
+                />
+              )}
+              {requestsPage.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.forDates.map((d) => formatDate(d)).join(', ')}</td>
+                  <td>
+                    {r.newLocation && <div>Location: {r.newLocation}</div>}
+                    {r.newGate && <div>Gate: {r.newGate}</div>}
+                    {r.newTime && <div>Time: {formatTime12(r.newTime)}</div>}
+                    {!r.newLocation && !r.newGate && !r.newTime && <span className="muted">--</span>}
+                  </td>
+                  <td>{r.reason}</td>
+                  <td><span className={`tag ${requestStatusTagClass(r.status)}`}>{requestStatusLabel(r.status)}</span></td>
+                  <td>{r.adminNote || <span className="muted">--</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination
+            page={requestsPageNum}
+            totalPages={requestsTotalPages}
+            total={requestsTotal}
+            startIndex={requestsStart}
+            endIndex={requestsEnd}
+            onPageChange={setRequestsPage}
+          />
         </div>
       )}
 
-      {/* Today's cancellation panel — only shown when a cab is assigned */}
-      {assignment && (
-        <div className="cab-cancellation-panel">
-          <div className="cab-cancellation-title">Today&rsquo;s cab preference</div>
-          <p className="hint first">
-            Let the driver know in advance if you don&rsquo;t need a pickup or drop today.
-            Toggle a button below and the driver&rsquo;s list will update automatically.
-            Changes lock {cutoffHours} hour{cutoffHours === 1 ? '' : 's'} before your shift
-            starts (pickup) and ends (drop).
-          </p>
-          <div className="cab-cancellation-actions">
-            <button
-              id="btn-skip-pickup"
-              className={`btn cab-cancel-btn ${skipPickup ? 'cab-cancel-btn-active' : 'btn-light'}`}
-              disabled={!pickupOpen}
-              onClick={() => toggleCancellation('pickup')}
-            >
-              {skipPickup ? (<><Check size={14} /> Skipping pickup today</>) : 'Skip pickup today'}
-            </button>
-            <button
-              id="btn-skip-drop"
-              className={`btn cab-cancel-btn ${skipDrop ? 'cab-cancel-btn-active' : 'btn-light'}`}
-              disabled={!dropOpen}
-              onClick={() => toggleCancellation('drop')}
-            >
-              {skipDrop ? (<><Check size={14} /> Skipping drop today</>) : 'Skip drop today'}
-            </button>
-          </div>
-          {(!pickupOpen || !dropOpen) && (
-            <div className="cab-cancellation-notice">
-              {!pickupOpen && !dropOpen
-                ? `Today's changes are locked. Pickup closed at ${todayChangeDeadline(pickupTrip?.shiftStart, cutoffHours)} and drop closed at ${todayChangeDeadline(dropTrip?.shiftEnd, cutoffHours)}.`
-                : !pickupOpen
-                ? `Pickup changes for today are locked since ${todayChangeDeadline(pickupTrip?.shiftStart, cutoffHours)} (${cutoffHours} hours before shift start).`
-                : `Drop changes for today are locked since ${todayChangeDeadline(dropTrip?.shiftEnd, cutoffHours)} (${cutoffHours} hours before shift end).`}
-            </div>
-          )}
-          {(skipPickup || skipDrop) && (
-            <div className="cab-cancellation-notice">
-              {skipPickup && skipDrop
-                ? 'You have skipped both pickup and drop for today. The driver will not collect or drop you.'
-                : skipPickup
-                ? 'You have skipped pickup for today. The driver will not collect you this morning.'
-                : 'You have skipped drop for today. The driver will not drop you this evening.'}
-            </div>
-          )}
-        </div>
-      )}
-
-      {assignment && (
-        <div className="cab-grid">
-          {/* Pickup card */}
-          <div className="card cab-card">
-            <h3 className="section-title first">Pickup (Home &rarr; Office)</h3>
-            <div className="cab-detail"><span>Pickup time</span><strong>{formatTime12(pickupTrip?.time)}</strong></div>
-            <div className="cab-detail"><span>Office starts</span><strong>{formatTime12(pickupTrip?.shiftStart)}</strong></div>
-            <div className="cab-detail"><span>Vehicle</span><strong>{pickupVehicle?.number || '--'}</strong></div>
-            <div className="cab-detail"><span>Driver</span><strong>{pickupDriver?.name || '--'}</strong></div>
-            <div className="cab-detail"><span>Driver mobile</span><strong>{pickupDriver?.mobile ? <a href={`tel:${pickupDriver.mobile}`} className="phone-link">{pickupDriver.mobile}</a> : '--'}</strong></div>
-            <div className="cab-detail"><span>Your address</span><strong>{homeAddress}</strong></div>
-            <div className="cab-detail"><span>Your gate</span><strong>{homeGate}</strong></div>
-            <div className="cab-detail">
-              <span>Pickup point</span>
-              <strong>
-                {pickupPoint
-                  ? <a href={googleMapsUrl(pickupPoint)} target="_blank" rel="noreferrer">Open in Google Maps</a>
-                  : 'Not set'}
-                <span className="tip" data-tip="To change this location, update it in My Details.">&#9432;</span>
-              </strong>
-            </div>
-            <div className="cab-detail cab-supervisor">
-              <span>Cab late / driver not answering? Call</span>
-              <strong>{pickupTrip?.supervisorName || '--'} {pickupTrip?.supervisorMobile ? <a href={`tel:${pickupTrip.supervisorMobile}`} className="phone-link">({pickupTrip.supervisorMobile})</a> : ''}</strong>
-            </div>
-          </div>
-
-          {/* Drop card */}
-          <div className="card cab-card">
-            <h3 className="section-title first">Drop (Office &rarr; Home)</h3>
-            <div className="cab-detail"><span>Office ends</span><strong>{formatTime12(dropTrip?.shiftEnd)}</strong></div>
-            <div className="cab-detail"><span>Cab leaves office</span><strong>{formatTime12(dropTrip?.time)}</strong></div>
-            <div className="cab-detail"><span>Vehicle</span><strong>{dropVehicle?.number || '--'}</strong></div>
-            <div className="cab-detail"><span>Driver</span><strong>{dropDriver?.name || '--'}</strong></div>
-            <div className="cab-detail"><span>Driver mobile</span><strong>{dropDriver?.mobile ? <a href={`tel:${dropDriver.mobile}`} className="phone-link">{dropDriver.mobile}</a> : '--'}</strong></div>
-            <div className="cab-detail"><span>Drop address</span><strong>{homeAddress}</strong></div>
-            <div className="cab-detail"><span>Office gate</span><strong>{dropTrip?.officeGate || '--'}</strong></div>
-            <div className="cab-detail">
-              <span>Drop point</span>
-              <strong>
-                {dropPoint
-                  ? <a href={googleMapsUrl(dropPoint)} target="_blank" rel="noreferrer">Open in Google Maps</a>
-                  : 'Not set'}
-                <span className="tip" data-tip="To change this location, update it in My Details.">&#9432;</span>
-              </strong>
-            </div>
-            <div className="cab-detail cab-supervisor">
-              <span>Cab late / driver not answering? Call</span>
-              <strong>{dropTrip?.supervisorName || '--'} {dropTrip?.supervisorMobile ? <a href={`tel:${dropTrip.supervisorMobile}`} className="phone-link">({dropTrip.supervisorMobile})</a> : ''}</strong>
-            </div>
-          </div>
-        </div>
+      {tab === 2 && (
+        <ChatSection
+          messages={messages}
+          onSend={(text) => {
+            addCabMessage({ employeeId: user.id, byRole: 'employee', text })
+            setRefresh((n) => n + 1)
+          }}
+        />
       )}
 
       {/* Temporary change request form - Modal */}
@@ -245,67 +352,13 @@ export default function MyCab() {
             onSubmit={(data) => {
               createCabRequest({ ...data, employeeId: user.id })
               setShowForm(false)
+              setTab(1)
               setRefresh((n) => n + 1)
             }}
             onCancel={() => setShowForm(false)}
           />
         </Modal>
       )}
-
-      {/* Past requests */}
-      {requests.length > 0 && (
-        <>
-          <h3 className="section-title">My change requests</h3>
-          <div className="card">
-            <TableToolbar
-              search={requestsTable.search}
-              onSearchChange={requestsTable.setSearch}
-              showing={requestsTable.count}
-              total={requestsTable.total}
-              placeholder="Search requests..."
-            />
-            <table className="table">
-              <thead>
-                <tr>
-                  <SortableTh label="Date(s)" keyName="dates" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
-                  <th>Changes</th>
-                  <SortableTh label="Reason" keyName="reason" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
-                  <SortableTh label="Status" keyName="status" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
-                  <SortableTh label="Admin note" keyName="adminNote" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
-                </tr>
-              </thead>
-              <tbody>
-                {requestsTable.count === 0 && (
-                  <TableEmpty colSpan={5} message="No requests match your search." />
-                )}
-                {requestsTable.rows.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.forDates.map((d) => formatDate(d)).join(', ')}</td>
-                    <td>
-                      {r.newLocation && <div>Location: {r.newLocation}</div>}
-                      {r.newGate && <div>Gate: {r.newGate}</div>}
-                      {r.newTime && <div>Time: {formatTime12(r.newTime)}</div>}
-                      {!r.newLocation && !r.newGate && !r.newTime && <span className="muted">--</span>}
-                    </td>
-                    <td>{r.reason}</td>
-                    <td><span className={`tag ${requestStatusTagClass(r.status)}`}>{requestStatusLabel(r.status)}</span></td>
-                    <td>{r.adminNote || <span className="muted">--</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
-      {/* Chat with transport desk */}
-      <ChatSection
-        messages={messages}
-        onSend={(text) => {
-          addCabMessage({ employeeId: user.id, byRole: 'employee', text })
-          setRefresh((n) => n + 1)
-        }}
-      />
     </div>
   )
 }
@@ -408,8 +461,7 @@ function ChatSection({ messages, onSend }) {
 
   return (
     <>
-      <h3 className="section-title">Chat with transport desk</h3>
-      <p className="hint first">
+      <p className="hint first cab-chat-hint">
         Cab is late, driver isn&rsquo;t answering, or something else is wrong?
         Send a quick message instead of calling.
       </p>
