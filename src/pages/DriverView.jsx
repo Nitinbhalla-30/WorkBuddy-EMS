@@ -42,11 +42,9 @@ export default function DriverView() {
     )
   }
 
-  const { driver, pickupStops, dropStops } = sheet
-  const activePickups    = pickupStops.filter((s) => !s.cancelled)
-  const cancelledPickups = pickupStops.filter((s) => s.cancelled)
-  const activeDrops      = dropStops.filter((s) => !s.cancelled)
-  const cancelledDrops   = dropStops.filter((s) => s.cancelled)
+  const { driver, pickupStops, dropStops, allStops } = sheet
+  const activeStops      = allStops.filter((s) => !s.cancelled)
+  const cancelledStops   = allStops.filter((s) => s.cancelled)
 
   const pickupVehicles = Array.from(
     new Set(pickupStops.map((s) => s.vehicle?.number).filter(Boolean))
@@ -54,6 +52,7 @@ export default function DriverView() {
   const dropVehicles = Array.from(
     new Set(dropStops.map((s) => s.vehicle?.number).filter(Boolean))
   )
+  const allVehicles = Array.from(new Set([...pickupVehicles, ...dropVehicles]))
 
   return (
     <div className="driver-page">
@@ -85,84 +84,57 @@ export default function DriverView() {
           </div>
         </div>
 
-        {/* ---- PICKUP SECTION ---- */}
-        <RunSection
-          title="Pickup — Home to Office"
-          icon={CarFront}
-          titleClass="pickup-title"
-          vehicles={pickupVehicles}
-          stops={pickupStops}
-          activeStops={activePickups}
-          cancelledStops={cancelledPickups}
-          direction="pickup"
-          emptyText="No pickup stops assigned for today."
-        />
+        {/* ---- CHRONOLOGICAL RUN SHEET ---- */}
+        <section className="driver-section">
+          <div className="driver-section-title run-title">
+            <span className="driver-section-title-text">
+              <CarFront size={17} aria-hidden="true" />
+              Today's Run Sheet
+            </span>
+            {allVehicles.length > 0 && (
+              <span className="driver-vehicle-chip chip-all">
+                Vehicle: {allVehicles.join(', ')}
+              </span>
+            )}
+          </div>
 
-        {/* ---- DROP SECTION ---- */}
-        <RunSection
-          title="Drop — Office to Home"
-          icon={House}
-          titleClass="drop-title"
-          vehicles={dropVehicles}
-          stops={dropStops}
-          activeStops={activeDrops}
-          cancelledStops={cancelledDrops}
-          direction="drop"
-          emptyText="No drop stops assigned for today."
-        />
+          <div className="driver-section-body">
+            {activeStops.length === 0 && (
+              <p className="driver-empty muted">No stops assigned for today.</p>
+            )}
+
+            {activeStops.map((stop, i) => (
+              <StopCard key={`${stop.employee.id}-${stop.trip.direction}-${stop.trip.time}`} index={i + 1} stop={stop} />
+            ))}
+
+            {cancelledStops.length > 0 && (
+              <div className="driver-cancelled-block">
+                <div className="driver-cancelled-label">
+                  <Ban size={14} aria-hidden="true" />
+                  Not riding today ({cancelledStops.length})
+                </div>
+                {cancelledStops.map((stop) => (
+                  <div key={`${stop.employee.id}-${stop.trip.direction}`} className="driver-cancelled-row">
+                    <strong>{stop.employee.name}</strong>
+                    <span className="muted">{stop.employee.id}</span>
+                    <span className={`tag ${stop.trip.direction === 'pickup' ? 'tag-pickup' : 'tag-drop'}`}>
+                      {stop.trip.direction === 'pickup' ? 'Pickup' : 'Drop'} · Cancelled
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   )
 }
 
-// ---- One section (pickup or drop) with its stop cards ----
-function RunSection({
-  title, icon: Icon, titleClass, vehicles, stops, activeStops, cancelledStops, direction, emptyText
-}) {
-  return (
-    <section className="driver-section">
-      <div className={`driver-section-title ${titleClass}`}>
-        <span className="driver-section-title-text">
-          <Icon size={17} aria-hidden="true" />
-          {title}
-        </span>
-        {vehicles.length > 0 && (
-          <span className={`driver-vehicle-chip ${direction === 'drop' ? 'chip-drop' : 'chip-pickup'}`}>
-            Vehicle: {vehicles.join(', ')}
-          </span>
-        )}
-      </div>
-
-      <div className="driver-section-body">
-        {stops.length === 0 && <p className="driver-empty muted">{emptyText}</p>}
-
-        {activeStops.map((stop, i) => (
-          <StopCard key={stop.employee.id} index={i + 1} stop={stop} direction={direction} />
-        ))}
-
-        {cancelledStops.length > 0 && (
-          <div className="driver-cancelled-block">
-            <div className="driver-cancelled-label">
-              <Ban size={14} aria-hidden="true" />
-              Not riding today ({direction})
-            </div>
-            {cancelledStops.map((stop) => (
-              <div key={stop.employee.id} className="driver-cancelled-row">
-                <strong>{stop.employee.name}</strong>
-                <span className="muted">{stop.employee.id}</span>
-                <span className="tag tag-high">Cancelled</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
 // ---- Individual stop card: every field always visible ----
-function StopCard({ index, stop, direction }) {
+function StopCard({ index, stop }) {
   const { employee, trip, info } = stop
+  const direction = trip.direction
   const mapPoint = direction === 'pickup' ? info.pickupPoint : info.dropPoint
   const mapUrl   = googleMapsUrl(mapPoint)
 
@@ -178,7 +150,12 @@ function StopCard({ index, stop, direction }) {
       <div className="stop-card-head">
         <span className="stop-num">{index}</span>
         <div className="stop-head-text">
-          <div className="stop-name">{employee.name}</div>
+          <div className="stop-name">
+            {employee.name}
+            <span className={`stop-direction-badge ${direction === 'pickup' ? 'badge-pickup' : 'badge-drop'}`}>
+              {direction === 'pickup' ? 'PICKUP' : 'DROP'}
+            </span>
+          </div>
           <div className="stop-time">
             {direction === 'pickup' ? 'Pickup at' : 'Drop at'}{' '}
             <strong>{formatTime12(trip.time)}</strong>

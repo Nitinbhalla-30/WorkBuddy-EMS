@@ -302,7 +302,6 @@ export default function AttendanceRecords() {
   const hasActiveFilters =
     (table.filters.employeeId && table.filters.employeeId !== 'all') ||
     (table.filters.department && table.filters.department !== 'all') ||
-    (table.filters.reportsTo && table.filters.reportsTo !== 'all') ||
     (table.filters.period && table.filters.period !== 'all')
 
   const hasActiveCorrectionFilters =
@@ -350,12 +349,6 @@ export default function AttendanceRecords() {
               label: 'Department',
               value: table.filters.department || 'all',
               options: departmentFilterOpts
-            },
-            {
-              key: 'reportsTo',
-              label: 'Reports to',
-              value: table.filters.reportsTo || 'all',
-              options: reportsToFilterOpts
             }
           ]}
           onFilterChange={table.setFilter}
@@ -378,7 +371,6 @@ export default function AttendanceRecords() {
                 table.setFilter('employeeId', 'all')
                 table.setFilter('period', 'all')
                 table.setFilter('department', 'all')
-                table.setFilter('reportsTo', 'all')
               }}
             >
               Clear filters

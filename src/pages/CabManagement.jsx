@@ -27,6 +27,7 @@ import {
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
 import TimeInput from '../components/TimeInput.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
@@ -609,6 +610,11 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
   const editTrip = trips.find((t) => t.id === editId) || null
 
   const tripsTable = useTableControls(trips, {
+    getSearchText: (t) => {
+      const v = vehicleById(vehicles, t.vehicleId)
+      const d = driverById(drivers, t.driverId)
+      return [t.direction, t.time, v?.number || '', d?.name || '', t.officeGate || '', t.supervisorName || ''].join(' ')
+    },
     getSortValue: (t, key) => {
       if (key === 'direction') return t.direction === 'drop' ? 'Drop' : 'Pickup'
       if (key === 'officeTime') return t.direction === 'drop' ? (t.shiftEnd || '') : (t.shiftStart || '')
@@ -619,7 +625,12 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
       return t[key]
     },
     initialSortKey: 'direction',
-    initialSortDir: 'asc'
+    initialSortDir: 'asc',
+    filterFns: {
+      direction: (t, val) => t.direction === val,
+      vehicle: (t, val) => t.vehicleId === val,
+      driver: (t, val) => t.driverId === val
+    }
   })
 
   const {
@@ -756,8 +767,8 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
         )}
         <div className="two-col">
           <label className="field">
-            <span>Supervisor name (to call if cab is late)</span>
-            <input value={form.supervisorName} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} placeholder="e.g. Anil Singh" />
+            <span>Supervisor name</span>
+            <input value={form.supervisorName} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} placeholder="e.g. Anil Singh (to call if cab is late)" />
           </label>
           <label className="field">
             <span>Supervisor mobile</span>
@@ -770,10 +781,47 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
 
   return (
     <div className="card">
-      <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
-        <h3 className="section-title first">Cab trips</h3>
-        <button className="btn btn-primary btn-tiny" onClick={openAdd}>Add trip</button>
-      </div>
+      <TableToolbar
+        search={tripsTable.search}
+        onSearchChange={tripsTable.setSearch}
+        showing={tripsTable.count}
+        total={tripsTable.total}
+        placeholder="Search trips..."
+        filters={[
+          {
+            key: 'direction',
+            label: 'Direction',
+            value: tripsTable.filters.direction || 'all',
+            options: [
+              { value: 'all', label: 'All directions' },
+              { value: 'pickup', label: 'Pickup' },
+              { value: 'drop', label: 'Drop' }
+            ]
+          },
+          {
+            key: 'vehicle',
+            label: 'Vehicle',
+            value: tripsTable.filters.vehicle || 'all',
+            options: [
+              { value: 'all', label: 'All vehicles' },
+              ...vehicles.map((v) => ({ value: v.id, label: v.number }))
+            ]
+          },
+          {
+            key: 'driver',
+            label: 'Driver',
+            value: tripsTable.filters.driver || 'all',
+            options: [
+              { value: 'all', label: 'All drivers' },
+              ...drivers.map((d) => ({ value: d.id, label: d.name }))
+            ]
+          }
+        ]}
+        onFilterChange={tripsTable.setFilter}
+        actions={
+          <button className="btn btn-primary btn-tiny" onClick={openAdd}>Add trip</button>
+        }
+      />
       <table className="table">
         <thead>
           <tr>
@@ -910,7 +958,17 @@ function AssignTab({ employees, trips, assignments, bump }) {
   const pickupTrips = trips.filter((t) => t.direction === 'pickup')
   const dropTrips = trips.filter((t) => t.direction === 'drop')
 
+  function assignedTo(empId) {
+    return assignments.find((a) => a.employeeId === empId) || { pickupTripId: '', dropTripId: '' }
+  }
+
   const assignTable = useTableControls(employees, {
+    getSearchText: (emp) => {
+      const a = assignedTo(emp.id)
+      const pickupTrip = pickupTrips.find((t) => t.id === a.pickupTripId)
+      const dropTrip = dropTrips.find((t) => t.id === a.dropTripId)
+      return [emp.name, emp.id, pickupTrip ? tripLabel(pickupTrip) : '', dropTrip ? tripLabel(dropTrip) : ''].join(' ')
+    },
     getSortValue: (emp, key) => {
       if (key === 'pickup' || key === 'drop') {
         const a = assignedTo(emp.id)
@@ -922,7 +980,17 @@ function AssignTab({ employees, trips, assignments, bump }) {
       return emp[key]
     },
     initialSortKey: 'name',
-    initialSortDir: 'asc'
+    initialSortDir: 'asc',
+    filterFns: {
+      pickup: (emp, val) => {
+        const a = assignedTo(emp.id)
+        return a.pickupTripId === val
+      },
+      drop: (emp, val) => {
+        const a = assignedTo(emp.id)
+        return a.dropTripId === val
+      }
+    }
   })
 
   const {
@@ -935,10 +1003,6 @@ function AssignTab({ employees, trips, assignments, bump }) {
     setPage: setAssignPage
   } = usePagination(assignTable.rows)
 
-  function assignedTo(empId) {
-    return assignments.find((a) => a.employeeId === empId) || { pickupTripId: '', dropTripId: '' }
-  }
-
   function save(empId, pickupTripId, dropTripId) {
     setCabAssignment(empId, pickupTripId, dropTripId)
     bump()
@@ -946,7 +1010,34 @@ function AssignTab({ employees, trips, assignments, bump }) {
 
   return (
     <div className="card">
-      <h3 className="section-title first">Assign employees to trips</h3>
+      <TableToolbar
+        search={assignTable.search}
+        onSearchChange={assignTable.setSearch}
+        showing={assignTable.count}
+        total={assignTable.total}
+        placeholder="Search employees..."
+        filters={[
+          {
+            key: 'pickup',
+            label: 'Pickup trip',
+            value: assignTable.filters.pickup || 'all',
+            options: [
+              { value: 'all', label: 'All pickup trips' },
+              ...pickupTrips.map((t) => ({ value: t.id, label: tripLabel(t) }))
+            ]
+          },
+          {
+            key: 'drop',
+            label: 'Drop trip',
+            value: assignTable.filters.drop || 'all',
+            options: [
+              { value: 'all', label: 'All drop trips' },
+              ...dropTrips.map((t) => ({ value: t.id, label: tripLabel(t) }))
+            ]
+          }
+        ]}
+        onFilterChange={assignTable.setFilter}
+      />
       <table className="table">
         <thead>
           <tr>
@@ -1304,7 +1395,7 @@ function TodayTab({ employees, bump }) {
                               className="task-menu-item"
                               onClick={() => copyRunSheetLink(d)}
                             >
-                              {copiedId === d.id ? (<>Link copied <Check size={14} /></>) : 'Copy link'}
+                              {copiedId === d.id ? (<span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>Link copied <Check size={14} /></span>) : 'Copy link'}
                             </button>
                           </div>
                         )}

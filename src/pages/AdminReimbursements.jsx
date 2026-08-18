@@ -8,7 +8,7 @@ import {
   markReimbursementPaid,
   rejectReimbursementClaim
 } from '../data/store.js'
-import { REIMBURSEMENT_STATUSES } from '../data/sampleData.js'
+import { REIMBURSEMENT_CATEGORIES, REIMBURSEMENT_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import {
   categoryLabel,
@@ -29,6 +29,10 @@ import TableEmpty from '../components/TableEmpty.jsx'
 const STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
   ...REIMBURSEMENT_STATUSES.map((s) => ({ value: s.key, label: s.label }))
+]
+const CATEGORY_FILTER_OPTS = [
+  { value: 'all', label: 'All categories' },
+  ...REIMBURSEMENT_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))
 ]
 
 export default function AdminReimbursements() {
@@ -58,6 +62,7 @@ export default function AdminReimbursements() {
     initialSortKey: 'appliedOn',
     initialSortDir: 'desc',
     filterFns: {
+      category: (c, val) => c.category === val,
       status: (c, val) => c.status === val
     },
     initialFilters: { status: 'pending' }
@@ -144,12 +149,20 @@ export default function AdminReimbursements() {
           showing={table.count}
           total={table.total}
           placeholder="Search claims..."
-          filters={[{
-            key: 'status',
-            label: 'Status',
-            value: table.filters.status || 'all',
-            options: STATUS_FILTER_OPTS
-          }]}
+          filters={[
+            {
+              key: 'category',
+              label: 'Category',
+              value: table.filters.category || 'all',
+              options: CATEGORY_FILTER_OPTS
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              value: table.filters.status || 'all',
+              options: STATUS_FILTER_OPTS
+            }
+          ]}
           onFilterChange={table.setFilter}
         />
         <table className="table table-compact">

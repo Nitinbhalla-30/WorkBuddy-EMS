@@ -1556,7 +1556,9 @@ export function getDriverRunSheet(driverId, date) {
   return {
     driver,
     pickupStops: buildStops(pickupTrips, 'pickup'),
-    dropStops:   buildStops(dropTrips, 'drop')
+    dropStops:   buildStops(dropTrips, 'drop'),
+    allStops:    [...buildStops(pickupTrips, 'pickup'), ...buildStops(dropTrips, 'drop')]
+                   .sort((a, b) => (a.trip.time < b.trip.time ? -1 : 1))
   }
 }
 

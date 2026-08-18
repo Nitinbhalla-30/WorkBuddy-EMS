@@ -246,12 +246,6 @@ export default function EmployeeRecords() {
               options: departmentFilterOpts
             },
             {
-              key: 'role',
-              label: 'Role',
-              value: table.filters.role || 'all',
-              options: ROLE_FILTER_OPTS
-            },
-            {
               key: 'reportsTo',
               label: 'Reports to',
               value: table.filters.reportsTo || 'all',

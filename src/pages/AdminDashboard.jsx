@@ -143,7 +143,16 @@ export default function AdminDashboard() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '22%' }} />
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Employee" keyName="name" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />

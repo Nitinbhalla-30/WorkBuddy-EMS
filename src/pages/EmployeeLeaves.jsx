@@ -213,12 +213,6 @@ export default function EmployeeLeaves() {
           >
             Company Holidays
           </button>
-          <button
-            className="btn btn-primary btn-tiny"
-            onClick={() => setShowForm(true)}
-          >
-            Apply for leave
-          </button>
         </div>
       </div>
 
@@ -365,17 +359,25 @@ export default function EmployeeLeaves() {
             }
           ]}
           onFilterChange={table.setFilter}
+          actions={
+            <button
+              className="btn btn-primary btn-tiny"
+              onClick={() => setShowForm(true)}
+            >
+              Apply for leave
+            </button>
+          }
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '10%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '24%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '11%' }} />
             <col style={{ width: '9%' }} />
-            <col style={{ width: '9%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '30%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '10%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -394,16 +396,18 @@ export default function EmployeeLeaves() {
               <TableEmpty colSpan={8} message="No leave requests match your filters." />
             )}
             {leavesPage.map((lv) => {
+              const docs = lv.type === 'sick' ? leaveSupportingDocuments(lv) : []
+              const docNames = docs.map((d) => d.name).join(', ')
               return (
               <tr key={lv.id}>
                 <td>{leaveTypeLabelWithPart(lv)}</td>
                 <td>{formatDate(lv.fromDate)}</td>
                 <td>{formatDate(lv.toDate)}</td>
                 <td>{leaveDays(lv)}</td>
-                <td>{lv.reason || <span className="muted">--</span>}</td>
-                <td>
+                <td className="cell-ellipsis" title={lv.reason || undefined}>{lv.reason || <span className="muted">--</span>}</td>
+                <td className="cell-ellipsis" title={docNames || undefined}>
                   {lv.type === 'sick'
-                    ? <LeaveDocumentList documents={leaveSupportingDocuments(lv)} emptyLabel="Not uploaded" />
+                    ? (docNames || <span className="muted">Not uploaded</span>)
                     : <span className="muted">--</span>}
                 </td>
                 <td>

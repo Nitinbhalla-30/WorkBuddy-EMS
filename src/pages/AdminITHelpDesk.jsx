@@ -180,7 +180,6 @@ export default function AdminITHelpDesk() {
           total={table.total}
           placeholder="Search IT issues..."
           filters={[
-            { key: 'employee', label: 'Employee', value: table.filters.employee || 'all', options: employeeFilterOpts },
             { key: 'category', label: 'Category', value: table.filters.category || 'all', options: IT_CATEGORY_FILTER_OPTS },
             { key: 'priority', label: 'Priority', value: table.filters.priority || 'all', options: IT_PRIORITY_FILTER_OPTS },
             { key: 'status', label: 'Status', value: table.filters.status || 'all', options: IT_STATUS_FILTER_OPTS },

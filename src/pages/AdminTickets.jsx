@@ -127,13 +127,13 @@ export default function AdminTickets() {
         />
         <table className="table">
           <colgroup>
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '11%' }} />
             <col style={{ width: '22%' }} />
+            <col style={{ width: '14%' }} />
             <col style={{ width: '13%' }} />
             <col style={{ width: '8%' }} />
-            <col style={{ width: '27%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '7%' }} />
           </colgroup>
           <thead>
             <tr>

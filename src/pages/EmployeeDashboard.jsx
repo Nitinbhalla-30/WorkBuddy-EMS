@@ -31,6 +31,7 @@ import {
   totalBreakMinutes,
   workedMinutes
 } from '../utils/attendance.js'
+import { ATTENDANCE_CORRECTION_ISSUES } from '../data/sampleData.js'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
@@ -42,6 +43,8 @@ import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread
 import { formatTime12 } from '../utils/cab.js'
 import { Briefcase, Coffee, LogIn, LogOut, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+
+const TABS = ['Today', 'Attendance History', 'Correction Request']
 
 // The employee's own screen: live buttons + their history.
 export default function EmployeeDashboard() {
@@ -58,6 +61,7 @@ export default function EmployeeDashboard() {
   const [openMenuId, setOpenMenuId] = useState(null)
   const [selectedHistoryMonth, setSelectedHistoryMonth] = useState(() => monthKey())
   const [statsPeriod, setStatsPeriod] = useState('this-month')
+  const [tab, setTab] = useState(0)
   const [corrections, setCorrections] = useState(() =>
     getAttendanceCorrectionsForEmployee(user.id)
   )
@@ -138,16 +142,34 @@ export default function EmployeeDashboard() {
     { value: 'Absent', label: 'Absent' }
   ]
 
+  const CORRECTION_ISSUE_FILTERS = [
+    { value: 'all', label: 'All issues' },
+    ...ATTENDANCE_CORRECTION_ISSUES.map((i) => ({ value: i.key, label: i.label }))
+  ]
+  const CORRECTION_STATUS_FILTERS = [
+    { value: 'all', label: 'All statuses' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'approved', label: 'Approved' },
+    { value: 'rejected', label: 'Rejected' },
+    { value: 'withdrawn', label: 'Withdrawn' }
+  ]
+
   const pendingCorrections = corrections.filter((c) => c.status === 'pending')
 
   const correctionsTable = useTableControls(corrections, {
+    getSearchText: (c) =>
+      [correctionIssueLabel(c.issueType), c.date, c.status, c.description || ''].join(' '),
     getSortValue: (c, key) => {
       if (key === 'issue') return correctionIssueLabel(c.issueType)
       if (key === 'approver') return c.decidedBy ? (getEmployeeById(c.decidedBy)?.name || c.decidedBy) : ''
       return c[key]
     },
     initialSortKey: 'appliedOn',
-    initialSortDir: 'desc'
+    initialSortDir: 'desc',
+    filterFns: {
+      issue: (c, val) => c.issueType === val,
+      status: (c, val) => c.status === val
+    }
   })
   const {
     items: correctionsPage,
@@ -293,151 +315,146 @@ export default function EmployeeDashboard() {
     <div>
       <div className="page-head">
         <h2>My Attendance</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <span className="muted">{formatDate(today.date)}</span>
-          <button
-            type="button"
-            className="btn btn-primary btn-tiny"
-            onClick={() => setShowCorrectionForm(true)}
-          >
-            Request correction
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary btn-tiny"
-            onClick={() => setShowLunchPolicy(true)}
-          >
-            Lunch policy
-          </button>
-        </div>
+        <span className="muted">{formatDate(today.date)}</span>
       </div>
 
-      <div className="card">
-        <div className="status-row">
-          <div>
-            <div className="muted">Right now</div>
-            <div className={`state-pill state-${state}`}>
-              {state === 'not-in' && 'Not timed in'}
-              {state === 'working' && 'Working'}
-              {state === 'on-break' && 'On break'}
-              {state === 'done' && 'Timed out'}
+      <div className="tabs">
+        {TABS.map((t, i) => (
+          <button
+            key={t}
+            className={`tab ${i === tab ? 'tab-active' : ''}`}
+            onClick={() => setTab(i)}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === 0 && (
+        <>
+          <div className="card">
+            <div className="status-row">
+              <div>
+                <div className="muted">Right now</div>
+                <div className={`state-pill state-${state}`}>
+                  {state === 'not-in' && 'Not timed in'}
+                  {state === 'working' && 'Working'}
+                  {state === 'on-break' && 'On break'}
+                  {state === 'done' && 'Timed out'}
+                </div>
+              </div>
+              <div className="today-figures">
+                <div>
+                  <div className="muted">Time in</div>
+                  <strong>{formatClock(today.timeIn)}</strong>
+                </div>
+                <div>
+                  <div className="muted">Time out</div>
+                  <strong>{formatClock(today.timeOut)}</strong>
+                </div>
+                <div>
+                  <div className="muted">Worked{isLive ? ' (live)' : ''}</div>
+                  <strong>{formatMinutes(workedMinutes(today))}</strong>
+                </div>
+                <div>
+                  <div className="muted">Break{isLive ? ' (live)' : ''}</div>
+                  <strong>{formatMinutes(totalBreakMinutes(today))}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="button-row">
+              <button
+                className="btn btn-primary"
+                disabled={busy || state !== 'not-in'}
+                onClick={markTimeIn}
+              >
+                Time In
+              </button>
+              <button
+                className="btn"
+                disabled={busy || state !== 'working'}
+                onClick={startBreak}
+              >
+                Start Break
+              </button>
+              <button
+                className="btn"
+                disabled={busy || state !== 'on-break'}
+                onClick={endBreak}
+              >
+                End Break
+              </button>
+              <button
+                className="btn btn-danger"
+                disabled={busy || !(state === 'working' || state === 'on-break')}
+                onClick={markTimeOut}
+              >
+                Time Out
+              </button>
+            </div>
+
+            {message && <div className="info-box">{message}</div>}
+
+            <p className="hint">
+              Worked and break times update in real time while you are timed in.
+              Use <strong>Request correction</strong> if you forgot to time in or out.
+              Before a lunch break, see the{' '}
+              <button
+                type="button"
+                className="text-link-btn"
+                onClick={() => setShowLunchPolicy(true)}
+              >
+                company lunch policy
+              </button>.
+            </p>
+          </div>
+
+          <div className="section-head-row">
+            <h3 className="section-title first">Average attendance</h3>
+            <label className="field inline">
+              <span className="muted small">Period</span>
+              <select value={statsPeriod} onChange={(e) => setStatsPeriod(e.target.value)}>
+                {ATTENDANCE_STATS_PERIODS.map((p) => (
+                  <option key={p.key} value={p.key}>{p.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="muted small stats-period-hint">
+            {statsPeriodLabel(statsPeriod, joinDate)}
+            {periodStats.days > 0
+              ? ` · ${periodStats.days} day${periodStats.days === 1 ? '' : 's'} counted`
+              : ' · no attendance days in this period'}
+          </p>
+          <div className="stat-grid">
+            <div className="stat-card">
+              <span className="stat-chip"><LogIn size={18} aria-hidden="true" /></span>
+              <div className="stat-num">{periodStats.avgTimeIn}</div>
+              <div className="stat-label">Avg time in</div>
+            </div>
+            <div className="stat-card">
+              <span className="stat-chip"><LogOut size={18} aria-hidden="true" /></span>
+              <div className="stat-num">{periodStats.avgTimeOut}</div>
+              <div className="stat-label">Avg time out</div>
+            </div>
+            <div className="stat-card">
+              <span className="stat-chip"><Coffee size={18} aria-hidden="true" /></span>
+              <div className="stat-num">{periodStats.avgBreak}</div>
+              <div className="stat-label">Avg break</div>
+            </div>
+            <div className="stat-card stat-good">
+              <span className="stat-chip"><Briefcase size={18} aria-hidden="true" /></span>
+              <div className="stat-num">{periodStats.avgWorked}</div>
+              <div className="stat-label">Avg hours worked</div>
             </div>
           </div>
-          <div className="today-figures">
-            <div>
-              <div className="muted">Time in</div>
-              <strong>{formatClock(today.timeIn)}</strong>
-            </div>
-            <div>
-              <div className="muted">Time out</div>
-              <strong>{formatClock(today.timeOut)}</strong>
-            </div>
-            <div>
-              <div className="muted">Worked{isLive ? ' (live)' : ''}</div>
-              <strong>{formatMinutes(workedMinutes(today))}</strong>
-            </div>
-            <div>
-              <div className="muted">Break{isLive ? ' (live)' : ''}</div>
-              <strong>{formatMinutes(totalBreakMinutes(today))}</strong>
-            </div>
-          </div>
-        </div>
-
-        <div className="button-row">
-          <button
-            className="btn btn-primary"
-            disabled={busy || state !== 'not-in'}
-            onClick={markTimeIn}
-          >
-            Time In
-          </button>
-          <button
-            className="btn"
-            disabled={busy || state !== 'working'}
-            onClick={startBreak}
-          >
-            Start Break
-          </button>
-          <button
-            className="btn"
-            disabled={busy || state !== 'on-break'}
-            onClick={endBreak}
-          >
-            End Break
-          </button>
-          <button
-            className="btn btn-danger"
-            disabled={busy || !(state === 'working' || state === 'on-break')}
-            onClick={markTimeOut}
-          >
-            Time Out
-          </button>
-        </div>
-
-        {message && <div className="info-box">{message}</div>}
-
-        <p className="hint">
-          Worked and break times update in real time while you are timed in.
-          Use <strong>Request correction</strong> if you forgot to time in or out.
-          Before a lunch break, see the{' '}
-          <button
-            type="button"
-            className="text-link-btn"
-            onClick={() => setShowLunchPolicy(true)}
-          >
-            company lunch policy
-          </button>.
-        </p>
-      </div>
-
-      <div className="section-head-row">
-        <h3 className="section-title first">Average attendance</h3>
-        <label className="field inline">
-          <span className="muted small">Period</span>
-          <select value={statsPeriod} onChange={(e) => setStatsPeriod(e.target.value)}>
-            {ATTENDANCE_STATS_PERIODS.map((p) => (
-              <option key={p.key} value={p.key}>{p.label}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <p className="muted small stats-period-hint">
-        {statsPeriodLabel(statsPeriod, joinDate)}
-        {periodStats.days > 0
-          ? ` · ${periodStats.days} day${periodStats.days === 1 ? '' : 's'} counted`
-          : ' · no attendance days in this period'}
-      </p>
-      <div className="stat-grid">
-        <div className="stat-card">
-          <span className="stat-chip"><LogIn size={18} aria-hidden="true" /></span>
-          <div className="stat-num">{periodStats.avgTimeIn}</div>
-          <div className="stat-label">Avg time in</div>
-        </div>
-        <div className="stat-card">
-          <span className="stat-chip"><LogOut size={18} aria-hidden="true" /></span>
-          <div className="stat-num">{periodStats.avgTimeOut}</div>
-          <div className="stat-label">Avg time out</div>
-        </div>
-        <div className="stat-card">
-          <span className="stat-chip"><Coffee size={18} aria-hidden="true" /></span>
-          <div className="stat-num">{periodStats.avgBreak}</div>
-          <div className="stat-label">Avg break</div>
-        </div>
-        <div className="stat-card stat-good">
-          <span className="stat-chip"><Briefcase size={18} aria-hidden="true" /></span>
-          <div className="stat-num">{periodStats.avgWorked}</div>
-          <div className="stat-label">Avg hours worked</div>
-        </div>
-      </div>
-
-      {pendingCorrections.length > 0 && (
-        <div className="info-box">
-          <strong>{pendingCorrections.length} correction request(s) awaiting HR review.</strong>
-        </div>
+        </>
       )}
 
-      <h3 className="section-title">Attendance history</h3>
-      <div className="card">
+      {tab === 1 && (
+        <>
+          <div className="card">
         <TableToolbar
           showSearch={false}
           total={historyTotal}
@@ -510,11 +527,50 @@ export default function EmployeeDashboard() {
           onPageChange={setHistoryPage}
         />
       </div>
+        </>
+      )}
 
-      {corrections.length > 0 && (
+      {tab === 2 && (
         <>
-          <h3 className="section-title">My correction requests</h3>
+          {pendingCorrections.length > 0 && (
+            <div className="info-box">
+              <strong>{pendingCorrections.length} correction request(s) awaiting HR review.</strong>
+            </div>
+          )}
+
           <div className="card">
+            <TableToolbar
+              search={correctionsTable.search}
+              onSearchChange={correctionsTable.setSearch}
+              total={correctionsTotal}
+              startIndex={correctionsStart}
+              endIndex={correctionsEnd}
+              placeholder="Search corrections..."
+              filters={[
+                {
+                  key: 'issue',
+                  label: 'Issue',
+                  value: correctionsTable.filters.issue || 'all',
+                  options: CORRECTION_ISSUE_FILTERS
+                },
+                {
+                  key: 'status',
+                  label: 'Status',
+                  value: correctionsTable.filters.status || 'all',
+                  options: CORRECTION_STATUS_FILTERS
+                }
+              ]}
+              onFilterChange={correctionsTable.setFilter}
+              actions={
+                <button
+                  type="button"
+                  className="btn btn-primary btn-tiny"
+                  onClick={() => setShowCorrectionForm(true)}
+                >
+                  Request correction
+                </button>
+              }
+            />
             <table className="table" style={{ tableLayout: 'fixed' }}>
               <colgroup>
                 <col style={{ width: '12%' }} />
@@ -546,17 +602,6 @@ export default function EmployeeDashboard() {
                       <span className={`tag ${correctionStatusClass(c.status)}`}>
                         {correctionStatusLabel(c.status)}
                       </span>
-                      {c.status === 'rejected' && c.reviewNote && (
-                        <div className="muted small">Reason: {c.reviewNote}</div>
-                      )}
-                      {c.status === 'approved' && c.reviewNote && (
-                        <div className="muted small">{c.reviewNote}</div>
-                      )}
-                      {(c.messages || []).length > 0 && c.status === 'pending' && (
-                        <div className="muted small">
-                          {(c.messages || []).length} message(s) in thread
-                        </div>
-                      )}
                     </td>
                     <td>
                       {c.decidedBy
@@ -582,7 +627,7 @@ export default function EmployeeDashboard() {
                                 closeMenu()
                               }}
                             >
-                              {c.status === 'pending' ? 'Open / reply' : 'View thread'}
+                              Open
                             </button>
                             <button
                               type="button"

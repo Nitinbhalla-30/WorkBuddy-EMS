@@ -504,7 +504,7 @@ select.btn-tiny {
   cursor: pointer;
 }
 select.btn-tiny:hover { background: var(--btn-hover-bg); }
-.button-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
+.button-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; margin-bottom: 12px; }
 .modal-form .button-row {
   flex-direction: row;
   align-items: center;
@@ -540,6 +540,8 @@ textarea::placeholder {
 .field.inline input, .field.inline select { width: auto; }
 .two-col { display: flex; gap: 16px; flex-wrap: wrap; }
 .two-col .field { flex: 1; min-width: 200px; }
+.three-col { display: flex; gap: 16px; flex-wrap: wrap; }
+.three-col .field { flex: 1; min-width: 150px; }
 .checkbox-row { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; margin: 8px 0; }
 .checkbox-row input { margin-top: 3px; }
 .detect-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -723,8 +725,9 @@ textarea::placeholder {
   color: var(--ink);
 }
 .table-toolbar-search {
-  min-width: 440px;
-  flex: 0 0 auto;
+  min-width: 200px;
+  max-width: 400px;
+  flex: 1 1 200px;
 }
 .search-control { position: relative; display: block; }
 .search-control-icon {
@@ -737,7 +740,7 @@ textarea::placeholder {
 }
 .search-control input { padding-left: 32px; }
 .table-toolbar-filter select {
-  min-width: 160px;
+  min-width: 140px;
 }
 /* Toolbar controls get the teal focus ring defined at the top of this sheet */
 .table-toolbar-count {
@@ -896,6 +899,8 @@ textarea::placeholder {
 .tag-high { background: #fdecec; color: var(--bad); }
 .tag-medium { background: #fdf0e2; color: var(--warn); }
 .tag-low { background: #e6f2f1; color: var(--brand-dark); }
+.tag-pickup { background: #fef3c7; color: #92400e; }
+.tag-drop   { background: #dbeafe; color: #1e40af; }
 /* Announcement type badges: keep the same filled-pill look for every type. */
 .tag-event { background: #e6f5ec; color: var(--good); }
 .tag-general { background: #f0f2f6; color: #475569; }
@@ -1182,7 +1187,7 @@ textarea::placeholder {
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
-  min-width: 120px;
+  min-width: 160px;
   z-index: 100;
 }
 .task-menu-item {
@@ -1933,6 +1938,9 @@ button.task-status-stat-card {
 }
 .chip-pickup { background: #f5e3c8; color: #92400e; }
 .chip-drop   { background: #d8e9f6; color: #075985; }
+.chip-all    { background: #e8f5e9; color: #2e7d32; }
+
+.run-title { background: #f0fdf4; color: #166534; border-bottom: 1px solid #bbf7d0; }
 
 .driver-section-body {
   display: flex;
@@ -1977,7 +1985,20 @@ button.task-status-stat-card {
   color: #111;
   margin-bottom: 2px;
   overflow-wrap: anywhere;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
+.stop-direction-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.badge-pickup { background: #fef3c7; color: #92400e; }
+.badge-drop   { background: #dbeafe; color: #1e40af; }
 .stop-time {
   font-size: 14px;
   color: #444;
@@ -2055,21 +2076,21 @@ button.task-status-stat-card {
 /* Pickup cards use a sunrise-amber palette, drop cards an ocean-blue palette:
    both harmonise with the teal banner, and warm-vs-cool keeps the two runs
    distinguishable at a glance (and is colour-blind safe). */
-.stop-card-pickup { border-color: #eeddc2; border-top: 4px solid #d97706; }
-.stop-card-pickup .stop-num { background: #b45309; }
-.stop-card-pickup .stop-tel { color: #b45309; }
-.stop-card-pickup .stop-btn-call { background: #fbf1e0; color: #b45309; border-color: #eeddc2; }
-.stop-card-pickup .stop-btn-call:hover { background: #f6e6cc; }
-.stop-card-pickup .stop-btn-nav { background: #b45309; }
-.stop-card-pickup .stop-btn-nav:hover { background: #92400e; }
+.stop-card-pickup { border-color: #f0dfc4; border-top: 4px solid #c2781a; }
+.stop-card-pickup .stop-num { background: #a06520; }
+.stop-card-pickup .stop-tel { color: #a06520; }
+.stop-card-pickup .stop-btn-call { background: #fcf4e6; color: #a06520; border-color: #f0dfc4; }
+.stop-card-pickup .stop-btn-call:hover { background: #f8ebd4; }
+.stop-card-pickup .stop-btn-nav { background: #c2781a; }
+.stop-card-pickup .stop-btn-nav:hover { background: #a06520; }
 
-.stop-card-drop { border-color: #cfe3f2; border-top: 4px solid #0369a1; }
-.stop-card-drop .stop-num { background: #0369a1; }
-.stop-card-drop .stop-tel { color: #0369a1; }
-.stop-card-drop .stop-btn-call { background: #ecf5fb; color: #0369a1; border-color: #cfe3f2; }
-.stop-card-drop .stop-btn-call:hover { background: #dcecf7; }
-.stop-card-drop .stop-btn-nav { background: #0369a1; }
-.stop-card-drop .stop-btn-nav:hover { background: #075985; }
+.stop-card-drop { border-color: #d8e8f4; border-top: 4px solid #2b7eb8; }
+.stop-card-drop .stop-num { background: #2b7eb8; }
+.stop-card-drop .stop-tel { color: #2b7eb8; }
+.stop-card-drop .stop-btn-call { background: #f0f6fb; color: #2b7eb8; border-color: #d8e8f4; }
+.stop-card-drop .stop-btn-call:hover { background: #e4eff8; }
+.stop-card-drop .stop-btn-nav { background: #2b7eb8; }
+.stop-card-drop .stop-btn-nav:hover { background: #1d6a9e; }
 
 .driver-cancelled-block {
   padding: 12px 14px;

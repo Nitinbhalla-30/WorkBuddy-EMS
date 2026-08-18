@@ -339,12 +339,12 @@ export default function EmployeeReimbursements() {
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '13%' }} />
-            <col style={{ width: '11%' }} />
+            <col style={{ width: '13%' }} />
             <col style={{ width: '9%' }} />
-            <col style={{ width: '35%' }} />
+            <col style={{ width: '24%' }} />
             <col style={{ width: '11%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '5%' }} />
+            <col style={{ width: '22%' }} />
+            <col style={{ width: '8%' }} />
           </colgroup>
           <thead>
             <tr>

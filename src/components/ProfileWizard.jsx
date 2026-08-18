@@ -92,11 +92,11 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
             onChange={(photo) => setPersonal('photo', photo)}
           />
 
-          <label className="field">
-            <span>Full name *</span>
-            <input value={p.fullName} onChange={(e) => setPersonal('fullName', e.target.value)} />
-          </label>
-          <div className="two-col">
+          <div className="three-col">
+            <label className="field">
+              <span>Full name *</span>
+              <input value={p.fullName} onChange={(e) => setPersonal('fullName', e.target.value)} />
+            </label>
             <label className="field">
               <span>Date of birth *</span>
               <input type="date" value={p.dob} onChange={(e) => setPersonal('dob', e.target.value)} />
@@ -107,16 +107,51 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
                 onChange={(e) => setPersonal('contactNumber', e.target.value)} placeholder="10-digit mobile" />
             </label>
           </div>
-          <label className="field">
-            <span>Address *</span>
-            <input value={p.address} onChange={(e) => setPersonal('address', e.target.value)}
-              placeholder="House, street, city, PIN" />
-          </label>
-          <label className="field">
-            <span>Gate No. (for cab pickup at home)</span>
-            <input value={p.homeGate || ''} onChange={(e) => setPersonal('homeGate', e.target.value)}
-              placeholder="e.g. Gate 3, Gate B" />
-          </label>
+          <div className="two-col">
+            <label className="field">
+              <span>Address *</span>
+              <input value={p.address} onChange={(e) => setPersonal('address', e.target.value)}
+                placeholder="House, street, city, PIN" />
+            </label>
+            <label className="field">
+              <span>Gate No. (for cab pickup at home)</span>
+              <input value={p.homeGate || ''} onChange={(e) => setPersonal('homeGate', e.target.value)}
+                placeholder="e.g. Gate 3, Gate B" />
+            </label>
+          </div>
+
+          <h4 className="sub-title">Emergency contact</h4>
+          <div className="three-col">
+            <label className="field">
+              <span>Name *</span>
+              <input value={p.emergencyName} onChange={(e) => setPersonal('emergencyName', e.target.value)} />
+            </label>
+            <label className="field">
+              <span>Relationship</span>
+              <input value={p.emergencyRelation} onChange={(e) => setPersonal('emergencyRelation', e.target.value)}
+                placeholder="e.g. Father, Spouse" />
+            </label>
+            <label className="field">
+              <span>Emergency contact number *</span>
+              <input value={p.emergencyContact} maxLength={10}
+                onChange={(e) => setPersonal('emergencyContact', e.target.value)} />
+            </label>
+          </div>
+
+          <h4 className="sub-title">Identity</h4>
+          <div className="two-col">
+            <label className="field">
+              <span>Aadhaar number * (12 digits, for UAN linking)</span>
+              <input value={p.aadhaar} maxLength={12}
+                onChange={(e) => setPersonal('aadhaar', e.target.value)} />
+            </label>
+            <label className="field">
+              <span>PAN * (used for TDS &amp; Form 16)</span>
+              <input value={p.pan} maxLength={10}
+                onChange={(e) => setPersonal('pan', e.target.value.toUpperCase())}
+                placeholder="ABCDE1234F" />
+            </label>
+          </div>
 
           <h4 className="sub-title">Cab service</h4>
           <label className="field">
@@ -158,6 +193,19 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
               ) : (
                 <p className="hint first">The company provides cab service free of charge.</p>
               )}
+
+              <label className="checkbox-row">
+                <input type="checkbox" checked={p.dropSameAsPickup !== false}
+                  onChange={(e) => setPersonal('dropSameAsPickup', e.target.checked)} />
+                <span>Drop point is same as pickup (my home)</span>
+              </label>
+              {p.dropSameAsPickup === false && (
+                <label className="field">
+                  <span>Drop point (where the cab drops you)</span>
+                  <MapPicker value={p.dropPoint} onChange={(pt) => setPersonal('dropPoint', pt)} />
+                </label>
+              )}
+
               <p className="hint first">
                 Drag the pin (or tap the map) to your exact pickup location. This
                 Google Map point is mandatory and your driver uses it to navigate
@@ -167,20 +215,6 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
                 <span>Pickup point (where the cab picks you up) *</span>
               </label>
               <MapPicker value={p.pickupPoint} onChange={(pt) => setPersonal('pickupPoint', pt)} />
-
-              <label className="checkbox-row">
-                <input type="checkbox" checked={p.dropSameAsPickup !== false}
-                  onChange={(e) => setPersonal('dropSameAsPickup', e.target.checked)} />
-                <span>Drop point is same as pickup (my home)</span>
-              </label>
-              {p.dropSameAsPickup === false && (
-                <>
-                  <label className="field">
-                    <span>Drop point (where the cab drops you)</span>
-                  </label>
-                  <MapPicker value={p.dropPoint} onChange={(pt) => setPersonal('dropPoint', pt)} />
-                </>
-              )}
             </>
           )}
           {p.wantsCabService === false && (
@@ -189,39 +223,6 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
               updating your details and sharing your pickup location.
             </p>
           )}
-
-          <h4 className="sub-title">Emergency contact</h4>
-          <div className="two-col">
-            <label className="field">
-              <span>Name *</span>
-              <input value={p.emergencyName} onChange={(e) => setPersonal('emergencyName', e.target.value)} />
-            </label>
-            <label className="field">
-              <span>Relationship</span>
-              <input value={p.emergencyRelation} onChange={(e) => setPersonal('emergencyRelation', e.target.value)}
-                placeholder="e.g. Father, Spouse" />
-            </label>
-          </div>
-          <label className="field">
-            <span>Emergency contact number *</span>
-            <input value={p.emergencyContact} maxLength={10}
-              onChange={(e) => setPersonal('emergencyContact', e.target.value)} />
-          </label>
-
-          <h4 className="sub-title">Identity</h4>
-          <div className="two-col">
-            <label className="field">
-              <span>Aadhaar number * (12 digits, for UAN linking)</span>
-              <input value={p.aadhaar} maxLength={12}
-                onChange={(e) => setPersonal('aadhaar', e.target.value)} />
-            </label>
-            <label className="field">
-              <span>PAN * (used for TDS &amp; Form 16)</span>
-              <input value={p.pan} maxLength={10}
-                onChange={(e) => setPersonal('pan', e.target.value.toUpperCase())}
-                placeholder="ABCDE1234F" />
-            </label>
-          </div>
         </div>
       )}
 
@@ -251,7 +252,7 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
       {step === 2 && (
         <div className="card">
           <h3 className="section-title first">Bank details (for salary transfer)</h3>
-          <div className="two-col">
+          <div className="three-col">
             <label className="field">
               <span>Bank account number *</span>
               <input value={b.accountNumber} onChange={(e) => setBank('accountNumber', e.target.value)} />
@@ -261,11 +262,11 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
               <input value={b.ifsc} maxLength={11}
                 onChange={(e) => setBank('ifsc', e.target.value.toUpperCase())} placeholder="HDFC0001234" />
             </label>
+            <label className="field">
+              <span>Bank name</span>
+              <input value={b.bankName} onChange={(e) => setBank('bankName', e.target.value)} />
+            </label>
           </div>
-          <label className="field">
-            <span>Bank name</span>
-            <input value={b.bankName} onChange={(e) => setBank('bankName', e.target.value)} />
-          </label>
         </div>
       )}
 
@@ -291,7 +292,7 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
           )}
 
           <h4 className="sub-title">PF nominee</h4>
-          <div className="two-col">
+          <div className="three-col">
             <label className="field">
               <span>Nominee name *</span>
               <input value={s.nomineeName} onChange={(e) => setStatutory('nomineeName', e.target.value)} />
@@ -301,12 +302,12 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
               <input value={s.nomineeRelation} onChange={(e) => setStatutory('nomineeRelation', e.target.value)}
                 placeholder="e.g. Mother, Spouse" />
             </label>
+            <label className="field">
+              <span>Nominee share (%)</span>
+              <input value={s.nomineeShare} maxLength={3}
+                onChange={(e) => setStatutory('nomineeShare', e.target.value)} placeholder="100" />
+            </label>
           </div>
-          <label className="field">
-            <span>Nominee share (%)</span>
-            <input value={s.nomineeShare} maxLength={3}
-              onChange={(e) => setStatutory('nomineeShare', e.target.value)} placeholder="100" />
-          </label>
         </div>
       )}
 
