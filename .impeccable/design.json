@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-19T11:15:00+05:30",
+  "title": "Design System: WorkBuddy EMS",
+  "extensions": {
+    "colorMeta": {
+      "trust-teal": {
+        "role": "primary",
+        "displayName": "Trust Teal",
+        "canonical": "#0f766e",
+        "tonalRamp": ["#042f2e", "#064e47", "#0f766e", "#14b8a6", "#2dd4bf", "#5eead4", "#99f6e4", "#ccfbf1"]
+      },
+      "ocean-blue": {
+        "role": "secondary",
+        "displayName": "Ocean Blue",
+        "canonical": "#0369a1",
+        "tonalRamp": ["#082f49", "#0c4a6e", "#0369a1", "#0284c7", "#38bdf8", "#7dd3fc", "#bae6fd", "#e0f2fe"]
+      },
+      "good-green": {
+        "role": "semantic-success",
+        "displayName": "Good Green",
+        "canonical": "#059669",
+        "tonalRamp": ["#064e3b", "#065f46", "#059669", "#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#d1fae5"]
+      },
+      "warm-amber": {
+        "role": "semantic-warning",
+        "displayName": "Warm Amber",
+        "canonical": "#d97706",
+        "tonalRamp": ["#78350f", "#92400e", "#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#fde68a", "#fef3c7"]
+      },
+      "alert-red": {
+        "role": "semantic-error",
+        "displayName": "Alert Red",
+        "canonical": "#dc2626",
+        "tonalRamp": ["#7f1d1d", "#991b1b", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fecaca", "#fee2e2"]
+      },
+      "slate-ink": {
+        "role": "neutral-text",
+        "displayName": "Slate Ink",
+        "canonical": "#0f172a",
+        "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0"]
+      },
+      "slate-bg": {
+        "role": "neutral-background",
+        "displayName": "Slate Background",
+        "canonical": "#f5f8fa",
+        "tonalRamp": ["#f5f8fa", "#f8fafc", "#fafbfc", "#fcfcfd", "#ffffff", "#ffffff", "#ffffff", "#ffffff"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Login brand headline only. Maximum impact, used once." },
+      "headline": { "displayName": "Headline", "purpose": "Page titles (h2). The anchor of every content view." },
+      "title": { "displayName": "Title", "purpose": "Section headings, card titles, modal headers." },
+      "body": { "displayName": "Body", "purpose": "Working text — table cells, form inputs, messages, descriptions." },
+      "label": { "displayName": "Label", "purpose": "Form field labels, table column headers (uppercased)." }
+    },
+    "shadows": [
+      { "name": "ambient-card", "value": "0 1px 2px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06)", "purpose": "Subtle ambient lift for cards and modals. Not the primary depth mechanism — tonal layering is." },
+      { "name": "ambient-dark", "value": "0 1px 3px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.35)", "purpose": "Dark mode shadow — deeper for contrast against dark backgrounds." },
+      { "name": "notif-panel", "value": "0 12px 32px rgba(0,0,0,0.18)", "purpose": "Elevated dropdown/panel shadow for notification panel and overlays." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "ease (0.15s)", "purpose": "Default transition for hover, background, border-color changes." },
+      { "name": "press-feedback", "value": "transform translateY(1px) (0.05s)", "purpose": "Active/pressed state on buttons — tactile push confirmation." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "720px" },
+      { "name": "login-collapse", "value": "900px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Trust Teal primary action button — the single most important color in the system.",
+      "html": "<button class=\"ds-btn-primary\">Save Changes</button>",
+      "css": ".ds-btn-primary { background: #0f766e; color: #fff; padding: 9px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; border: 1px solid #0f766e; cursor: pointer; transition: background 0.15s ease, transform 0.05s ease; } .ds-btn-primary:hover { background: #115e59; border-color: #115e59; } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Default Button",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "White secondary button with slate border — the workhorse for non-primary actions.",
+      "html": "<button class=\"ds-btn-default\">Cancel</button>",
+      "css": ".ds-btn-default { background: #ffffff; color: #0f172a; padding: 9px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; border: 1px solid #e4e9ef; cursor: pointer; transition: background 0.15s ease, transform 0.05s ease; } .ds-btn-default:hover { background: #f1f5f7; } .ds-btn-default:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Standard text field with slate border and teal focus ring.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Enter value...\" />",
+      "css": ".ds-input { width: 100%; padding: 10px 12px; border: 1px solid #e4e9ef; border-radius: 8px; font-size: 14px; font-family: 'Plus Jakarta Sans', sans-serif; background: #ffffff; color: #0f172a; transition: border-color 0.15s ease, box-shadow 0.15s ease; box-sizing: border-box; } .ds-input::placeholder { color: #94a3b8; } .ds-input:focus { outline: none; border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,0.18); }"
+    },
+    {
+      "name": "Status Tag (Success)",
+      "kind": "chip",
+      "refersTo": "tag-pill",
+      "description": "Pill-shaped status indicator with semantic green tint.",
+      "html": "<span class=\"ds-tag-ok\">Present</span>",
+      "css": ".ds-tag-ok { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; background: #e6f5ec; color: #059669; white-space: nowrap; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Standard content card — white on gray with subtle border and ambient shadow.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Section Title</h3><p class=\"ds-card-body\">Card content goes here with the system's body typography.</p></div>",
+      "css": ".ds-card { background: #ffffff; border: 1px solid #e4e9ef; border-radius: 12px; padding: 20px; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06); font-family: 'Plus Jakarta Sans', sans-serif; } .ds-card-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 12px; letter-spacing: -0.02em; } .ds-card-body { font-size: 14px; color: #0f172a; line-height: 1.5; margin: 0; }"
+    },
+    {
+      "name": "Active Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Active sidebar navigation item with teal tint background.",
+      "html": "<a class=\"ds-nav-active\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\"/></svg> Dashboard</a>",
+      "css": ".ds-nav-active { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; background: #e6f2f1; color: #0f766e; font-size: 13.5px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; text-decoration: none; transition: background 0.15s ease, color 0.15s ease; }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "custom",
+      "refersTo": "card-default",
+      "description": "Dashboard stat card with icon chip, large number, and semantic color coding.",
+      "html": "<div class=\"ds-stat ds-stat-good\"><div class=\"ds-stat-chip\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M22 11.08V12a10 10 0 1 1-5.93-9.14\"/><polyline points=\"22 4 12 14.01 9 11.01\"/></svg></div><div class=\"ds-stat-num\">24</div><div class=\"ds-stat-label\">Present</div></div>",
+      "css": ".ds-stat { background: #ffffff; border: 1px solid #e4e9ef; border-radius: 12px; padding: 18px; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06); font-family: 'Plus Jakarta Sans', sans-serif; } .ds-stat-chip { width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; } .ds-stat-num { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; } .ds-stat-label { color: #64748b; font-size: 13px; margin-top: 4px; } .ds-stat-good .ds-stat-chip { background: rgba(5,150,105,0.12); color: #059669; } .ds-stat-good .ds-stat-num { color: #059669; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Operations Cockpit",
+    "overview": "WorkBuddy EMS is a precision instrument for employee management — a cockpit where every gauge, switch, and indicator earns its place through utility. The visual language communicates calm authority: the admin who opens this system at 9 AM should immediately feel oriented, informed, and in control.\n\nBut precision does not mean cold. The modern & inviting mood lives in the details: the warm teal that greets you on the login brand panel, the confident weight of a primary button press, the gentle amber glow of a pickup card. Rounded corners (8–14px) keep surfaces friendly without feeling casual. The system sits between sterile enterprise and flashy consumer.",
+    "keyCharacteristics": [
+      "Scanability first — tables, stat cards, and status chips designed for rapid visual parsing",
+      "Tactile confidence — buttons have weight, cards feel solid, inputs respond clearly",
+      "Flat & tonal depth — surfaces layered through color tint and borders, not heavy shadows",
+      "Warm precision — Trust Teal as a living presence, semantic colors for instant recognition",
+      "India-native details — statutory labels and local operational patterns as first-class content"
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Trust Teal appears on at most one primary action per viewport. Its rarity is what makes it powerful.", "section": "colors" },
+      { "name": "The Ghost Border Rule", "body": "When a surface needs separation but shadows feel too heavy, use a 1px border in --line color. It defines edges without adding visual weight.", "section": "elevation" },
+      { "name": "The Weight Ladder Rule", "body": "Only three weights in the system: 400 (body), 600 (labels, emphasis), 700–800 (headlines, numbers). Never use 500 or 300.", "section": "typography" },
+      { "name": "The No-Scroll Shell Rule", "body": "The app shell uses 100vh with overflow hidden — only the content area scrolls. Sidebar and topbar stay fixed.", "section": "layout" },
+      { "name": "The Pill Doctrine", "body": "Tags, status indicators, and tab controls always use fully rounded pills (999px). This creates a consistent visual language for small classification elements.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do use Trust Teal as the single primary accent — one primary action per viewport.",
+      "Do use 1px borders in --line color as the primary edge definition between surfaces.",
+      "Do use pill-shaped tags (999px radius) with semantic color tints for all status classification.",
+      "Do maintain the 44px minimum tap target on all interactive elements.",
+      "Do use Plus Jakarta Sans exclusively — express hierarchy through weight and size.",
+      "Do use color-mix() for tinted backgrounds — 12% for good/red, 14% for amber, 18% for focus rings."
+    ],
+    "donts": [
+      "Don't use emoji anywhere in the UI — lucide-react SVG icons with aria-labels only.",
+      "Don't use heavy drop shadows for depth — the system is flat & tonal.",
+      "Don't introduce additional border radii beyond the graduated scale (4/8/10/12/14/999px).",
+      "Don't use more than three font weights in any context (400/600/700–800).",
+      "Don't make interactive elements rely on hover alone for state communication.",
+      "Don't use raw hex colors in component styles — always reference CSS custom properties.",
+      "Don't create decorative gradients or glassmorphism effects."
+    ]
+  }
+}

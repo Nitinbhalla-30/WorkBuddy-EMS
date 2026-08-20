@@ -145,7 +145,7 @@ export default function Layout() {
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmLogout(false)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Are you sure you want to log out? You will need to sign in again to access your account.
+              You will be signed out and need to log in again to access your account.
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={handleLogout}>

@@ -38,8 +38,8 @@ export default function AttendanceCorrectionThread({
       {pending ? (
         <p className="hint first">
           {isAdmin
-            ? 'Ask the employee for any details you need before approving or rejecting this request.'
-            : 'HR may ask questions here before deciding. Reply below if needed.'}
+            ? 'Ask the employee for more details before approving or rejecting this request.'
+            : 'HR may ask for clarification here before making a decision. Reply below if needed.'}
         </p>
       ) : (
         <p className="hint first">This request is closed. The conversation below is read-only.</p>

@@ -20,7 +20,7 @@ import {
   listRecentMonths,
   monthKey
 } from '../utils/salary.js'
-import { MoreHorizontal, X } from 'lucide-react'
+import { Download, MoreHorizontal, Banknote, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 // HR/Admin salary screen: everyone's pay for a month, edit structure, view slip.
@@ -163,7 +163,12 @@ export default function AdminSalary() {
   return (
     <div>
       <div className="page-head">
-        <h2>Salaries</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <Banknote size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Salaries
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Monthly payroll, salary structure, and payslips</p>
+        </div>
       </div>
 
       <div className="card">
@@ -208,7 +213,7 @@ export default function AdminSalary() {
               onClick={exportSalariesExcel}
               disabled={table.rows.length === 0}
             >
-              Export to Excel
+              <Download size={14} style={{ marginRight: 4 }} />Export to Excel
             </button>
           }
         />
@@ -361,9 +366,8 @@ export default function AdminSalary() {
       )}
 
       <p className="hint">
-        Delhi has no Professional Tax, so it is not deducted. TDS here is a simple
-        fixed amount per employee; full income-tax slab calculation can be added
-        later.
+        Delhi does not have Professional Tax, so it is not deducted. TDS is currently a simple
+        fixed amount per employee. Full income-tax slab calculation can be added in a future update.
       </p>
     </div>
   )

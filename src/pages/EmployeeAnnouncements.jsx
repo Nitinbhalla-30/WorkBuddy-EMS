@@ -13,7 +13,7 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
-import { X } from 'lucide-react'
+import { Megaphone, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const ANNOUNCEMENT_TYPE_OPTS = [
@@ -95,7 +95,12 @@ export default function EmployeeAnnouncements() {
   return (
     <div>
       <div className="page-head">
-        <h2>Announcements</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <Megaphone size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Announcements
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Company-wide updates, events, and policy changes</p>
+        </div>
         <span className="muted">{announcements.length} message(s)</span>
       </div>
 
@@ -210,7 +215,7 @@ export default function EmployeeAnnouncements() {
       )}
 
       <p className="hint">
-        Stay updated with company news, policy changes, events, and internal job postings.
+        Stay up to date with company news, policy changes, upcoming events, and internal announcements.
       </p>
     </div>
   )

@@ -91,8 +91,8 @@ export default function ReimbursementForm({ onSubmit, onCancel, initial = null, 
       </label>
 
       <p className="hint first">
-        Submit claims for company-related expenses such as travel, conveyance, or meals.
-        HR will review your claim and process payment after approval.
+        Submit claims for work-related expenses such as travel, conveyance, or meals.
+        HR will review your claim and arrange payment once approved.
       </p>
 
       <div className="button-row">

@@ -191,7 +191,7 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
                   </label>
                 </>
               ) : (
-                <p className="hint first">The company provides cab service free of charge.</p>
+                <p className="hint first">The company provides cab service at no cost to employees.</p>
               )}
 
               <label className="checkbox-row">
@@ -207,9 +207,8 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
               )}
 
               <p className="hint first">
-                Drag the pin (or tap the map) to your exact pickup location. This
-                Google Map point is mandatory and your driver uses it to navigate
-                to you.
+                Drag the pin (or tap the map) to set your exact pickup location. This
+                location is shared with your driver so they can navigate to you.
               </p>
               <label className="field">
                 <span>Pickup point (where the cab picks you up) *</span>
@@ -220,7 +219,7 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
           {p.wantsCabService === false && (
             <p className="hint first">
               You will not be included in cab routes. You can opt in later by
-              updating your details and sharing your pickup location.
+              updating your details in My Details and sharing your pickup location.
             </p>
           )}
         </div>
@@ -232,7 +231,7 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
           <h3 className="section-title first">Upload documents</h3>
           <p className="hint first">
             Please upload clear <strong>PDF</strong> copies, self-signed. Items
-            marked <span className="req">*</span> are required.
+            marked <span className="req">*</span> are required for onboarding.
           </p>
           {DOCUMENT_TYPES.map((d) => (
             <FileField
@@ -316,13 +315,13 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
         <div className="card">
           <h3 className="section-title first">Review your details</h3>
           <p className="hint first">
-            Please check everything below. Once you submit, the form is locked and
-            sent to HR. If they need a change, they will return it to you.
+            Please review everything below carefully. Once you submit, the form is locked and
+            sent to HR. If any changes are needed, HR will return it to you.
           </p>
           {profile.status === 'update_approved' && (
             <p className="hint">
               You are submitting <strong>updated</strong> details. HR will verify
-              your changes before they are final.
+              your changes before they take effect.
             </p>
           )}
           <ProfileView profile={form} />

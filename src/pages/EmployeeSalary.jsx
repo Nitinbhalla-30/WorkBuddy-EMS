@@ -8,6 +8,7 @@ import {
   monthKey
 } from '../utils/salary.js'
 import html2pdf from 'html2pdf.js'
+import { Banknote, Download } from 'lucide-react'
 
 // The employee's own salary slip, with a month picker. The current month
 // is not offered because its slip is only finalized once the month ends.
@@ -51,7 +52,12 @@ export default function EmployeeSalary() {
   return (
     <div>
       <div className="page-head">
-        <h2>My Salary</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <Banknote size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />My Salary
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Review your monthly payslip and salary breakdown</p>
+        </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <label className="field inline">
             <select value={selected} onChange={(e) => setSelected(e.target.value)}>
@@ -61,7 +67,7 @@ export default function EmployeeSalary() {
             </select>
           </label>
           <button className="btn btn-primary btn-tiny" onClick={downloadPDF}>
-            Download PDF
+            <Download size={14} style={{ marginRight: 4 }} />Download PDF
           </button>
         </div>
       </div>
@@ -71,9 +77,9 @@ export default function EmployeeSalary() {
       </div>
 
       <p className="hint">
-        This is based on your attendance and approved leaves. Absent days and
-        approved unpaid leave reduce the pay. The current month is not listed
-        because its salary slip is only finalized after the month ends.
+        Your salary is calculated based on your attendance and approved leaves.
+        Absent days and approved unpaid leave will reduce your pay.
+        The current month is not shown because its salary is finalized only after the month ends.
       </p>
     </div>
   )

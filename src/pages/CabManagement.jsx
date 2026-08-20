@@ -41,7 +41,7 @@ import {
   tripLabel,
   vehicleById
 } from '../utils/cab.js'
-import { Check, MoreHorizontal, X } from 'lucide-react'
+import { CarFront, Check, MoreHorizontal, X } from 'lucide-react'
 
 const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Requests', 'Messages', 'Today']
 
@@ -71,7 +71,12 @@ export default function CabManagement() {
   return (
     <div>
       <div className="page-head">
-        <h2>Cab Management</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <CarFront size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Cab Management
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Manage vehicles, drivers, trips, and employee cab assignments</p>
+        </div>
         <span className="muted">{vehicles.length} vehicles, {drivers.length} drivers, {trips.length} trips</span>
       </div>
 
@@ -92,6 +97,12 @@ export default function CabManagement() {
       {tab === 4 && <RequestsTab requests={requests} nameOf={nameOf} bump={bump} />}
       {tab === 5 && <MessagesTab employees={employees} unreadByEmp={unreadByEmp} bump={bump} />}
       {tab === 6 && <TodayTab employees={employees} bump={bump} />}
+
+      <p className="hint">
+        Manage vehicles, drivers, and trips from the tabs above. Use Assign to link employees
+        to pickup and drop trips. Open a driver&rsquo;s run sheet to share their schedule on the
+        driver&rsquo;s phone. Cancellation summary shows who opted out of today&rsquo;s cab.
+      </p>
     </div>
   )
 }
@@ -295,7 +306,7 @@ function VehiclesTab({ vehicles, bump }) {
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Are you sure you want to delete this vehicle? This action cannot be undone.
+              This will permanently delete the vehicle. You will not be able to restore it.
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={confirmDelete}>Delete</button>
@@ -408,7 +419,7 @@ function DriversTab({ drivers, bump }) {
       </div>
       <p className="hint first">
         Each driver needs a <strong>WorkBuddy ID</strong> and <strong>PIN</strong> to log in and
-        view their run sheet. Set or change a driver&rsquo;s PIN in the table below.
+        view their run sheet. Set or reset a driver&rsquo;s PIN using the table below.
       </p>
       <table className="table">
         <colgroup>
@@ -566,7 +577,7 @@ function DriversTab({ drivers, bump }) {
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Are you sure you want to delete this driver? This action cannot be undone.
+              This will permanently delete the driver and remove them from all trips. You will not be able to restore it.
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={confirmDelete}>Delete</button>
@@ -823,6 +834,16 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
         }
       />
       <table className="table">
+        <colgroup>
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '16%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '18%' }} />
+          <col style={{ width: '15%' }} />
+        </colgroup>
         <thead>
           <tr>
             <SortableTh label="Direction" keyName="direction" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
@@ -940,7 +961,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Are you sure you want to delete this trip? This action cannot be undone.
+              This will permanently delete the trip. You will not be able to restore it.
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={confirmDelete}>Delete</button>
@@ -1039,6 +1060,12 @@ function AssignTab({ employees, trips, assignments, bump }) {
         onFilterChange={assignTable.setFilter}
       />
       <table className="table">
+        <colgroup>
+          <col style={{ width: '30%' }} />
+          <col style={{ width: '25%' }} />
+          <col style={{ width: '25%' }} />
+          <col style={{ width: '20%' }} />
+        </colgroup>
         <thead>
           <tr>
             <SortableTh label="Employee" keyName="name" sortKey={assignTable.sortKey} sortDir={assignTable.sortDir} onSort={assignTable.toggleSort} />
@@ -1087,7 +1114,7 @@ function AssignTab({ employees, trips, assignments, bump }) {
         endIndex={assignEnd}
         onPageChange={setAssignPage}
       />
-      <p className="hint">Changes save automatically when you pick a trip.</p>
+      <p className="hint">Changes are saved automatically when you select a trip.</p>
     </div>
   )
 }
@@ -1350,13 +1377,19 @@ function TodayTab({ employees, bump }) {
           </button>
         </div>
         <p className="hint first">
-          Open or share a driver&rsquo;s run sheet link on their phone before the shift starts.
-          The page shows their full pickup and drop list with addresses, times, and map links.
+          Open or share a driver&rsquo;s run sheet link on their phone before the shift begins.
+          The page shows their complete pickup and drop list with addresses, times, and map links.
         </p>
         {drivers.length === 0 && <p className="muted">No drivers added yet.</p>}
         {drivers.length > 0 && (
           <>
             <table className="table">
+              <colgroup>
+                <col style={{ width: '35%' }} />
+                <col style={{ width: '25%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+              </colgroup>
               <thead>
                 <tr>
                   <SortableTh label="Driver" keyName="name" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />

@@ -143,7 +143,7 @@ export default function LeaveForm({ onApply, onCancel, initial = null, submitLab
 
       {requestedDays > 0 && (
         <p className="hint first">
-          This request is for <strong>{requestedDays}</strong> working day(s). Weekends are not counted.
+          This equals <strong>{requestedDays}</strong> working day(s) — weekends are excluded automatically.
         </p>
       )}
 

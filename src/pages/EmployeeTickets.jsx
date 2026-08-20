@@ -18,7 +18,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { MoreHorizontal, X } from 'lucide-react'
+import { MoreHorizontal, MessageSquareText, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TICKET_KIND_OPTS = [
@@ -144,7 +144,12 @@ export default function EmployeeTickets() {
   return (
     <div>
       <div className="page-head">
-        <h2>My Queries &amp; Grievances</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <MessageSquareText size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />My Queries &amp; Grievances
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Raise and track your queries and confidential grievances</p>
+        </div>
         <button
           className="btn btn-primary btn-tiny"
           onClick={() => { setShowForm((s) => !s); setOpenId(null) }}
@@ -161,9 +166,8 @@ export default function EmployeeTickets() {
                 <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)} aria-label="Close"><X size={15} /></button>
               </div>
               <p className="hint first">
-                Raise a routine question (payslip, leave, PF, policy, IT) or a
-                serious concern. Grievances are kept confidential, and you can
-                choose to stay anonymous.
+                Raise a routine question (about payslip, leave, PF, policy, IT, etc.) or report a
+                serious concern. All grievances are kept confidential, and you can choose to submit anonymously.
               </p>
               <TicketForm onCreate={handleCreate} onCancel={() => setShowForm(false)} />
             </div>
@@ -178,7 +182,7 @@ export default function EmployeeTickets() {
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              You can edit details while the ticket is still open and HR has not started working on it.
+              You can edit the ticket details while it is still open and HR has not started reviewing it.
             </p>
             <TicketForm
               key={editTicket.id}
@@ -296,6 +300,12 @@ export default function EmployeeTickets() {
         />
       </div>
 
+      <p className="hint">
+        Queries are for routine questions about payslip, leave, PF, policy, or IT. Grievances
+        are for serious concerns and are kept confidential. You can submit either type anonymously.
+        Use Edit to update a pending ticket, or Withdraw to cancel it permanently.
+      </p>
+
       {open && (
         <Modal onClose={closeTicket} title={open.subject}>
           <div className="modal-form modal-form-wide">
@@ -336,8 +346,8 @@ export default function EmployeeTickets() {
             </div>
             <p className="hint first">
               {withdrawTicket?.kind === 'grievance'
-                ? 'Are you sure you want to withdraw this grievance? This action cannot be undone.'
-                : 'Are you sure you want to withdraw this query? This action cannot be undone.'}
+                ? 'This will cancel your grievance permanently. You will not be able to restore it afterwards.'
+                : 'This will cancel your query permanently. You will not be able to restore it afterwards.'}
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={confirmWithdraw}>

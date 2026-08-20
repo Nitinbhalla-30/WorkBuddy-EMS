@@ -18,6 +18,7 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import TeamTasksPanel from './TeamTasks.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
+import { Users } from 'lucide-react'
 
 // Merged team module. Managers get three tabs: the team directory, the
 // team's tasks, and the team's paid-leave requests waiting for approval.
@@ -123,7 +124,12 @@ export default function MyTeam() {
   return (
     <div>
       <div className="page-head">
-        <h2>My Team</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <Users size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />My Team
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>{user.isManager ? 'View your teammates, attendance averages, and task overview' : 'View your teammates and their contact details'}</p>
+        </div>
         <span className="muted">{teammates.length} team member(s)</span>
       </div>
 
@@ -159,9 +165,9 @@ export default function MyTeam() {
         <div className="card">
           <h3 className="section-title first">Team leave requests</h3>
           <p className="hint first">
-            Paid-leave requests from your team come to you first. Approve to send
-            them to HR for final approval, or reject with a reason. Requests you
-            do not answer in time move to HR automatically.
+            Paid-leave requests from your team come to you first as their manager.
+            Approve to forward them to HR for final approval, or reject with a reason.
+            If you do not respond in time, the request is sent to HR automatically.
           </p>
           <table className="table">
             <thead>
@@ -383,12 +389,11 @@ export default function MyTeam() {
           </div>
 
           <p className="hint">
-            Contact details come from employee records and verified profiles
+            Contact details are sourced from employee records and verified profiles
             {user.isManager && (
-              <>; averages cover this month&rsquo;s attendance so far and task counts
-              reflect current task statuses</>
+              <>; the attendance averages and task counts reflect this month&rsquo;s data so far</>
             )}.
-            If something is missing or wrong, ask HR to update it.
+            If anything looks incorrect, please ask HR to update it.
           </p>
         </div>
       )}

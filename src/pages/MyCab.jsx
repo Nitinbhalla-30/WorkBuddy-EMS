@@ -35,7 +35,7 @@ import {
   tripById,
   vehicleById
 } from '../utils/cab.js'
-import { Check, X } from 'lucide-react'
+import { CarFront, Check, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TABS = ["Today's Cab", 'My Change Requests', 'Chat with Transport Desk']
@@ -133,7 +133,12 @@ export default function MyCab() {
   return (
     <div>
       <div className="page-head">
-        <h2>My Cab</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <CarFront size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />My Cab
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Track your cab assignment, pickup and drop preferences</p>
+        </div>
       </div>
 
       <div className="tabs">
@@ -162,9 +167,9 @@ export default function MyCab() {
             <div className="cab-cancellation-panel">
               <div className="cab-cancellation-title">Today&rsquo;s cab preference</div>
               <p className="hint first">
-                Let the driver know in advance if you don&rsquo;t need a pickup or drop today.
-                Toggle a button below and the driver&rsquo;s list will update automatically.
-                Changes lock {cutoffHours} hour{cutoffHours === 1 ? '' : 's'} before your shift
+                Let the driver know if you don&rsquo;t need a pickup or drop today.
+                Toggle a button below and the driver&rsquo;s list updates automatically.
+                Changes are locked {cutoffHours} hour{cutoffHours === 1 ? '' : 's'} before your shift
                 starts (pickup) and ends (drop).
               </p>
               <div className="cab-cancellation-actions">
@@ -344,6 +349,12 @@ export default function MyCab() {
         />
       )}
 
+      <p className="hint">
+        Today&rsquo;s Cab shows your pickup and drop details, including driver contact and vehicle
+        number. Use Change Requests to ask for a temporary location or time change (valid for 1–2 days).
+        Chat here if the cab is late or the driver isn&rsquo;t responding.
+      </p>
+
       {/* Temporary change request form - Modal */}
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Request a temporary change">
@@ -398,8 +409,8 @@ function RequestForm({ pickupTrip, onSubmit, onCancel }) {
       </div>
       <form onSubmit={submit}>
         <p className="hint first">
-          For 1 or 2 days only. Must be raised at least 5 hours before your pickup
-          time ({formatTime12(pickupTrip?.time)}).
+          Valid for 1 or 2 days only. Must be submitted at least 5 hours before your scheduled
+          pickup time ({formatTime12(pickupTrip?.time)}).
         </p>
 
         {error && <div className="error-box">{error}</div>}
@@ -462,8 +473,8 @@ function ChatSection({ messages, onSend }) {
   return (
     <>
       <p className="hint first cab-chat-hint">
-        Cab is late, driver isn&rsquo;t answering, or something else is wrong?
-        Send a quick message instead of calling.
+        Need help? If the cab is late, the driver isn&rsquo;t responding, or something else is wrong,
+        send a message here instead of calling.
       </p>
       <div className="card">
         <div className="thread">

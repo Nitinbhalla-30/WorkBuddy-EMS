@@ -22,7 +22,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { MoreHorizontal, X } from 'lucide-react'
+import { MessageSquareText, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TICKET_KIND_OPTS = [
@@ -108,7 +108,12 @@ export default function AdminTickets() {
   return (
     <div>
       <div className="page-head">
-        <h2>Queries &amp; Grievances</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <MessageSquareText size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Queries &amp; Grievances
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Review and resolve employee queries and confidential grievances</p>
+        </div>
         <span className="muted">{openCount} open</span>
       </div>
 
@@ -245,10 +250,9 @@ export default function AdminTickets() {
       )}
 
       <p className="hint">
-        Grievances are marked confidential and anonymous ones hide the
-        employee&apos;s name. With a single admin login today, everything is
-        visible to whoever holds it; separate HR-staff and Internal-Committee
-        access comes with the real login phase.
+        Grievances are marked confidential. Anonymous tickets hide the employee&rsquo;s name.
+        With the current single-admin setup, all tickets are visible to whoever is logged in as admin.
+        Separate HR-staff and Internal-Committee access will be added in a future update.
       </p>
     </div>
   )

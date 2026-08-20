@@ -17,7 +17,7 @@ export function directionLabel(dir) {
 export function formatDateTime(iso) {
   if (!iso) return '--'
   const d = new Date(iso)
-  const date = d.toLocaleDateString([], { day: '2-digit', month: 'short' })
+  const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
   const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   return `${date}, ${time}`
 }

@@ -125,7 +125,7 @@ export default function NotificationBell({ employeeId, viewerRole = 'employee' }
               <h3 className="section-title first">Clear all notifications</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmClear(false)} aria-label="Close"><X size={15} /></button>
             </div>
-            <p className="hint first">Are you sure you want to clear your notification list? New activity will still show up again.</p>
+            <p className="hint first">This will clear all your notifications. New activity will still appear as it happens.</p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={handleClearAll}>
                 Clear all

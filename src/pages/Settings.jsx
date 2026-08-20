@@ -7,7 +7,7 @@ import {
 import { fetchPublicIp } from '../utils/network.js'
 import Modal from '../components/Modal.jsx'
 import TimeInput from '../components/TimeInput.jsx'
-import { Inbox, X } from 'lucide-react'
+import { Building2, Clock, Car, Coffee, CalendarDays, Shield, Wifi, Plus, Trash2, Check, RotateCcw, Inbox, Settings as SettingsIcon, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 // HR/Admin settings: branding, timing rules, and the office-internet check.
@@ -17,6 +17,7 @@ export default function Settings() {
   const [detectedIp, setDetectedIp] = useState('')
   const [detecting, setDetecting] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [deleteHolidayId, setDeleteHolidayId] = useState(null)
 
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -61,11 +62,21 @@ export default function Settings() {
   }
 
   function removeHoliday(id) {
+    setDeleteHolidayId(id)
+  }
+
+  function confirmDeleteHoliday() {
+    if (!deleteHolidayId) return
     setForm((f) => ({
       ...f,
-      companyHolidays: (f.companyHolidays || []).filter((h) => h.id !== id)
+      companyHolidays: (f.companyHolidays || []).filter((h) => h.id !== deleteHolidayId)
     }))
+    setDeleteHolidayId(null)
     setSaved(false)
+  }
+
+  function cancelDeleteHoliday() {
+    setDeleteHolidayId(null)
   }
 
   function handleSave(e) {
@@ -99,11 +110,19 @@ export default function Settings() {
   return (
     <div>
       <div className="page-head">
-        <h2>Settings</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <SettingsIcon size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Settings
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Configure company-wide rules and preferences</p>
+        </div>
       </div>
 
       <form className="card" onSubmit={handleSave}>
-        <h3 className="section-title first">Company</h3>
+        <h3 className="section-title first">
+          <Building2 size={15} style={{ marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} aria-hidden="true" />
+          Company
+        </h3>
         <label className="field">
           <span>Company name (shown at the top)</span>
           <input
@@ -112,7 +131,10 @@ export default function Settings() {
           />
         </label>
 
-        <h3 className="section-title">Work timing rules</h3>
+        <h3 className="section-title">
+          <Clock size={15} style={{ marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} aria-hidden="true" />
+          Work timing rules
+        </h3>
         <div className="two-col">
           <label className="field">
             <span>Office start time (shift start)</span>
@@ -133,8 +155,8 @@ export default function Settings() {
           </label>
         </div>
         <p className="hint">
-          Employees are on time until office start plus the grace period. Example:
-          start 10:30 with 20 minutes grace → late only after 10:50.
+          Employees are considered on time until the office start time plus the grace period.
+          For example: start at 10:30 with 20 minutes grace &rarr; marked late only after 10:50.
         </p>
         <label className="field">
           <span>Standard work hours per day</span>
@@ -147,7 +169,10 @@ export default function Settings() {
           />
         </label>
 
-        <h3 className="section-title">Cab service rules</h3>
+        <h3 className="section-title">
+          <Car size={15} style={{ marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} aria-hidden="true" />
+          Cab service rules
+        </h3>
         <label className="field">
           <span>Monthly cab service charge per employee (₹)</span>
           <input
@@ -159,9 +184,9 @@ export default function Settings() {
           />
         </label>
         <p className="hint">
-          Employees who opt in to the company cab service see this amount in
-          My Details and must agree to it before their profile can be submitted.
-          Set 0 to offer the service free of charge.
+          Employees who opt in to the company cab service will see this amount in
+          My Details and must confirm it before their profile can be submitted.
+          Set to 0 to offer the cab service free of charge.
         </p>
         <label className="field">
           <span>Maximum wait time for employees (minutes)</span>
@@ -185,15 +210,18 @@ export default function Settings() {
         <p className="hint">
           Employees can skip or restore today&rsquo;s pickup until this many hours
           before their shift starts, and today&rsquo;s drop until this many hours
-          before their shift ends. After that the buttons lock, giving drivers
-          enough time to plan stable run sheets. Example: 3 hours with a 09:30
-          shift start &rarr; pickup changes lock at 06:30 AM.
+          before their shift ends. After that, the buttons are locked to give drivers
+          enough time to plan their routes. For example: 3 hours with a 09:30
+          shift start &rarr; changes lock at 06:30 AM.
         </p>
 
-        <h3 className="section-title">Lunch policy</h3>
+        <h3 className="section-title">
+          <Coffee size={15} style={{ marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} aria-hidden="true" />
+          Lunch policy
+        </h3>
         <p className="hint first">
-          These details are shown to every employee on My Attendance so new joiners
-          know where and how long they can take lunch without HR repeating it.
+          These details are shown to every employee on their My Attendance page so that new joiners
+          know where and how long they can take their lunch break.
         </p>
         <div className="two-col">
           <label className="field">
@@ -242,10 +270,13 @@ export default function Settings() {
           />
         </label>
 
-        <h3 className="section-title">Leave allowance (per year)</h3>
+        <h3 className="section-title">
+          <CalendarDays size={15} style={{ marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} aria-hidden="true" />
+          Leave allowance (per year)
+        </h3>
         <p className="hint first">
-          Paid-leave days given to every employee each year. Half day and short
-          leave are counted per request (each approved request uses one). Unpaid
+          The number of paid-leave days given to every employee each year. Half-day and short
+          leave each count as one request. Unpaid
           leave has no limit.
         </p>
         <div className="two-col">
@@ -296,12 +327,15 @@ export default function Settings() {
           </label>
         </div>
 
-        <h3 className="section-title">Leave approval rules</h3>
+        <h3 className="section-title">
+          <Shield size={15} style={{ marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} aria-hidden="true" />
+          Leave approval rules
+        </h3>
         <p className="hint first">
           Employees can apply for paid leave only after their probation period
-          ends and only while they have balance left. New paid-leave requests go
-          to the employee's manager first; if the manager does not approve or
-          reject within the days set below, the request moves to HR
+          ends and while they have remaining balance. New paid-leave requests go
+          to the employee&rsquo;s manager first; if the manager does not respond
+          within the number of days set below, the request is forwarded to HR
           automatically for final approval.
         </p>
         <div className="two-col">
@@ -325,14 +359,23 @@ export default function Settings() {
           </label>
         </div>
 
-        <h3 className="section-title">Company holidays</h3>
+        <h3 className="section-title">
+          <CalendarDays size={15} style={{ marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} aria-hidden="true" />
+          Company holidays
+        </h3>
         <p className="hint first">
-          List dates that may be public holidays or special occasions. Tick
+          Add dates that may be public holidays or special occasions. Tick
           <strong> Company holiday</strong> only for days when employees get a
-          day off. Unticked dates are shown here for reference but employees may
-          still be expected to work.
+          day off. Unticked dates are shown here for reference but employees are
+          expected to work as usual.
         </p>
-        <table className="table" style={{ marginTop: '12px' }}>
+        <table className="table" style={{ marginTop: '12px', tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '155px' }} />
+            <col style={{ width: '300px' }} />
+            <col style={{ width: '200px' }} />
+            <col style={{ width: '50px' }} />
+          </colgroup>
           <thead>
             <tr>
               <th>Date</th>
@@ -362,7 +405,7 @@ export default function Settings() {
                   />
                 </td>
                 <td>
-                  <label className="checkbox-row" style={{ margin: 0 }}>
+                  <label className="checkbox-row" style={{ margin: 0, whiteSpace: 'nowrap', justifyContent: 'flex-start' }}>
                     <input
                       type="checkbox"
                       checked={!!h.isHoliday}
@@ -376,8 +419,9 @@ export default function Settings() {
                     type="button"
                     className="btn btn-tiny btn-light"
                     onClick={() => removeHoliday(h.id)}
+                    aria-label={`Remove ${h.name || 'holiday'}`}
                   >
-                    Remove
+                    <Trash2 size={14} aria-hidden="true" />
                   </button>
                 </td>
               </tr>
@@ -386,13 +430,16 @@ export default function Settings() {
         </table>
         <div className="button-row">
           <button type="button" className="btn btn-light btn-tiny" onClick={addHoliday}>
-            Add date
+            <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" /> Add date
           </button>
         </div>
 
-        <h3 className="section-title">Office internet check</h3>
+        <h3 className="section-title">
+          <Wifi size={15} style={{ marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} aria-hidden="true" />
+          Office internet check
+        </h3>
         <p className="hint first">
-          This confirms a person is really in the office. When someone marks
+          This confirms that a person is actually at the office. When someone marks
           attendance, the app checks that their internet address matches the
           office address below.
         </p>
@@ -408,6 +455,7 @@ export default function Settings() {
 
         <div className="detect-row">
           <button type="button" className="btn btn-light" onClick={detectIp} disabled={detecting}>
+            <Wifi size={14} style={{ marginRight: 6 }} aria-hidden="true" />
             {detecting ? 'Checking...' : 'Show this computer\u2019s address'}
           </button>
           {detectedIp && (
@@ -419,7 +467,7 @@ export default function Settings() {
                   className="btn btn-tiny"
                   onClick={() => update('officeIp', detectedIp)}
                 >
-                  Use this
+                  <Check size={13} style={{ marginRight: 3 }} aria-hidden="true" /> Use this
                 </button>
               )}
             </span>
@@ -439,16 +487,21 @@ export default function Settings() {
         </label>
 
         <div className="button-row">
-          <button className="btn btn-primary" type="submit">Save settings</button>
+          <button className="btn btn-primary" type="submit">
+            <Check size={15} style={{ marginRight: 6 }} aria-hidden="true" /> Save settings
+          </button>
           {saved && <span className="saved-note">Saved!</span>}
         </div>
       </form>
 
-      <h3 className="section-title">Testing tools</h3>
-      <div className="card">
+      <div className="card" style={{ marginTop: 20 }}>
+        <h3 className="section-title first" style={{ display: 'flex', alignItems: 'center' }}>
+          <RotateCcw size={15} style={{ marginRight: 6, opacity: 0.7 }} aria-hidden="true" />
+          Testing tools
+        </h3>
         <p className="hint first">
-          Load the built-in sample employees and attendance again. Use this if
-          you changed the data while testing and want a clean start.
+          Reload the built-in sample employees and attendance data. Use this if
+          you changed the data during testing and want to start fresh.
         </p>
         <button className="btn btn-danger" onClick={handleReset}>
           Reset to sample data
@@ -463,13 +516,35 @@ export default function Settings() {
               <button type="button" className="btn btn-tiny btn-light" onClick={cancelReset} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              This will erase all changes and load the sample data again. Continue?
+              This will erase all current data and reload the sample data. This cannot be undone. Continue?
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={confirmReset}>
-                Reset
+                <RotateCcw size={14} style={{ marginRight: 6 }} aria-hidden="true" /> Reset
               </button>
               <button type="button" className="btn btn-light" onClick={cancelReset}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteHolidayId && (
+        <Modal onClose={cancelDeleteHoliday} title="Confirm Delete">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Delete</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDeleteHoliday} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This will permanently delete the holiday entry. You will not be able to restore it.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmDeleteHoliday}>
+                Delete
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelDeleteHoliday}>
                 Cancel
               </button>
             </div>

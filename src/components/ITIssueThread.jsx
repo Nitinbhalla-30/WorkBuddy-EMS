@@ -24,7 +24,7 @@ export default function ITIssueThread({ issue, viewerRole, onReply, onClose }) {
       <h3 className="section-title">Discussion</h3>
       {comments.length === 0 ? (
         <p className="hint first">
-          No messages yet. IT staff can ask questions here and you can reply.
+          No messages yet. IT staff will use this space to ask questions — feel free to reply with more details.
         </p>
       ) : (
         <div className="thread">
@@ -46,7 +46,7 @@ export default function ITIssueThread({ issue, viewerRole, onReply, onClose }) {
       {noReply ? (
         <>
           <p className="hint first">
-            This issue was withdrawn. No more messages can be added.
+            This issue was withdrawn and is now closed. No further messages can be added.
           </p>
           {onClose && (
             <div className="button-row">

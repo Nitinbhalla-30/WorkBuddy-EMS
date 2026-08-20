@@ -16,7 +16,7 @@ import {
 import ProfileWizard from '../components/ProfileWizard.jsx'
 import ProfileView from '../components/ProfileView.jsx'
 import Modal from '../components/Modal.jsx'
-import { X } from 'lucide-react'
+import { CircleUser, X } from 'lucide-react'
 
 // The employee's own details. Onboarding, or update-after-verification with HR approval.
 export default function EmployeeProfile() {
@@ -57,7 +57,12 @@ export default function EmployeeProfile() {
   return (
     <div>
       <div className="page-head">
-        <h2>My Details</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <CircleUser size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />My Details
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>View and manage your personal and employment details</p>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span className={`tag ${profileStatusTagClass(profile.status)}`}>
             {profileStatusLabel(profile.status)}
@@ -78,8 +83,8 @@ export default function EmployeeProfile() {
         <>
           {profile.status === 'draft' && (
             <p className="hint first">
-              Welcome! Please fill in your details, upload your profile picture, and upload your documents. You
-              can save a draft and finish later. Submit when everything is ready.
+              Welcome! Please complete your personal details, upload a profile photo, and submit your documents.
+              You can save a draft and come back later. When everything is ready, submit for HR to review.
             </p>
           )}
           {profile.status === 'update_approved' && (
@@ -141,9 +146,8 @@ export default function EmployeeProfile() {
                      aria-label="Close"><X size={15} /></button>
                   </div>
                   <p className="hint first">
-                    Your details are locked after HR verification. Send a request
-                    to HR for permission to change anything. After approval, you
-                    can edit and submit again for HR to verify.
+                    Your details are locked once HR has verified them. If you need to make a change,
+                    submit a request to HR for permission. Once approved, you can edit and resubmit for verification.
                   </p>
                   <label className="field">
                     <span>Reason for update (optional)</span>
@@ -174,6 +178,12 @@ export default function EmployeeProfile() {
           )}
         </>
       )}
+
+      <p className="hint">
+        Fill in your personal details, upload a profile photo, and submit your documents for HR
+        to verify. Once verified, your details are locked. To change anything afterwards, use
+        &ldquo;Request update&rdquo; and wait for HR to unlock the form.
+      </p>
     </div>
   )
 }

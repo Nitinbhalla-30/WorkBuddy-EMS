@@ -27,7 +27,7 @@ import LeaveThread from '../components/LeaveThread.jsx'
 import Modal from '../components/Modal.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { MoreHorizontal, X } from 'lucide-react'
+import { CalendarDays, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const STATUS_FILTER_OPTS = [
@@ -169,7 +169,12 @@ export default function AdminLeaves() {
   return (
     <div>
       <div className="page-head">
-        <h2>Leave Requests</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <CalendarDays size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Leave Requests
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Review, approve, or reject employee leave requests</p>
+        </div>
         <span className="muted">{table.count} shown</span>
       </div>
 
@@ -202,14 +207,14 @@ export default function AdminLeaves() {
         />
         <table className="table">
           <colgroup>
-            <col style={{ width: '11.5%' }} />
+            <col style={{ width: '15%' }} />
             <col style={{ width: '11%' }} />
             <col style={{ width: '10%' }} />
             <col style={{ width: '10%' }} />
             <col style={{ width: '6.5%' }} />
             <col style={{ width: '16.5%' }} />
             <col style={{ width: '12%' }} />
-            <col style={{ width: '16.5%' }} />
+            <col style={{ width: '13%' }} />
             <col style={{ width: '6%' }} />
           </colgroup>
           <thead>
@@ -403,8 +408,8 @@ export default function AdminLeaves() {
       )}
 
       <p className="hint">
-        Open a request to ask questions, then approve or reject. Employees see who decided
-        and any rejection reason on their My Leaves screen.
+        Open a leave request to review it, ask questions, then approve or reject.
+        The employee will see who made the decision and any rejection reason on their My Leaves page.
       </p>
     </div>
   )

@@ -26,7 +26,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import ITIssueThread from '../components/ITIssueThread.jsx'
 import Modal from '../components/Modal.jsx'
-import { MoreHorizontal, X } from 'lucide-react'
+import { MoreHorizontal, Wrench, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const IT_STATUS_FILTER_OPTS = [
@@ -85,7 +85,7 @@ function ScreenshotField({ attachment, onChange }) {
         )}
       </div>
       <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePick} />
-      <div className="file-hint">Attach a screenshot of the error message so IT can solve it faster.</div>
+      <div className="file-hint">Attach a screenshot of the error to help IT diagnose and resolve the issue faster.</div>
       {error && <div className="error-box first">{error}</div>}
       {attachment && attachment.dataUrl && (
         <img
@@ -315,7 +315,12 @@ export default function EmployeeITHelpDesk() {
   return (
     <div>
       <div className="page-head">
-        <h2>My IT Issues</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <Wrench size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />My IT Issues
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Report and track your IT support requests</p>
+        </div>
         <button
           className="btn btn-primary btn-tiny"
           onClick={openCreateForm}
@@ -349,7 +354,7 @@ export default function EmployeeITHelpDesk() {
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              You can edit an issue while it is open and not yet assigned to IT staff.
+              You can edit the issue details while it is still open and has not been assigned to IT staff yet.
             </p>
             <ITIssueForm
               formData={formData}
@@ -593,7 +598,7 @@ export default function EmployeeITHelpDesk() {
               <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Are you sure you want to withdraw this IT issue? This action cannot be undone.
+              This will cancel your IT issue permanently. You will not be able to restore it afterwards.
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={confirmWithdraw}>
@@ -608,8 +613,8 @@ export default function EmployeeITHelpDesk() {
       )}
 
       <p className="hint">
-        Report computer-related issues here. You can edit or withdraw a request while it is
-        still open. Once IT staff are assigned, contact them directly for changes.
+        Use this page to report computer or software issues. You can edit or withdraw your request
+        while it is still open. Once IT staff are assigned, please contact them directly for any changes.
       </p>
     </div>
   )

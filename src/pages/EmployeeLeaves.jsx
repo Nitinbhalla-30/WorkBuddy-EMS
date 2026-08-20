@@ -204,7 +204,12 @@ export default function EmployeeLeaves() {
   return (
     <div>
       <div className="page-head">
-        <h2>My Leaves</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <CalendarDays size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />My Leaves
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Apply for leave, track approvals, and view your leave balance</p>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span className="muted">Year {currentYear}</span>
           <button
@@ -230,8 +235,8 @@ export default function EmployeeLeaves() {
                aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Official company holidays when you do not need to work. Other public
-              dates not listed here may still be working days for employees.
+              These are the official company holidays. You do not need to mark leave for these days.
+              Any date not listed here is a regular working day.
             </p>
             <table className="table">
               <thead>
@@ -277,10 +282,10 @@ export default function EmployeeLeaves() {
                  aria-label="Close"><X size={15} /></button>
               </div>
               <p className="hint first">
-                Choose your leave type and dates. Weekends are not counted toward your request.
-                For <strong>sick leave</strong>, upload a supporting document such as a medical certificate.
-                Paid leave needs an available balance and a completed probation period; it first goes to
-                your manager and then to HR for final approval.
+                Select your leave type and dates below. Weekends are automatically excluded from the count.
+                For <strong>sick leave</strong>, please upload a medical certificate or similar document.
+                Paid leave requires a remaining balance and completed probation; requests go to your
+                manager first, then to HR for final approval.
               </p>
               <LeaveForm
                 onApply={handleApply}
@@ -302,7 +307,7 @@ export default function EmployeeLeaves() {
                aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              You can change dates and details while the request is still pending.
+              You can update the dates or details at any time while this request is still pending.
             </p>
             <LeaveForm
               key={editLeave.id}
@@ -477,6 +482,12 @@ export default function EmployeeLeaves() {
         />
       </div>
 
+      <p className="hint">
+        Your leave balance updates as requests are approved or rejected. Paid leave needs your
+        manager&rsquo;s approval first, then HR&rsquo;s final sign-off. Sick leave does not
+        require a balance — just upload a medical certificate if asked.
+      </p>
+
       {openLeave && (
         <Modal onClose={closeLeaveModal} title="Leave request">
           <div className="modal-form modal-form-wide">
@@ -548,7 +559,7 @@ export default function EmployeeLeaves() {
               <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Are you sure you want to withdraw this leave request? This action cannot be undone.
+              This will cancel your leave request permanently. You will not be able to restore it afterwards.
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={confirmWithdraw}>

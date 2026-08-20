@@ -38,8 +38,8 @@ export default function ReimbursementThread({
       {pending ? (
         <p className="hint first">
           {isAdmin
-            ? 'Ask the employee for any details you need before approving or rejecting this claim.'
-            : 'HR may ask questions here before deciding your claim. Reply below if needed.'}
+            ? 'Ask the employee for more details about this claim before making a decision.'
+            : 'HR may ask for more information about your claim here. Reply below if needed.'}
         </p>
       ) : (
         <p className="hint first">This claim is closed. The conversation below is read-only.</p>

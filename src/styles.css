@@ -41,6 +41,8 @@
   --notice-caution-border: #f5d475;
   --notice-caution-text: #7c5400;
   --announcement-bg: #f3f8f8;
+  --notif-bell-hover-bg: #dce3e8;
+  --notif-bell-hover-border: #cdd5dc;
 }
 
 [data-theme="dark"] {
@@ -87,6 +89,8 @@
   --notice-caution-border: #5c5028;
   --notice-caution-text: #f0d080;
   --announcement-bg: #123b37;
+  --notif-bell-hover-bg: #2a363e;
+  --notif-bell-hover-border: #3a4850;
 }
 
 * { box-sizing: border-box; }
@@ -225,13 +229,20 @@ code {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.18);
   box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.55);
+  display: none;
+}
+.login-point-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
 }
 .login-brand-footer {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  opacity: 0.75;
+  opacity: 0.9;
 }
 .login-form-panel {
   display: flex;
@@ -457,7 +468,7 @@ code {
   margin-bottom: 20px;
 }
 
-.section-title { margin: 26px 0 12px; font-size: 15px; }
+.section-title { margin: 26px 0 12px; font-size: 15px; display: flex; align-items: center; }
 .section-title.first { margin-top: 0; }
 .section-head-row {
   display: flex;
@@ -481,6 +492,9 @@ code {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 .btn:hover:not(:disabled) { background: var(--btn-hover-bg); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
@@ -562,7 +576,7 @@ textarea::placeholder {
   font-weight: 600;
   font-size: 14px;
 }
-.state-not-in { background: #f0f2f6; color: var(--muted); }
+.state-not-in { background: #f0f2f6; color: var(--muted); border: 1px solid var(--line); }
 .state-working { background: #e6f5ec; color: var(--good); }
 .state-on-break { background: #fdf0e2; color: var(--warn); }
 .state-done { background: #e6f2f1; color: var(--brand-dark); }
@@ -618,7 +632,27 @@ textarea::placeholder {
 .table-empty-icon svg { display: block; }
 .table-empty-msg { display: block; font-size: 13.5px; }
 .table tr:last-child td { border-bottom: none; }
-.table td select, .table td input { max-width: 100%; }
+.table td select, .table td input:not([type="checkbox"]) {
+  max-width: 100%;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--input-bg);
+  color: var(--ink);
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.table td input[type="date"] {
+  padding-right: 32px;
+}
+.table td input:not([type="checkbox"]):focus, .table td select:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
 .table td .btn-tiny {
   margin-left: 0;
   white-space: nowrap;
@@ -1544,7 +1578,9 @@ button.task-status-stat-card {
   transition: transform 0.02s, background 0.15s;
 }
 .notif-bell-btn:hover {
-  background: var(--btn-hover-bg);
+  background: var(--notif-bell-hover-bg, #dce3e8);
+  border-color: var(--notif-bell-hover-border, var(--line));
+  color: var(--brand);
 }
 .notif-bell-btn:active {
   transform: translateY(1px);
@@ -1804,20 +1840,110 @@ button.task-status-stat-card {
   color: var(--on-brand);
 }
 
-/* Cinematic theme switcher — scaled to fit top bar.
-   Origin on the right so unused layout space from scale()
-   sits on the left, keeping gap to the profile consistent. */
+/* ============================================================
+   Theme toggle — compact accessible sun/moon switch
+   ============================================================ */
 .cinematic-theme-switcher-wrap {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  transform: scale(0.68);
-  transform-origin: right center;
 }
-.cinematic-theme-switcher-wrap--login {
-  transform: scale(0.72);
-  transform-origin: top right;
+
+/* --- Toggle button --- */
+.theme-toggle {
+  position: relative;
+  width: 56px;
+  height: 30px;
+  border-radius: 15px;
+  border: 2px solid var(--line);
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
 }
+/* Light track */
+.theme-toggle[data-theme="light"] {
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  border-color: #b0bec5;
+}
+.theme-toggle[data-theme="light"]:hover {
+  background: linear-gradient(135deg, #d5dce4 0%, #b8c5cf 100%);
+  border-color: #90a4ae;
+}
+/* Dark track */
+.theme-toggle[data-theme="dark"] {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-color: #334155;
+}
+.theme-toggle[data-theme="dark"]:hover {
+  background: linear-gradient(135deg, #263244 0%, #162032 100%);
+  border-color: #475569;
+}
+/* Focus ring — visible in both themes */
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+/* Press feedback */
+.theme-toggle:active {
+  transform: scale(0.96);
+}
+
+/* --- Track icons (sun left, moon right) --- */
+.theme-toggle-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 7px;
+  pointer-events: none;
+}
+.theme-toggle-icon {
+  opacity: 0.45;
+  transition: opacity 0.25s ease;
+}
+/* In light mode the sun is bright, moon is dim */
+.theme-toggle[data-theme="light"] .theme-toggle-icon--sun { opacity: 0.85; color: #d97706; }
+.theme-toggle[data-theme="light"] .theme-toggle-icon--moon { opacity: 0.3; color: #64748b; }
+/* In dark mode the moon is bright, sun is dim */
+.theme-toggle[data-theme="dark"] .theme-toggle-icon--sun { opacity: 0.3; color: #94a3b8; }
+.theme-toggle[data-theme="dark"] .theme-toggle-icon--moon { opacity: 0.85; color: #e2e8f0; }
+
+/* --- Sliding knob --- */
+.theme-toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s ease, box-shadow 0.25s ease;
+  pointer-events: none;
+}
+/* Light knob */
+.theme-toggle[data-theme="light"] .theme-toggle-knob {
+  background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+/* Dark knob */
+.theme-toggle[data-theme="dark"] .theme-toggle-knob {
+  background: linear-gradient(145deg, #64748b 0%, #475569 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+/* Knob icon colour */
+.theme-toggle-knob-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+.theme-toggle[data-theme="light"] .theme-toggle-knob-icon { color: #d97706; }
+.theme-toggle[data-theme="dark"] .theme-toggle-knob-icon { color: #fde68a; }
 
 /* ============================================================
    Driver run-sheet page (/driver/:id) — mobile-first
@@ -1826,7 +1952,7 @@ button.task-status-stat-card {
    ============================================================ */
 .driver-page {
   min-height: 100vh;
-  background: #f2f7f7;
+  background: var(--bg);
   font-family: inherit;
 }
 
@@ -1834,8 +1960,8 @@ button.task-status-stat-card {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: #0f766e;
-  color: #fff;
+  background: var(--brand);
+  color: var(--on-brand);
   padding: 10px 16px 12px;
   padding-top: calc(10px + env(safe-area-inset-top));
   display: flex;
@@ -1863,6 +1989,9 @@ button.task-status-stat-card {
   font-weight: 700;
   letter-spacing: 0.02em;
   opacity: 0.95;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 .driver-logout {
   display: inline-flex;
@@ -1870,7 +1999,7 @@ button.task-status-stat-card {
   gap: 6px;
   background: rgba(255,255,255,0.15);
   border: 1px solid rgba(255,255,255,0.4);
-  color: #fff;
+  color: var(--on-brand);
   font-size: 12px;
   padding: 6px 14px;
   border-radius: 8px;
@@ -1897,9 +2026,9 @@ button.task-status-stat-card {
 }
 
 .driver-notice {
-  border: 1px solid #0f766e;
-  background: #e6f2f1;
-  color: #115e59;
+  border: 1px solid var(--brand);
+  background: var(--info-bg);
+  color: var(--info-text);
   padding: 14px 16px;
   border-radius: 10px;
   font-size: 14px;
@@ -1908,12 +2037,12 @@ button.task-status-stat-card {
   gap: 10px;
   align-items: flex-start;
 }
-.driver-notice-icon { flex-shrink: 0; margin-top: 2px; color: #0f766e; }
+.driver-notice-icon { flex-shrink: 0; margin-top: 2px; color: var(--brand); }
 
 .driver-section {
-  background: #fff;
+  background: var(--card);
   border-radius: 14px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 .driver-section-title {
@@ -1928,19 +2057,33 @@ button.task-status-stat-card {
   gap: 8px;
 }
 .driver-section-title-text { display: inline-flex; align-items: center; gap: 8px; }
-.pickup-title  { background: #fdf6ec; color: #92400e; border-bottom: 1px solid #f0dcbc; }
-.drop-title    { background: #eef6fc; color: #075985; border-bottom: 1px solid #cfe3f2; }
+/* Pickup: Sunrise Amber — warm, energetic, morning light */
+.pickup-title  { background: #fffbeb; color: #92400e; border-bottom: 1px solid #fde68a; }
+/* Dark mode: very soft, desaturated amber */
+[data-theme="dark"] .pickup-title { background: #2d2820; color: #c4a88a; border-bottom-color: #4a3f32; }
+/* Drop: Ocean Blue — cool, calming, water */
+.drop-title    { background: #eff6ff; color: #1e40af; border-bottom: 1px solid #bfdbfe; }
+/* Dark mode: very soft, desaturated blue */
+[data-theme="dark"] .drop-title { background: #1e2a35; color: #8aa8c0; border-bottom-color: #2a3540; }
 .driver-vehicle-chip {
   font-size: 13px;
   padding: 4px 10px;
   border-radius: 20px;
   font-weight: 600;
 }
-.chip-pickup { background: #f5e3c8; color: #92400e; }
-.chip-drop   { background: #d8e9f6; color: #075985; }
-.chip-all    { background: #e8f5e9; color: #2e7d32; }
+.chip-pickup { background: #fef3c7; color: #92400e; }
+/* Dark mode: very soft amber chip */
+[data-theme="dark"] .chip-pickup { background: #2d2820; color: #c4a88a; }
+.chip-drop   { background: #dbeafe; color: #1e40af; }
+/* Dark mode: very soft blue chip */
+[data-theme="dark"] .chip-drop { background: #1e2a35; color: #8aa8c0; }
+.chip-all    { background: #dcfce7; color: #166534; }
+/* Dark mode: neutral chip for vehicle info */
+[data-theme="dark"] .chip-all { background: var(--surface-accent); color: var(--surface-accent-text); }
 
-.run-title { background: #f0fdf4; color: #166534; border-bottom: 1px solid #bbf7d0; }
+/* Run Sheet: Neutral, professional header */
+.run-title { background: var(--card); color: var(--ink); border-bottom: 1px solid var(--line); }
+[data-theme="dark"] .run-title { background: var(--card); color: var(--ink); border-bottom-color: var(--line); }
 
 .driver-section-body {
   display: flex;
@@ -1952,10 +2095,10 @@ button.task-status-stat-card {
 
 /* One stop = one card; height grows with content, nothing is hidden. */
 .stop-card {
-  background: #fff;
-  border: 1px solid #e5e9f5;
+  background: var(--card);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow);
   padding: 14px 14px 12px;
 }
 .stop-card-head {
@@ -1968,8 +2111,8 @@ button.task-status-stat-card {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #0f766e;
-  color: #fff;
+  background: var(--brand);
+  color: var(--on-brand);
   font-size: 13px;
   font-weight: 700;
   display: flex;
@@ -1982,7 +2125,7 @@ button.task-status-stat-card {
 .stop-name {
   font-size: 16px;
   font-weight: 700;
-  color: #111;
+  color: var(--ink);
   margin-bottom: 2px;
   overflow-wrap: anywhere;
   display: flex;
@@ -1998,13 +2141,17 @@ button.task-status-stat-card {
   letter-spacing: 0.5px;
 }
 .badge-pickup { background: #fef3c7; color: #92400e; }
+/* Dark mode: very soft amber badge */
+[data-theme="dark"] .badge-pickup { background: #2d2820; color: #c4a88a; }
 .badge-drop   { background: #dbeafe; color: #1e40af; }
+/* Dark mode: very soft blue badge */
+[data-theme="dark"] .badge-drop { background: #1e2a35; color: #8aa8c0; }
 .stop-time {
   font-size: 14px;
-  color: #444;
+  color: var(--muted);
 }
 .stop-shift {
-  color: #888;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -2018,12 +2165,12 @@ button.task-status-stat-card {
   display: flex;
   gap: 8px;
   font-size: 14px;
-  color: #333;
+  color: var(--ink);
   align-items: flex-start;
 }
 .stop-detail dt {
   min-width: 86px;
-  color: #888;
+  color: var(--muted);
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -2034,7 +2181,7 @@ button.task-status-stat-card {
   overflow-wrap: anywhere;
 }
 .stop-tel {
-  color: #0f766e;
+  color: var(--brand);
   font-weight: 600;
   text-decoration: none;
 }
@@ -2062,49 +2209,70 @@ button.task-status-stat-card {
 }
 .stop-btn:active { transform: translateY(1px); }
 .stop-btn-call {
-  background: #e6f2f1;
-  color: #0f766e;
-  border-color: #c7e0de;
+  background: var(--info-bg);
+  color: var(--brand);
+  border-color: var(--panel-border);
 }
-.stop-btn-call:hover { background: #d6eae8; }
+.stop-btn-call:hover { background: var(--surface-accent); }
 .stop-btn-nav {
-  background: #0f766e;
-  color: #fff;
+  background: var(--brand);
+  color: var(--on-brand);
 }
-.stop-btn-nav:hover { background: #115e59; }
+.stop-btn-nav:hover { background: var(--brand-dark); }
 
-/* Pickup cards use a sunrise-amber palette, drop cards an ocean-blue palette:
-   both harmonise with the teal banner, and warm-vs-cool keeps the two runs
-   distinguishable at a glance (and is colour-blind safe). */
-.stop-card-pickup { border-color: #f0dfc4; border-top: 4px solid #c2781a; }
-.stop-card-pickup .stop-num { background: #a06520; }
-.stop-card-pickup .stop-tel { color: #a06520; }
-.stop-card-pickup .stop-btn-call { background: #fcf4e6; color: #a06520; border-color: #f0dfc4; }
-.stop-card-pickup .stop-btn-call:hover { background: #f8ebd4; }
-.stop-card-pickup .stop-btn-nav { background: #c2781a; }
-.stop-card-pickup .stop-btn-nav:hover { background: #a06520; }
+/* Pickup cards: Sunrise Amber — warm, energetic, morning light
+   Drop cards: Ocean Blue — cool, calming, water
+   Warm-vs-cool keeps the two runs distinguishable at a glance
+   and is colour-blind safe. */
 
-.stop-card-drop { border-color: #d8e8f4; border-top: 4px solid #2b7eb8; }
-.stop-card-drop .stop-num { background: #2b7eb8; }
-.stop-card-drop .stop-tel { color: #2b7eb8; }
-.stop-card-drop .stop-btn-call { background: #f0f6fb; color: #2b7eb8; border-color: #d8e8f4; }
-.stop-card-drop .stop-btn-call:hover { background: #e4eff8; }
-.stop-card-drop .stop-btn-nav { background: #2b7eb8; }
-.stop-card-drop .stop-btn-nav:hover { background: #1d6a9e; }
+/* === PICKUP: Sunrise Amber === */
+.stop-card-pickup { border-color: #fde68a; border-top: 4px solid #d97706; }
+/* Dark mode: very soft, desaturated amber — easy on the eyes */
+[data-theme="dark"] .stop-card-pickup { border-color: #4a3f32; border-top-color: #b89a7a; }
+.stop-card-pickup .stop-num { background: #d97706; }
+[data-theme="dark"] .stop-card-pickup .stop-num { background: #b89a7a; color: #2d2820; }
+.stop-card-pickup .stop-tel { color: #b45309; }
+[data-theme="dark"] .stop-card-pickup .stop-tel { color: #c4a88a; }
+.stop-card-pickup .stop-btn-call { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+[data-theme="dark"] .stop-card-pickup .stop-btn-call { background: #2d2820; color: #c4a88a; border-color: #4a3f32; }
+.stop-card-pickup .stop-btn-call:hover { background: #fde68a; }
+[data-theme="dark"] .stop-card-pickup .stop-btn-call:hover { background: #3d3528; }
+.stop-card-pickup .stop-btn-nav { background: #d97706; color: #fffbeb; }
+[data-theme="dark"] .stop-card-pickup .stop-btn-nav { background: #b89a7a; color: #2d2820; }
+.stop-card-pickup .stop-btn-nav:hover { background: #b45309; }
+[data-theme="dark"] .stop-card-pickup .stop-btn-nav:hover { background: #a88a6a; }
+
+/* === DROP: Ocean Blue === */
+.stop-card-drop { border-color: #bfdbfe; border-top: 4px solid #2563eb; }
+/* Dark mode: very soft, desaturated blue — easy on the eyes */
+[data-theme="dark"] .stop-card-drop { border-color: #2a3540; border-top-color: #7a9ab5; }
+.stop-card-drop .stop-num { background: #2563eb; }
+[data-theme="dark"] .stop-card-drop .stop-num { background: #7a9ab5; color: #1e2a35; }
+.stop-card-drop .stop-tel { color: #1d4ed8; }
+[data-theme="dark"] .stop-card-drop .stop-tel { color: #8aa8c0; }
+.stop-card-drop .stop-btn-call { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+[data-theme="dark"] .stop-card-drop .stop-btn-call { background: #1e2a35; color: #8aa8c0; border-color: #2a3540; }
+.stop-card-drop .stop-btn-call:hover { background: #bfdbfe; }
+[data-theme="dark"] .stop-card-drop .stop-btn-call:hover { background: #2a3a4a; }
+.stop-card-drop .stop-btn-nav { background: #2563eb; color: #eff6ff; }
+[data-theme="dark"] .stop-card-drop .stop-btn-nav { background: #7a9ab5; color: #1e2a35; }
+.stop-card-drop .stop-btn-nav:hover { background: #1d4ed8; }
+[data-theme="dark"] .stop-card-drop .stop-btn-nav:hover { background: #6a8aa5; }
 
 .driver-cancelled-block {
   padding: 12px 14px;
-  background: #fff7f7;
-  border: 1px solid #fde2e2;
+  background: var(--error-bg);
+  border: 1px solid var(--bad);
   border-radius: 12px;
 }
+[data-theme="dark"] .driver-cancelled-block { border-color: #7f1d1d; }
 .driver-cancelled-label {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
   font-weight: 700;
-  color: #b91c1c;
+  color: var(--bad);
   margin-bottom: 8px;
 }
 .driver-cancelled-row {
@@ -2113,7 +2281,7 @@ button.task-status-stat-card {
   gap: 10px;
   font-size: 13px;
   padding: 5px 0;
-  border-bottom: 1px dashed #fce4e4;
+  border-bottom: 1px dashed var(--line);
 }
 .driver-cancelled-row:last-child { border-bottom: none; }
 
@@ -2125,8 +2293,8 @@ button.task-status-stat-card {
   margin-top: 8px;
 }
 .driver-link-card {
-  background: #f2f8f8;
-  border: 1px solid #c7e0de;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-radius: 10px;
   padding: 14px 18px;
   min-width: 200px;
@@ -2134,6 +2302,6 @@ button.task-status-stat-card {
 .driver-link-name {
   font-size: 15px;
   font-weight: 700;
-  color: #111;
+  color: var(--ink);
   margin-bottom: 2px;
 }

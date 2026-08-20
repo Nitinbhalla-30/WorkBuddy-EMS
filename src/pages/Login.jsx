@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getSettings } from '../data/store.js'
+import { Clock, CheckCircle2, Megaphone } from 'lucide-react'
 import CinematicThemeSwitcher from '../components/ui/cinematic-theme-switcher.tsx'
 
 // Simple login for the test phase: Employee ID + PIN.
@@ -34,9 +35,9 @@ export default function Login() {
             Attendance, leaves, salaries, tasks and more — managed without the busywork.
           </p>
           <ul className="login-brand-points">
-            <li>Track attendance and leaves in real time</li>
-            <li>Approvals and reimbursements without emails</li>
-            <li>Tasks, announcements and team updates</li>
+            <li><Clock className="login-point-icon" /> Track attendance and leaves in real time</li>
+            <li><CheckCircle2 className="login-point-icon" /> Approvals and reimbursements without emails</li>
+            <li><Megaphone className="login-point-icon" /> Tasks, announcements and team updates</li>
           </ul>
         </div>
         <div className="login-brand-footer">{settings.companyName}</div>

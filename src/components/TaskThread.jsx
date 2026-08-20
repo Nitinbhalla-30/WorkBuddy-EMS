@@ -25,8 +25,8 @@ export default function TaskThread({ task, viewerId, nameOf, onReply, onClose, a
   return (
     <div>
       <p className="hint first">
-        Ask anything you need to finish this task — missing details, access IDs, passwords,
-        deadlines, or other clarifications. The person who assigned the task can reply here.
+        Have a question about this task? Ask about missing details, access, deadlines,
+        or anything else. The person who assigned the task will see your message and can reply here.
       </p>
 
       {messages.length === 0 ? (
@@ -70,7 +70,7 @@ export default function TaskThread({ task, viewerId, nameOf, onReply, onClose, a
         </div>
       ) : (
         <>
-          <p className="hint first">Only the assignee and the person who gave the task can post here.</p>
+          <p className="hint first">Only the person assigned and the person who created the task can post messages here.</p>
           {onClose && (
             <div className="button-row">
               <button type="button" className="btn btn-light" onClick={onClose}>

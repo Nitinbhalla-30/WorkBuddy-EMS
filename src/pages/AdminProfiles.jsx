@@ -17,7 +17,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { MoreHorizontal, X } from 'lucide-react'
+import { Contact, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const ROLE_FILTER_OPTS = [
@@ -227,7 +227,10 @@ export default function EmployeeRecords() {
   return (
     <div>
       <div className="page-head">
-        <h2>Employee Records</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}><Contact size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Employee Records</h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Manage teams, reporting lines, and onboarding records</p>
+        </div>
         <span className="muted">{employees.length} people</span>
       </div>
 
@@ -262,15 +265,15 @@ export default function EmployeeRecords() {
         />
         <table className="table">
           <colgroup>
-            <col style={{ width: '10.1375%' }} />
-            <col style={{ width: '10.1375%' }} />
-            <col style={{ width: '10.1375%' }} />
-            <col style={{ width: '10.1375%' }} />
-            <col style={{ width: '10.1375%' }} />
-            <col style={{ width: '10.1375%' }} />
-            <col style={{ width: '10.1375%' }} />
-            <col style={{ width: '18.9%' }} />
-            <col style={{ width: '10.1375%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '19%' }} />
+            <col style={{ width: '7%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -278,7 +281,7 @@ export default function EmployeeRecords() {
               <SortableTh label="Name" keyName="name" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Department" keyName="department" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Role" keyName="role" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Manager?" keyName="isManager" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Manager" keyName="isManager" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Reports to" keyName="manager" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Days" keyName="days" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Record" keyName="record" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -520,11 +523,10 @@ export default function EmployeeRecords() {
       )}
 
       <p className="hint">
-        Mark someone as a Manager first, then set their team members&rsquo;
-        &ldquo;Reports to&rdquo; to that manager. Employees fill their own
-        onboarding details under &ldquo;My Details&rdquo;. Verified employees must
-        request HR permission before updating. Open a record to approve update
-        requests or verify submissions.
+        To set up reporting lines: mark someone as a Manager first, then set their team members&rsquo;
+        &ldquo;Reports to&rdquo; to that manager. Employees fill in their own onboarding
+        details under &ldquo;My Details&rdquo;. Once verified, employees must request
+        HR permission before making changes. Open a record to approve submissions or update requests.
       </p>
     </div>
   )

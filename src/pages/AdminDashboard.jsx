@@ -7,6 +7,7 @@ import {
 } from '../data/store.js'
 import {
   formatClock,
+  formatDate,
   formatMinutes,
   isLate,
   statusOf,
@@ -20,6 +21,7 @@ import { AttendanceTodayChart } from '../components/dashboard/AttendanceTodayCha
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import TableEmpty from '../components/TableEmpty.jsx'
+import { LayoutDashboard, Users } from 'lucide-react'
 
 function todayKey() {
   const d = new Date()
@@ -107,8 +109,13 @@ export default function AdminDashboard() {
   return (
     <div>
       <div className="page-head">
-        <h2>Dashboard</h2>
-        <span className="muted">Today</span>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <LayoutDashboard size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Dashboard
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Today's attendance overview</p>
+        </div>
+        <span className="muted">{formatDate(today)}</span>
       </div>
 
       <AttendanceTodayChart
@@ -119,7 +126,13 @@ export default function AdminDashboard() {
         onLeave={onLeave}
       />
 
-      <h3 className="section-title">Today by employee</h3>
+      <div className="section-head-row">
+        <h3 className="section-title first">
+          <Users size={16} style={{ opacity: 0.7, marginRight: 6 }} />
+          Today by employee
+        </h3>
+        <span className="muted small">{table.count} employee{table.count !== 1 ? 's' : ''}</span>
+      </div>
       <div className="card">
         <TableToolbar
           search={table.search}
@@ -143,7 +156,7 @@ export default function AdminDashboard() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table" style={{ tableLayout: 'fixed' }}>
+        <table className="table">
           <colgroup>
             <col style={{ width: '22%' }} />
             <col style={{ width: '18%' }} />
@@ -205,6 +218,12 @@ export default function AdminDashboard() {
           onPageChange={setRowsPage}
         />
       </div>
+
+      <p className="hint">
+        This dashboard shows today&rsquo;s attendance at a glance. Use the filters to narrow by
+        department or status. For detailed daily records, correction requests, or monthly trends,
+        go to Attendance Records.
+      </p>
     </div>
   )
 }

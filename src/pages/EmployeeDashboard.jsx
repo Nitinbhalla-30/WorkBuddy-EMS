@@ -41,7 +41,8 @@ import Modal from '../components/Modal.jsx'
 import AttendanceCorrectionForm from '../components/AttendanceCorrectionForm.jsx'
 import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
 import { formatTime12 } from '../utils/cab.js'
-import { Briefcase, Coffee, LogIn, LogOut, MoreHorizontal, X } from 'lucide-react'
+import { Briefcase, Clock, Coffee, Download, LogIn, LogOut, MoreHorizontal, X } from 'lucide-react'
+import { downloadExcelXlsx } from '../utils/exportExcel.js'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TABS = ['Today', 'Attendance History', 'Correction Request']
@@ -314,7 +315,12 @@ export default function EmployeeDashboard() {
   return (
     <div>
       <div className="page-head">
-        <h2>My Attendance</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <Clock size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />My Attendance
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Track your daily attendance, history, and correction requests</p>
+        </div>
         <span className="muted">{formatDate(today.date)}</span>
       </div>
 
@@ -397,9 +403,9 @@ export default function EmployeeDashboard() {
             {message && <div className="info-box">{message}</div>}
 
             <p className="hint">
-              Worked and break times update in real time while you are timed in.
-              Use <strong>Request correction</strong> if you forgot to time in or out.
-              Before a lunch break, see the{' '}
+              Your worked hours and break times update automatically while you are clocked in.
+              If you forgot to clock in or out, use <strong>Request correction</strong> to fix it.
+              For lunch break rules, check the{' '}
               <button
                 type="button"
                 className="text-link-btn"
@@ -478,6 +484,27 @@ export default function EmployeeDashboard() {
             if (key === 'month') setSelectedHistoryMonth(val)
             else historyTable.setFilter(key, val)
           }}
+          actions={
+            <button
+              type="button"
+              className="btn btn-primary btn-tiny"
+              onClick={() => {
+                const headers = ['Date', 'Time In', 'Time Out', 'Worked', 'Break', 'Status']
+                const rows = historyTable.rows.map((r) => [
+                  formatDate(r.date),
+                  formatClock(r.timeIn),
+                  formatClock(r.timeOut),
+                  formatMinutes(workedMinutes(r)),
+                  formatMinutes(totalBreakMinutes(r)),
+                  statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)
+                ])
+                downloadExcelXlsx(`attendance-history-${selectedHistoryMonth}`, headers, rows)
+              }}
+              disabled={historyTable.rows.length === 0}
+            >
+              <Download size={14} style={{ marginRight: 4 }} />Export to Excel
+            </button>
+          }
         />
         <table className="table table-cols-attendance">
           <colgroup>
@@ -680,7 +707,8 @@ export default function EmployeeDashboard() {
                aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Tell HR if you forgot to time in or out, or if your attendance record looks wrong.
+              Describe what went wrong — for example, you forgot to clock in or the recorded time is incorrect.
+              HR will review and fix your attendance record.
             </p>
             <AttendanceCorrectionForm
               defaultDate={today.date}
@@ -703,7 +731,7 @@ export default function EmployeeDashboard() {
                aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              You can update this request while it is still pending HR review.
+              You can edit this request at any time while HR has not yet reviewed it.
             </p>
             <AttendanceCorrectionForm
               key={editCorrection.id}
@@ -807,6 +835,11 @@ export default function EmployeeDashboard() {
         </Modal>
       )}
 
+      <p className="hint">
+        Clock in and out from the Today tab to track your attendance. Your worked hours and
+        break times update automatically. If you forget to clock in or out, use Request
+        correction to fix it. The History tab shows your past records.
+      </p>
     </div>
   )
 }

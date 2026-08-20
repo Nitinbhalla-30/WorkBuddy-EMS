@@ -30,7 +30,7 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
 import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
 import { downloadExcelXlsx } from '../utils/exportExcel.js'
-import { MoreHorizontal, X } from 'lucide-react'
+import { Clock, Download, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const PERIOD_FILTER_OPTS = [
@@ -312,7 +312,12 @@ export default function AttendanceRecords() {
   return (
     <div>
       <div className="page-head">
-        <h2>Attendance Records</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <Clock size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Attendance Records
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Track daily attendance and manage correction requests</p>
+        </div>
         <span className="muted">{tab === 'all' ? `${table.count} records` : `${corrections.length} requests`}</span>
       </div>
 
@@ -359,7 +364,7 @@ export default function AttendanceRecords() {
               onClick={exportAttendanceExcel}
               disabled={table.rows.length === 0}
             >
-              Export to Excel
+              <Download size={14} style={{ marginRight: 4 }} />Export to Excel
             </button>
           }
         >
@@ -378,6 +383,17 @@ export default function AttendanceRecords() {
           )}
         </TableToolbar>
         <table className="table">
+          <colgroup>
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '10%' }} />
+          </colgroup>
           <thead>
             <tr>
               <SortableTh label="Date" keyName="date" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -471,7 +487,7 @@ export default function AttendanceRecords() {
             </button>
           )}
         </TableToolbar>
-        <table className="table table-corrections">
+        <table className="table table-corrections" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '16%' }} />
             <col style={{ width: '11%' }} />
@@ -570,6 +586,12 @@ export default function AttendanceRecords() {
         />
       </div>
       )}
+
+      <p className="hint">
+        The All records tab shows daily clock-in and clock-out times for every employee.
+        Use Correction requests to review and resolve attendance mismatches — employees submit
+        these when they forget to clock in or out, or when the recorded time is incorrect.
+      </p>
 
       {openCorrection && (
         <Modal onClose={closeReview} title="Review correction request">

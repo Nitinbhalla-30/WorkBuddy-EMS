@@ -54,7 +54,7 @@ export function formatClock(iso) {
 export function formatDate(dateKey) {
   if (!dateKey) return '--'
   const d = new Date(`${dateKey}T00:00:00`)
-  return d.toLocaleDateString([], {
+  return d.toLocaleDateString('en-GB', {
     weekday: 'short',
     day: '2-digit',
     month: 'short'
@@ -100,7 +100,7 @@ export function monthKey(d = new Date()) {
 
 export function monthLabel(mKey) {
   const [y, m] = mKey.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString([], { month: 'long', year: 'numeric' })
+  return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
 }
 
 export function lastMonthKey(d = new Date()) {
@@ -132,7 +132,7 @@ export function statsPeriodLabel(period, joinDate) {
     case 'since-joining':
       if (joinDate) {
         const d = new Date(`${joinDate}T00:00:00`)
-        const joined = d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
+        const joined = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
         return `Since ${joined}`
       }
       return 'Since joining'

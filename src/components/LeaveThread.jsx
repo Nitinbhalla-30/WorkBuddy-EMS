@@ -38,8 +38,8 @@ export default function LeaveThread({
       {pending ? (
         <p className="hint first">
           {isAdmin
-            ? 'Ask the employee for any details you need before approving or rejecting this request.'
-            : 'HR may ask questions here before deciding your leave. Reply below if needed.'}
+            ? 'Ask the employee for more details before approving or rejecting this leave request.'
+            : 'HR may ask for more information about your leave here. Reply below if needed.'}
         </p>
       ) : (
         <p className="hint first">This request is closed. The conversation below is read-only.</p>

@@ -30,7 +30,7 @@ export function daysInMonth(mKey) {
 // A friendly month label like "July 2026".
 export function monthLabel(mKey) {
   const [y, m] = mKey.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString([], {
+  return new Date(y, m - 1, 1).toLocaleDateString('en-GB', {
     month: 'long',
     year: 'numeric'
   })

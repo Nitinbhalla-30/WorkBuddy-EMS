@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { Ban, CarFront, House, LogOut, Navigation, Phone, TriangleAlert } from 'lucide-react'
+import { Ban, CarFront, House, LogOut, Navigation, Phone, TriangleAlert, Briefcase } from 'lucide-react'
 import { getDriverRunSheet, getSettings } from '../data/store.js'
 import { formatTime12, googleMapsUrl } from '../utils/cab.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import CinematicThemeSwitcher from '../components/ui/cinematic-theme-switcher.tsx'
 
 // Driver's run-sheet page. Requires driver login.
 // Mobile-first: plain page scroll, one full card per stop, large tap targets.
@@ -29,7 +30,10 @@ export default function DriverView() {
       <div className="driver-page">
         <header className="driver-topbar">
           <div className="driver-topbar-row">
-            <span className="driver-brand">WorkBuddy — Driver View</span>
+            <span className="driver-brand">
+              <Briefcase size={16} style={{ marginRight: 6, flexShrink: 0 }} aria-hidden="true" />
+              WorkBuddy — Driver View
+            </span>
             {user?.role === 'driver' && (
               <button className="driver-logout" onClick={logout}>Log out</button>
             )}
@@ -59,12 +63,20 @@ export default function DriverView() {
       {/* Sticky top bar: always visible while scrolling on the phone */}
       <header className="driver-topbar">
         <div className="driver-topbar-row">
-          <span className="driver-brand">WorkBuddy — Driver View</span>
-          {user?.role === 'driver' && (
-            <button className="driver-logout" onClick={logout}>
-              <LogOut size={14} aria-hidden="true" /> Log out
-            </button>
-          )}
+          <span className="driver-brand">
+            <Briefcase size={16} style={{ marginRight: 6, flexShrink: 0 }} aria-hidden="true" />
+            WorkBuddy — Driver View
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="cinematic-theme-switcher-wrap">
+              <CinematicThemeSwitcher />
+            </div>
+            {user?.role === 'driver' && (
+              <button className="driver-logout" onClick={logout}>
+                <LogOut size={14} aria-hidden="true" /> Log out
+              </button>
+            )}
+          </div>
         </div>
         <div className="driver-topbar-driver">
           <span className="driver-name">{driver.name}</span>
@@ -75,7 +87,7 @@ export default function DriverView() {
       <main className="driver-content">
         {/* Waiting policy notice */}
         <div className="driver-notice">
-          <TriangleAlert size={18} className="driver-notice-icon" aria-hidden="true" />
+          <TriangleAlert size={20} className="driver-notice-icon" aria-hidden="true" />
           <div>
             <strong>Waiting Policy:</strong> Do not wait for more than{' '}
             <strong>{cabWaitingTime} minutes</strong> at any pickup or drop stop.
@@ -126,6 +138,11 @@ export default function DriverView() {
             )}
           </div>
         </section>
+
+        <p className="hint">
+          This is your run sheet for today. Tap Call to reach an employee or Navigate to open
+          the address in Google Maps. Cancelled stops are shown separately — skip them entirely.
+        </p>
       </main>
     </div>
   )

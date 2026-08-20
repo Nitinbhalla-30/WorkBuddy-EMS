@@ -18,7 +18,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { X } from 'lucide-react'
+import { Wrench, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const IT_STATUS_FILTER_OPTS = [
@@ -166,7 +166,12 @@ export default function AdminITHelpDesk() {
   return (
     <div>
       <div className="page-head">
-        <h2>IT Issues</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <Wrench size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />IT Issues
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Track, assign, and resolve employee IT support requests</p>
+        </div>
         <span className="muted">
           {isITStaff ? `${openCount} open issues assigned to you` : `${openCount} open issues`}
         </span>
@@ -192,8 +197,8 @@ export default function AdminITHelpDesk() {
             <col style={{ width: '11%' }} />
             <col style={{ width: '15.3%' }} />
             <col style={{ width: '13%' }} />
-            <col style={{ width: '9.2%' }} />
-            <col style={{ width: '12%' }} />
+            <col style={{ width: '8.4%' }} />
+            <col style={{ width: '15%' }} />
             <col style={{ width: '10.5%' }} />
             <col style={{ width: '14.5%' }} />
             <col style={{ width: '9%' }} />
@@ -397,8 +402,8 @@ export default function AdminITHelpDesk() {
 
       <p className="hint">
         {isITStaff
-          ? 'These are the IT issues assigned to you. Update the status as you work on them.'
-          : 'Manage IT Issues and assign them to team members. Employees can see the assigned person\u2019s name and contact number.'}
+          ? 'These are the IT issues assigned to you. Update the status as you work on each issue.'
+          : 'Manage IT issues and assign them to team members. Employees can see the assigned person\u2019s name and contact details.'}
       </p>
     </div>
   )

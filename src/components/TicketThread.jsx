@@ -72,8 +72,8 @@ export default function TicketThread({
         <>
           <p className="hint first">
             {ticket.status === 'withdrawn'
-              ? 'This ticket was withdrawn. No more replies can be added.'
-              : 'This ticket is closed. No more replies can be added.'}
+              ? 'This ticket was withdrawn and is now closed. No further replies can be added.'
+              : 'This ticket is closed. No further replies can be added.'}
           </p>
           {onClose && (
             <div className="button-row">

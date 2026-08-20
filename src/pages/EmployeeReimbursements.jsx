@@ -26,7 +26,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CircleCheck, Hourglass, MoreHorizontal, Wallet, X } from 'lucide-react'
+import { CircleCheck, Hourglass, MoreHorizontal, ReceiptText, Wallet, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const STATUS_FILTERS = [
@@ -176,7 +176,12 @@ export default function EmployeeReimbursements() {
   return (
     <div>
       <div className="page-head">
-        <h2>My Reimbursements</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <ReceiptText size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />My Reimbursements
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Submit and track your reimbursement claims</p>
+        </div>
         <button
           className="btn btn-primary btn-tiny"
           onClick={() => setShowForm(true)}
@@ -199,7 +204,8 @@ export default function EmployeeReimbursements() {
                aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Claim expenses the company should cover — travel, conveyance, meals, and similar costs.
+              Submit expenses that the company should reimburse — such as travel, conveyance, or meals.
+              Please include what the expense was for and the amount.
             </p>
             <ReimbursementForm
               onSubmit={handleSubmit}
@@ -221,7 +227,7 @@ export default function EmployeeReimbursements() {
                aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              You can change claim details while it is still pending approval.
+              You can update the claim details at any time while it is still pending approval.
             </p>
             <ReimbursementForm
               key={editClaim.id}

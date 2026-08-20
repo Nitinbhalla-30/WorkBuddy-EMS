@@ -34,7 +34,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { MoreHorizontal, X } from 'lucide-react'
+import { ListTodo, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
@@ -234,7 +234,12 @@ export default function EmployeeTasks() {
   return (
     <div>
       <div className="page-head">
-        <h2>My Tasks</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <ListTodo size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />My Tasks
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Track your assigned tasks, priorities, and deadlines</p>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span className="muted">{tasks.length} task(s)</span>
           <button
@@ -266,7 +271,7 @@ export default function EmployeeTasks() {
                  aria-label="Close"><X size={15} /></button>
               </div>
               <p className="hint first">
-                Create a personal task and track it through To do, In progress, and Done.
+                Create a task for yourself and track its progress through To do, In progress, and Done.
               </p>
               <TaskForm
                 defaultAssigneeId={user.id}
@@ -487,7 +492,7 @@ export default function EmployeeTasks() {
               <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Are you sure you want to delete this task? This action cannot be undone.
+              This will permanently delete the task and all its conversation. You will not be able to recover it.
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={confirmDelete}>
@@ -502,11 +507,10 @@ export default function EmployeeTasks() {
       )}
 
       <p className="hint">
-        Tip: click the To do, In progress, Done, or Overdue cards above to show only those tasks; click again to see everything.
-        Tasks you create for yourself can be edited, deleted, and marked done from the status dropdown.
-        Tasks from your manager can be marked done from the status dropdown when finished, and changed back to To do or In progress if needed.
-        Your manager must approve before the task is closed.
-        Use the <strong>three-dot</strong> menu on manager-assigned tasks to ask questions while the task is still open.
+        <strong>Quick filters:</strong> click the To do, In progress, Done, or Overdue cards above to show only those tasks; click again to see all.
+        Your own tasks can be edited, deleted, or marked done from the status dropdown.
+        For tasks assigned by your manager, mark them done when finished — your manager will approve before the task is closed.
+        Use the <strong>three-dot</strong> menu on manager-assigned tasks to ask questions or request changes.
       </p>
     </div>
   )

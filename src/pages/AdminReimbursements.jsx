@@ -23,7 +23,7 @@ import Pagination from '../components/Pagination.jsx'
 import ReimbursementThread from '../components/ReimbursementThread.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { MoreHorizontal, X } from 'lucide-react'
+import { ReceiptText, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const STATUS_FILTER_OPTS = [
@@ -138,7 +138,12 @@ export default function AdminReimbursements() {
   return (
     <div>
       <div className="page-head">
-        <h2>Reimbursement Claims</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <ReceiptText size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Reimbursement Claims
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Approve or reject employee reimbursement claims</p>
+        </div>
         <span className="muted">{table.count} shown</span>
       </div>
 
@@ -171,9 +176,9 @@ export default function AdminReimbursements() {
             <col style={{ width: '11.6%' }} />
             <col style={{ width: '11.6%' }} />
             <col style={{ width: '11.6%' }} />
-            <col style={{ width: '21.35%' }} />
+            <col style={{ width: '18.35%' }} />
             <col style={{ width: '11.6%' }} />
-            <col style={{ width: '15%' }} />
+            <col style={{ width: '18%' }} />
             <col style={{ width: '5.6%' }} />
           </colgroup>
           <thead>
@@ -376,7 +381,7 @@ export default function AdminReimbursements() {
               <h3 className="section-title first">Approve claim</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setApproveId(null)} aria-label="Close"><X size={15} /></button>
             </div>
-            <p className="hint first">Are you sure you want to approve this reimbursement claim?</p>
+            <p className="hint first">Are you sure you want to approve this reimbursement claim? The employee will be notified.</p>
             <div className="button-row">
               <button
                 type="button"
@@ -404,7 +409,7 @@ export default function AdminReimbursements() {
               <h3 className="section-title first">Reject claim</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => { setRejectId(null); setRejectNote('') }} aria-label="Close"><X size={15} /></button>
             </div>
-            <p className="hint first">Please give a short reason so the employee knows why the claim was rejected.</p>
+            <p className="hint first">Please provide a short reason so the employee understands why the claim was rejected.</p>
             <label className="field">
               <span>Reason</span>
               <textarea
@@ -436,8 +441,8 @@ export default function AdminReimbursements() {
       )}
 
       <p className="hint">
-        Approve a claim to mark it as approved but not yet paid. Use Mark paid once the amount
-        has been transferred to the employee.
+        Approve a claim to mark it as accepted but not yet paid. Use &ldquo;Mark paid&rdquo;
+        once the amount has been transferred to the employee.
       </p>
     </div>
   )

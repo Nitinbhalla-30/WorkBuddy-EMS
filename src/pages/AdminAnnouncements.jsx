@@ -13,7 +13,7 @@ import Pagination from '../components/Pagination.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
-import { MoreHorizontal, X } from 'lucide-react'
+import { Megaphone, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const ANNOUNCEMENT_TYPE_OPTS = [
@@ -132,7 +132,12 @@ export default function AdminAnnouncements() {
   return (
     <div>
       <div className="page-head">
-        <h2>Announcements</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <Megaphone size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Announcements
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Company-wide updates, events, and policy changes</p>
+        </div>
         <button
           className="btn btn-primary btn-tiny"
           onClick={() => setShowForm((s) => !s)}
@@ -207,10 +212,10 @@ export default function AdminAnnouncements() {
         />
         <table className="table">
           <colgroup>
-            <col style={{ width: '40%' }} />
+            <col style={{ width: '50%' }} />
             <col style={{ width: '20%' }} />
             <col style={{ width: '20%' }} />
-            <col style={{ width: '20%' }} />
+            <col style={{ width: '10%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -323,7 +328,7 @@ export default function AdminAnnouncements() {
               <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Are you sure you want to delete this announcement? This action cannot be undone.
+              This will permanently delete the announcement. Employees will no longer see it.
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={confirmDelete}>
@@ -338,8 +343,8 @@ export default function AdminAnnouncements() {
       )}
 
       <p className="hint">
-        Send company-wide announcements to keep employees informed about important updates,
-        events, and policy changes.
+        Send company-wide announcements to keep everyone informed about important updates,
+        upcoming events, and policy changes.
       </p>
     </div>
   )

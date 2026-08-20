@@ -29,7 +29,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { MoreHorizontal, X } from 'lucide-react'
+import { ListTodo, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
@@ -170,7 +170,12 @@ export default function AdminTasks() {
   return (
     <div>
       <div className="page-head">
-        <h2>Tasks</h2>
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <ListTodo size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Tasks
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Assign, track, and manage tasks across the company</p>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span className="muted">{allTasks.length} task(s)</span>
           <button
@@ -202,7 +207,7 @@ export default function AdminTasks() {
                aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Assign a task to any employee and track it through To do, In progress, and Done.
+              Assign a task to an employee and track its progress through To do, In progress, and Done.
             </p>
             <TaskForm
               people={people}
@@ -424,7 +429,7 @@ export default function AdminTasks() {
               <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Are you sure you want to delete this task? This action cannot be undone.
+              This will permanently delete the task and all its conversation. You will not be able to recover it.
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={confirmDelete}>
@@ -439,9 +444,9 @@ export default function AdminTasks() {
       )}
 
       <p className="hint">
-        Tip: click the To do, In progress, Done, or Overdue cards above to show only those tasks; click again to see everything.
-        Managers are set on the Employees page. A manager sees their own team
-        under &ldquo;My Team&rdquo; (My Team Tasks tab); here you can see and manage everyone.
+        <strong>Quick filters:</strong> click the To do, In progress, Done, or Overdue cards above to show only those tasks; click again to see all.
+        Managers are assigned on the Employees page. A manager sees their own team under &ldquo;My Team&rdquo;;
+        here you can view and manage tasks for all employees across the organisation.
       </p>
     </div>
   )
