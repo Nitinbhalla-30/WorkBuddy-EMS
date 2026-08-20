@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addCabMessage,
@@ -12,7 +12,9 @@ import {
   getSettings,
   getTrips,
   getVehicles,
-  setCabCancellation
+  setCabCancellation,
+  updateCabRequest,
+  deleteCabRequest
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
 import Pagination from '../components/Pagination.jsx'
@@ -35,10 +37,25 @@ import {
   tripById,
   vehicleById
 } from '../utils/cab.js'
-import { CarFront, Check, X } from 'lucide-react'
+import { CarFront, Check, Eye, MoreHorizontal, Pencil, Undo2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TABS = ["Today's Cab", 'My Change Requests', 'Chat with Transport Desk']
+
+const REQUEST_STATUS_FILTER_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' }
+]
+
+function requestChangeSummary(r) {
+  const parts = []
+  if (r.newLocation) parts.push(`Location: ${r.newLocation}`)
+  if (r.newGate) parts.push(`Gate: ${r.newGate}`)
+  if (r.newTime) parts.push(`Time: ${formatTime12(r.newTime)}`)
+  return parts
+}
 
 // Employee's "My Cab" page: three tabs — today's cab reference with
 // pickup/drop cards, change requests, and chat with the transport desk.
@@ -47,6 +64,56 @@ export default function MyCab() {
   const [refresh, setRefresh] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [tab, setTab] = useState(0)
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [openRequestId, setOpenRequestId] = useState(null)
+  const [editRequestId, setEditRequestId] = useState(null)
+  const [withdrawRequestId, setWithdrawRequestId] = useState(null)
+
+  function toggleMenu(id) {
+    setOpenMenuId(openMenuId === id ? null : id)
+  }
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  function handleOpenRequest(id) {
+    setOpenRequestId(id)
+    closeMenu()
+  }
+
+  function handleEditRequest(id) {
+    setEditRequestId(id)
+    closeMenu()
+  }
+
+  function handleWithdrawRequest(id) {
+    setWithdrawRequestId(id)
+    closeMenu()
+  }
+
+  function confirmWithdraw() {
+    if (withdrawRequestId) {
+      deleteCabRequest(withdrawRequestId)
+      setRefresh((n) => n + 1)
+      if (openRequestId === withdrawRequestId) setOpenRequestId(null)
+      if (editRequestId === withdrawRequestId) setEditRequestId(null)
+      setWithdrawRequestId(null)
+    }
+  }
+
+  function cancelWithdraw() {
+    setWithdrawRequestId(null)
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
 
   // Today's date key, e.g. "2026-08-05"
   const todayKey = new Date().toISOString().slice(0, 10)
@@ -64,6 +131,9 @@ export default function MyCab() {
     () => getCabRequestsForEmployee(user.id),
     [user.id, refresh]
   )
+  const openRequest = requests.find((r) => r.id === openRequestId) || null
+  const editRequest = requests.find((r) => r.id === editRequestId) || null
+
   const requestsTable = useTableControls(requests, {
     getSearchText: (r) =>
       [
@@ -76,7 +146,10 @@ export default function MyCab() {
       return r[key]
     },
     initialSortKey: 'dates',
-    initialSortDir: 'desc'
+    initialSortDir: 'desc',
+    filterFns: {
+      status: (r, val) => r.status === val
+    }
   })
   const {
     items: requestsPage,
@@ -281,6 +354,15 @@ export default function MyCab() {
             search={requestsTable.search}
             onSearchChange={requestsTable.setSearch}
             placeholder="Search requests..."
+            filters={[
+              {
+                key: 'status',
+                label: 'Status',
+                value: requestsTable.filters.status || 'all',
+                options: REQUEST_STATUS_FILTER_OPTS
+              }
+            ]}
+            onFilterChange={requestsTable.setFilter}
             actions={
               <button
                 type="button"
@@ -299,12 +381,13 @@ export default function MyCab() {
                 <SortableTh label="Reason" keyName="reason" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
                 <SortableTh label="Status" keyName="status" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
                 <SortableTh label="Admin note" keyName="adminNote" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {requestsTable.count === 0 && (
                 <TableEmpty
-                  colSpan={5}
+                  colSpan={6}
                   message={
                     requests.length === 0
                       ? 'No change requests yet. Use "Request temporary change" to raise one.'
@@ -324,6 +407,48 @@ export default function MyCab() {
                   <td>{r.reason}</td>
                   <td><span className={`tag ${requestStatusTagClass(r.status)}`}>{requestStatusLabel(r.status)}</span></td>
                   <td>{r.adminNote || <span className="muted">--</span>}</td>
+                  <td>
+                    <div className="task-menu-container">
+                      <button
+                        type="button"
+                        className="btn btn-tiny btn-light task-menu-button"
+                        onClick={() => toggleMenu(r.id)}
+                        aria-label="Request actions"
+                      >
+                        <MoreHorizontal size={16} />
+                      </button>
+                      {openMenuId === r.id && (
+                        <div className="task-menu-dropdown">
+                          <button
+                            type="button"
+                            className="task-menu-item"
+                            onClick={() => handleOpenRequest(r.id)}
+                          >
+                            <Eye size={14} aria-hidden="true" />
+                            Open
+                          </button>
+                          <button
+                            type="button"
+                            className="task-menu-item"
+                            disabled={r.status !== 'pending'}
+                            onClick={() => handleEditRequest(r.id)}
+                          >
+                            <Pencil size={14} aria-hidden="true" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="task-menu-item task-menu-item-danger"
+                            disabled={r.status !== 'pending'}
+                            onClick={() => handleWithdrawRequest(r.id)}
+                          >
+                            <Undo2 size={14} aria-hidden="true" />
+                            Withdraw
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -349,6 +474,90 @@ export default function MyCab() {
         />
       )}
 
+      {/* Open request detail modal */}
+      {openRequest && (
+        <Modal onClose={() => setOpenRequestId(null)} title="Change request">
+          <div className="modal-form modal-form-wide">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>
+                  Change request
+                </h3>
+                <div className="muted small">
+                  {openRequest.forDates.map((d) => formatDate(d)).join(', ')}
+                  {' · '}
+                  <span className={`tag ${requestStatusTagClass(openRequest.status)}`}>
+                    {requestStatusLabel(openRequest.status)}
+                  </span>
+                </div>
+              </div>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenRequestId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <ul style={{ margin: '12px 0', paddingLeft: '20px' }}>
+              {requestChangeSummary(openRequest).map((p, i) => (
+                <li key={i}>{p}</li>
+              ))}
+              {requestChangeSummary(openRequest).length === 0 && <li className="muted">No changes specified</li>}
+            </ul>
+            {openRequest.reason && (
+              <p className="hint"><strong>Reason:</strong> {openRequest.reason}</p>
+            )}
+            {openRequest.adminNote && (
+              <p className="hint"><strong>Admin note:</strong> {openRequest.adminNote}</p>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit request modal */}
+      {editRequest && (
+        <Modal onClose={() => setEditRequestId(null)} title="Edit change request">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Edit change request</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditRequestId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              You can update this request while it is still pending.
+            </p>
+            <RequestForm
+              key={editRequest.id}
+              pickupTrip={pickupTrip}
+              initial={editRequest}
+              onSubmit={(data) => {
+                updateCabRequest(editRequest.id, data)
+                setEditRequestId(null)
+                setRefresh((n) => n + 1)
+              }}
+              onCancel={() => setEditRequestId(null)}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {/* Withdraw confirmation modal */}
+      {withdrawRequestId && (
+        <Modal onClose={cancelWithdraw} title="Confirm Withdraw">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Withdraw</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This will cancel your change request permanently. You will not be able to restore it afterwards.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmWithdraw}>
+                Withdraw
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelWithdraw}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <p className="hint">
         Today&rsquo;s Cab shows your pickup and drop details, including driver contact and vehicle
         number. Use Change Requests to ask for a temporary location or time change (valid for 1–2 days).
@@ -358,16 +567,22 @@ export default function MyCab() {
       {/* Temporary change request form - Modal */}
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Request a temporary change">
-          <RequestForm
-            pickupTrip={pickupTrip}
-            onSubmit={(data) => {
-              createCabRequest({ ...data, employeeId: user.id })
-              setShowForm(false)
-              setTab(1)
-              setRefresh((n) => n + 1)
-            }}
-            onCancel={() => setShowForm(false)}
-          />
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Request a temporary change</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <RequestForm
+              pickupTrip={pickupTrip}
+              onSubmit={(data) => {
+                createCabRequest({ ...data, employeeId: user.id })
+                setShowForm(false)
+                setTab(1)
+                setRefresh((n) => n + 1)
+              }}
+              onCancel={() => setShowForm(false)}
+            />
+          </div>
         </Modal>
       )}
     </div>
@@ -375,13 +590,13 @@ export default function MyCab() {
 }
 
 // ---- Inline request form ----
-function RequestForm({ pickupTrip, onSubmit, onCancel }) {
-  const [forDate, setForDate] = useState('')
-  const [forDate2, setForDate2] = useState('')
-  const [newLocation, setNewLocation] = useState('')
-  const [newGate, setNewGate] = useState('')
-  const [newTime, setNewTime] = useState('')
-  const [reason, setReason] = useState('')
+function RequestForm({ pickupTrip, onSubmit, onCancel, initial }) {
+  const [forDate, setForDate] = useState(initial?.forDates?.[0] || '')
+  const [forDate2, setForDate2] = useState(initial?.forDates?.[1] || '')
+  const [newLocation, setNewLocation] = useState(initial?.newLocation || '')
+  const [newGate, setNewGate] = useState(initial?.newGate || '')
+  const [newTime, setNewTime] = useState(initial?.newTime || '')
+  const [reason, setReason] = useState(initial?.reason || '')
   const [error, setError] = useState('')
 
   function submit(e) {
@@ -390,8 +605,8 @@ function RequestForm({ pickupTrip, onSubmit, onCancel }) {
     if (!newLocation && !newGate && !newTime) return setError('Please fill in at least one change (location, gate, or time).')
     if (!reason.trim()) return setError('Please give a short reason.')
 
-    // 5-hour rule check
-    if (pickupTrip && !isWithinDeadline(forDate, pickupTrip.time)) {
+    // 5-hour rule check (skip if date unchanged during edit)
+    if (pickupTrip && !isWithinDeadline(forDate, pickupTrip.time) && (!initial || initial.forDates?.[0] !== forDate)) {
       return setError('Too late. Requests must be made at least 5 hours before pickup time.')
     }
 
@@ -402,18 +617,13 @@ function RequestForm({ pickupTrip, onSubmit, onCancel }) {
   }
 
   return (
-    <div className="modal-form">
-      <div className="modal-header">
-        <h3 className="section-title first">Request a temporary change</h3>
-        <button type="button" className="btn btn-tiny btn-light" onClick={onCancel} aria-label="Close"><X size={15} /></button>
-      </div>
-      <form onSubmit={submit}>
-        <p className="hint first">
-          Valid for 1 or 2 days only. Must be submitted at least 5 hours before your scheduled
-          pickup time ({formatTime12(pickupTrip?.time)}).
-        </p>
+    <form onSubmit={submit}>
+      <p className="hint first">
+        Valid for 1 or 2 days only. Must be submitted at least 5 hours before your scheduled
+        pickup time ({formatTime12(pickupTrip?.time)}).
+      </p>
 
-        {error && <div className="error-box">{error}</div>}
+      {error && <div className="error-box">{error}</div>}
 
       <div className="two-col">
         <label className="field">
@@ -450,11 +660,10 @@ function RequestForm({ pickupTrip, onSubmit, onCancel }) {
       </label>
 
       <div className="button-row">
-        <button type="submit" className="btn btn-primary">Submit request</button>
+        <button type="submit" className="btn btn-primary">{initial ? 'Save changes' : 'Submit request'}</button>
         <button type="button" className="btn btn-light" onClick={onCancel}>Cancel</button>
       </div>
-      </form>
-    </div>
+    </form>
   )
 }
 

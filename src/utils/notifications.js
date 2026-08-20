@@ -18,6 +18,7 @@ import {
   getReimbursementsForEmployee,
   getTasks,
   getTasksForAssignee,
+  getTeamConversations,
   getTickets,
   getTicketsForEmployee,
   isAnnouncementRead
@@ -282,6 +283,34 @@ export function buildEmployeeNotifications(employeeId) {
         href: '/announcements'
       })
     }
+  }
+
+  // Unread team messages from each teammate.
+  const unreadByPeer = {}
+  for (const m of getTeamConversations()) {
+    if (m.toId === employeeId && !m.read) {
+      if (!unreadByPeer[m.fromId] || m.on > unreadByPeer[m.fromId].on) {
+        unreadByPeer[m.fromId] = m
+      }
+    }
+  }
+  for (const [peerId, latest] of Object.entries(unreadByPeer)) {
+    const peerName = nameOf(peerId)
+    const hasAttachment = latest.attachments && latest.attachments.length > 0
+    const body = latest.text
+      ? latest.text
+      : hasAttachment
+        ? `${latest.attachments.map((f) => f.name).join(', ')}`
+        : 'Sent you a message.'
+    push(items, {
+      id: `team-msg-${latest.id}`,
+      category: 'team',
+      title: `${peerName} messaged you`,
+      body,
+      on: latest.on,
+      href: `/my-team?chat=${peerId}`,
+      peerId
+    })
   }
 
   items.sort((a, b) => String(b.on || '').localeCompare(String(a.on || '')))

@@ -17,7 +17,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { Contact, MoreHorizontal, X } from 'lucide-react'
+import { Contact, Eye, MoreHorizontal, Users, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const ROLE_FILTER_OPTS = [
@@ -330,6 +330,7 @@ export default function EmployeeRecords() {
                             disabled={!profile || profile.status === 'draft'}
                             onClick={() => openReview(e)}
                           >
+                            <Eye size={14} aria-hidden="true" />
                             {!profile || profile.status === 'draft' ? 'Not filled' : 'Open'}
                           </button>
                           <button
@@ -337,6 +338,7 @@ export default function EmployeeRecords() {
                             className="task-menu-item"
                             onClick={() => startEdit(e)}
                           >
+                            <Users size={14} aria-hidden="true" />
                             Edit team
                           </button>
                         </div>

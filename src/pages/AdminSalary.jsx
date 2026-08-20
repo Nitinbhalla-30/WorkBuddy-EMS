@@ -20,7 +20,7 @@ import {
   listRecentMonths,
   monthKey
 } from '../utils/salary.js'
-import { Download, MoreHorizontal, Banknote, X } from 'lucide-react'
+import { Download, FileText, MoreHorizontal, Banknote, Pencil, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 // HR/Admin salary screen: everyone's pay for a month, edit structure, view slip.
@@ -265,6 +265,7 @@ export default function AdminSalary() {
                             closeMenu()
                           }}
                         >
+                          <FileText size={14} aria-hidden="true" />
                           View payslip
                         </button>
                         <button
@@ -275,6 +276,7 @@ export default function AdminSalary() {
                             closeMenu()
                           }}
                         >
+                          <Pencil size={14} aria-hidden="true" />
                           Edit
                         </button>
                       </div>

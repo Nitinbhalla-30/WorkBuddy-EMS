@@ -34,7 +34,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { ListTodo, MoreHorizontal, X } from 'lucide-react'
+import { ListTodo, MessageCircleQuestionMark, MoreHorizontal, Pencil, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
@@ -442,6 +442,7 @@ export default function EmployeeTasks() {
                             }}
                             disabled={!canEmployeeAskQuestion(task)}
                           >
+                            <MessageCircleQuestionMark size={14} aria-hidden="true" />
                             Ask question
                           </button>
                         )}
@@ -453,6 +454,7 @@ export default function EmployeeTasks() {
                               closeMenu()
                             }}
                           >
+                            <Pencil size={14} aria-hidden="true" />
                             Edit
                           </button>
                         )}
@@ -463,6 +465,7 @@ export default function EmployeeTasks() {
                               handleDelete(task.id)
                             }}
                           >
+                            <Trash2 size={14} aria-hidden="true" />
                             Delete
                           </button>
                         )}

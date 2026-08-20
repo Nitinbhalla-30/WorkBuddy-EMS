@@ -362,12 +362,208 @@ code {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+.person-cell > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 /* Task-status count chips in the My Team directory table. */
 .team-task-counts {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+}
+
+/* ---------- Team chat slide-out panel ---------- */
+.team-msg-cell {
+  text-align: center;
+  vertical-align: middle;
+}
+.team-msg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.team-msg-btn:hover {
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  color: var(--brand);
+}
+.team-msg-btn:active {
+  transform: scale(0.92);
+}
+.team-chat-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: flex-end;
+}
+.team-chat-slide {
+  width: 420px;
+  max-width: 100vw;
+  height: 100vh;
+  background: var(--card);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  animation: teamChatSlideIn 0.2s ease-out;
+}
+@keyframes teamChatSlideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.team-chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.team-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.team-chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.team-chat-peer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.team-chat-peer-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.team-chat-thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-chat-empty {
+  text-align: center;
+  margin: auto;
+  font-size: 14px;
+}
+.team-chat-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  align-items: center;
+}
+.team-chat-attachments .file-chip.static {
+  margin: 0;
+}
+.team-chat-reply {
+  border-top: 1px solid var(--line);
+  padding: 12px 16px;
+  flex-shrink: 0;
+}
+/* Unified composer bar: textarea | attach + send */
+.team-chat-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 6px 6px 12px;
+  transition: border-color 0.15s ease;
+}
+.team-chat-composer:focus-within {
+  border-color: var(--brand);
+}
+.team-chat-composer-input {
+  flex: 1;
+  min-height: 36px;
+  max-height: 120px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 8px 4px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+}
+.team-chat-composer-input::placeholder {
+  color: var(--muted);
+}
+.team-chat-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.team-chat-composer-attach {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.team-chat-composer-attach:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+.team-chat-composer-send {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.team-chat-composer-send.active {
+  background: var(--brand);
+  color: #fff;
+}
+.team-chat-composer-send.active:hover {
+  filter: brightness(1.1);
+}
+.team-chat-composer-send:disabled {
+  cursor: default;
+}
+@media (max-width: 600px) {
+  .team-chat-slide { width: 100vw; }
 }
 .photo-field {
   padding: 12px 0 16px;
@@ -504,7 +700,7 @@ code {
 .btn-danger { background: var(--bad); border-color: var(--bad); color: var(--on-brand); }
 .btn-danger:hover:not(:disabled) { background: #b83a3a; }
 .btn-light { background: var(--btn-light-bg); border-color: var(--line); color: var(--ink); }
-.btn-block { width: 100%; margin-top: 6px; }
+.btn-block { width: 100%; margin-top: 6px; justify-content: center; }
 .btn-tiny { padding: 3px 10px; font-size: 12px; margin-left: 8px; }
 /* Status dropdowns in table cells: rounded pill control matching the app's tags. */
 select.btn-tiny {
@@ -614,7 +810,10 @@ textarea::placeholder {
 .table th, .table td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); }
 /* Tighter gutters for wide many-column tables on small laptop screens */
 .table-compact th, .table-compact td { padding: 11px 8px; }
-.table th { color: var(--muted); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+.table th { color: var(--muted); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+.table th.th-wrap { white-space: normal; }
+.cell-nowrap { white-space: nowrap; }
+.cell-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 0; }
 .table tbody td { transition: background 0.12s ease; }
 .table tbody tr:not(.table-empty):hover td { background: color-mix(in srgb, var(--brand) 6%, transparent); }
 .table-empty td { text-align: center; padding: 36px 12px; color: var(--muted); border-bottom: none; }
@@ -646,7 +845,7 @@ textarea::placeholder {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .table td input[type="date"] {
-  padding-right: 32px;
+  padding-right: 8px;
 }
 .table td input:not([type="checkbox"]):focus, .table td select:focus {
   outline: none;
@@ -933,8 +1132,8 @@ textarea::placeholder {
 .tag-high { background: #fdecec; color: var(--bad); }
 .tag-medium { background: #fdf0e2; color: var(--warn); }
 .tag-low { background: #e6f2f1; color: var(--brand-dark); }
-.tag-pickup { background: #fef3c7; color: #92400e; }
-.tag-drop   { background: #dbeafe; color: #1e40af; }
+.tag-pickup { background: #fef3c7; color: #78350f; }
+.tag-drop   { background: #eff6ff; color: #0369a1; }
 /* Announcement type badges: keep the same filled-pill look for every type. */
 .tag-event { background: #e6f5ec; color: var(--good); }
 .tag-general { background: #f0f2f6; color: #475569; }
@@ -1054,22 +1253,22 @@ textarea::placeholder {
 /* ---------- Queries & grievances (help desk) ---------- */
 .thread { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
 .msg {
-  border-radius: 10px;
-  padding: 10px 14px;
-  max-width: 82%;
+  border-radius: 12px;
+  padding: 10px 14px 6px;
+  max-width: 78%;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
-.msg-them { background: var(--msg-them-bg); align-self: flex-start; border-bottom-left-radius: 3px; }
-.msg-mine { background: var(--msg-mine-bg); align-self: flex-end; border-bottom-right-radius: 3px; }
-.msg-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  font-size: 12px;
+.msg-them { background: var(--msg-them-bg); align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg-mine { background: var(--msg-mine-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
+.msg-body { font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+.msg-time {
+  font-size: 11px;
   color: var(--muted);
-  margin-bottom: 4px;
+  text-align: right;
+  margin-top: 4px;
+  line-height: 1;
 }
-.msg-who { font-weight: 600; color: var(--ink); }
-.msg-body { font-size: 14px; line-height: 1.45; white-space: pre-wrap; }
 
 .reply-box { margin-top: 6px; }
 .reply-input {
@@ -1225,7 +1424,9 @@ textarea::placeholder {
   z-index: 100;
 }
 .task-menu-item {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   padding: 8px 12px;
   text-align: left;
@@ -1235,6 +1436,15 @@ textarea::placeholder {
   font-size: 13px;
   cursor: pointer;
   color: var(--ink);
+}
+.task-menu-item svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+.task-menu-item-danger:not(:disabled) svg {
+  opacity: 0.8;
 }
 .task-menu-item:hover {
   background: var(--btn-hover-bg);
@@ -1800,6 +2010,8 @@ button.task-status-stat-card {
 [data-theme="dark"] .tag-low { background: #123b37; }
 [data-theme="dark"] .tag-event { background: #1a3d2a; }
 [data-theme="dark"] .tag-general { background: #252d3f; color: #cbd5e1; }
+[data-theme="dark"] .team-chat-overlay { background: rgba(0, 0, 0, 0.55); }
+[data-theme="dark"] .team-chat-slide { box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4); }
 [data-theme="dark"] .state-not-in { background: #252d3f; }
 [data-theme="dark"] .state-working { background: #1a3d2a; }
 [data-theme="dark"] .state-on-break { background: #3d2e1a; }
@@ -2057,26 +2269,26 @@ button.task-status-stat-card {
   gap: 8px;
 }
 .driver-section-title-text { display: inline-flex; align-items: center; gap: 8px; }
-/* Pickup: Sunrise Amber — warm, energetic, morning light */
-.pickup-title  { background: #fffbeb; color: #92400e; border-bottom: 1px solid #fde68a; }
-/* Dark mode: very soft, desaturated amber */
-[data-theme="dark"] .pickup-title { background: #2d2820; color: #c4a88a; border-bottom-color: #4a3f32; }
-/* Drop: Ocean Blue — cool, calming, water */
-.drop-title    { background: #eff6ff; color: #1e40af; border-bottom: 1px solid #bfdbfe; }
-/* Dark mode: very soft, desaturated blue */
-[data-theme="dark"] .drop-title { background: #1e2a35; color: #8aa8c0; border-bottom-color: #2a3540; }
+/* Pickup: Refined Warm Amber — professional, warm, harmonises with teal brand */
+.pickup-title  { background: #fefbeb; color: #78350f; border-bottom: 1px solid #fde68a; }
+/* Dark mode: warm amber with proper contrast */
+[data-theme="dark"] .pickup-title { background: #2a241c; color: #e0ccb0; border-bottom-color: #443828; }
+/* Drop: Ocean Blue — cool, professional, harmonises with teal brand */
+.drop-title    { background: #eff6ff; color: #0369a1; border-bottom: 1px solid #bae6fd; }
+/* Dark mode: clean steel blue with proper contrast */
+[data-theme="dark"] .drop-title { background: #1a2636; color: #9cb8cc; border-bottom-color: #2a3a4a; }
 .driver-vehicle-chip {
   font-size: 13px;
   padding: 4px 10px;
   border-radius: 20px;
   font-weight: 600;
 }
-.chip-pickup { background: #fef3c7; color: #92400e; }
-/* Dark mode: very soft amber chip */
-[data-theme="dark"] .chip-pickup { background: #2d2820; color: #c4a88a; }
-.chip-drop   { background: #dbeafe; color: #1e40af; }
-/* Dark mode: very soft blue chip */
-[data-theme="dark"] .chip-drop { background: #1e2a35; color: #8aa8c0; }
+.chip-pickup { background: #fef3c7; color: #78350f; }
+/* Dark mode: warm amber chip with proper contrast */
+[data-theme="dark"] .chip-pickup { background: #2a241c; color: #e0ccb0; }
+.chip-drop   { background: #eff6ff; color: #0369a1; }
+/* Dark mode: clean steel blue chip */
+[data-theme="dark"] .chip-drop { background: #1a2636; color: #9cb8cc; }
 .chip-all    { background: #dcfce7; color: #166534; }
 /* Dark mode: neutral chip for vehicle info */
 [data-theme="dark"] .chip-all { background: var(--surface-accent); color: var(--surface-accent-text); }
@@ -2140,12 +2352,12 @@ button.task-status-stat-card {
   border-radius: 4px;
   letter-spacing: 0.5px;
 }
-.badge-pickup { background: #fef3c7; color: #92400e; }
-/* Dark mode: very soft amber badge */
-[data-theme="dark"] .badge-pickup { background: #2d2820; color: #c4a88a; }
-.badge-drop   { background: #dbeafe; color: #1e40af; }
-/* Dark mode: very soft blue badge */
-[data-theme="dark"] .badge-drop { background: #1e2a35; color: #8aa8c0; }
+.badge-pickup { background: #fef3c7; color: #78350f; }
+/* Dark mode: warm amber badge with proper contrast */
+[data-theme="dark"] .badge-pickup { background: #2a241c; color: #e0ccb0; }
+.badge-drop   { background: #eff6ff; color: #0369a1; }
+/* Dark mode: clean steel blue badge */
+[data-theme="dark"] .badge-drop { background: #1a2636; color: #9cb8cc; }
 .stop-time {
   font-size: 14px;
   color: var(--muted);
@@ -2220,44 +2432,44 @@ button.task-status-stat-card {
 }
 .stop-btn-nav:hover { background: var(--brand-dark); }
 
-/* Pickup cards: Sunrise Amber — warm, energetic, morning light
-   Drop cards: Ocean Blue — cool, calming, water
+/* Pickup cards: Refined Warm Amber — professional, warm, harmonises with teal brand
+   Drop cards: Ocean Blue — cool, professional, harmonises with teal brand
    Warm-vs-cool keeps the two runs distinguishable at a glance
    and is colour-blind safe. */
 
-/* === PICKUP: Sunrise Amber === */
-.stop-card-pickup { border-color: #fde68a; border-top: 4px solid #d97706; }
-/* Dark mode: very soft, desaturated amber — easy on the eyes */
-[data-theme="dark"] .stop-card-pickup { border-color: #4a3f32; border-top-color: #b89a7a; }
-.stop-card-pickup .stop-num { background: #d97706; }
-[data-theme="dark"] .stop-card-pickup .stop-num { background: #b89a7a; color: #2d2820; }
-.stop-card-pickup .stop-tel { color: #b45309; }
-[data-theme="dark"] .stop-card-pickup .stop-tel { color: #c4a88a; }
-.stop-card-pickup .stop-btn-call { background: #fef3c7; color: #92400e; border-color: #fde68a; }
-[data-theme="dark"] .stop-card-pickup .stop-btn-call { background: #2d2820; color: #c4a88a; border-color: #4a3f32; }
-.stop-card-pickup .stop-btn-call:hover { background: #fde68a; }
-[data-theme="dark"] .stop-card-pickup .stop-btn-call:hover { background: #3d3528; }
-.stop-card-pickup .stop-btn-nav { background: #d97706; color: #fffbeb; }
-[data-theme="dark"] .stop-card-pickup .stop-btn-nav { background: #b89a7a; color: #2d2820; }
-.stop-card-pickup .stop-btn-nav:hover { background: #b45309; }
-[data-theme="dark"] .stop-card-pickup .stop-btn-nav:hover { background: #a88a6a; }
+/* === PICKUP: Refined Warm Amber === */
+.stop-card-pickup { border-color: #fde68a; border-top: 4px solid #b45309; }
+/* Dark mode: warm amber accent with proper contrast */
+[data-theme="dark"] .stop-card-pickup { border-color: #443828; border-top-color: #c8a882; }
+.stop-card-pickup .stop-num { background: #b45309; }
+[data-theme="dark"] .stop-card-pickup .stop-num { background: #c8a882; color: #2a241c; }
+.stop-card-pickup .stop-tel { color: #92400e; }
+[data-theme="dark"] .stop-card-pickup .stop-tel { color: #e0ccb0; }
+.stop-card-pickup .stop-btn-call { background: #fefbeb; color: #78350f; border-color: #fde68a; }
+[data-theme="dark"] .stop-card-pickup .stop-btn-call { background: #2a241c; color: #e0ccb0; border-color: #443828; }
+.stop-card-pickup .stop-btn-call:hover { background: #fef3c7; }
+[data-theme="dark"] .stop-card-pickup .stop-btn-call:hover { background: #362e22; }
+.stop-card-pickup .stop-btn-nav { background: #b45309; color: #fffbeb; }
+[data-theme="dark"] .stop-card-pickup .stop-btn-nav { background: #c8a882; color: #1e1a14; }
+.stop-card-pickup .stop-btn-nav:hover { background: #92400e; }
+[data-theme="dark"] .stop-card-pickup .stop-btn-nav:hover { background: #b89872; }
 
 /* === DROP: Ocean Blue === */
-.stop-card-drop { border-color: #bfdbfe; border-top: 4px solid #2563eb; }
-/* Dark mode: very soft, desaturated blue — easy on the eyes */
-[data-theme="dark"] .stop-card-drop { border-color: #2a3540; border-top-color: #7a9ab5; }
-.stop-card-drop .stop-num { background: #2563eb; }
-[data-theme="dark"] .stop-card-drop .stop-num { background: #7a9ab5; color: #1e2a35; }
-.stop-card-drop .stop-tel { color: #1d4ed8; }
-[data-theme="dark"] .stop-card-drop .stop-tel { color: #8aa8c0; }
-.stop-card-drop .stop-btn-call { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
-[data-theme="dark"] .stop-card-drop .stop-btn-call { background: #1e2a35; color: #8aa8c0; border-color: #2a3540; }
-.stop-card-drop .stop-btn-call:hover { background: #bfdbfe; }
-[data-theme="dark"] .stop-card-drop .stop-btn-call:hover { background: #2a3a4a; }
-.stop-card-drop .stop-btn-nav { background: #2563eb; color: #eff6ff; }
-[data-theme="dark"] .stop-card-drop .stop-btn-nav { background: #7a9ab5; color: #1e2a35; }
-.stop-card-drop .stop-btn-nav:hover { background: #1d4ed8; }
-[data-theme="dark"] .stop-card-drop .stop-btn-nav:hover { background: #6a8aa5; }
+.stop-card-drop { border-color: #bae6fd; border-top: 4px solid #0369a1; }
+/* Dark mode: clean steel blue accent with proper contrast */
+[data-theme="dark"] .stop-card-drop { border-color: #2a3a4a; border-top-color: #8ab0c8; }
+.stop-card-drop .stop-num { background: #0369a1; }
+[data-theme="dark"] .stop-card-drop .stop-num { background: #8ab0c8; color: #1a2636; }
+.stop-card-drop .stop-tel { color: #0369a1; }
+[data-theme="dark"] .stop-card-drop .stop-tel { color: #9cb8cc; }
+.stop-card-drop .stop-btn-call { background: #eff6ff; color: #0369a1; border-color: #bae6fd; }
+[data-theme="dark"] .stop-card-drop .stop-btn-call { background: #1a2636; color: #9cb8cc; border-color: #2a3a4a; }
+.stop-card-drop .stop-btn-call:hover { background: #dbeafe; }
+[data-theme="dark"] .stop-card-drop .stop-btn-call:hover { background: #243444; }
+.stop-card-drop .stop-btn-nav { background: #0369a1; color: #eff6ff; }
+[data-theme="dark"] .stop-card-drop .stop-btn-nav { background: #8ab0c8; color: #1a2636; }
+.stop-card-drop .stop-btn-nav:hover { background: #075985; }
+[data-theme="dark"] .stop-card-drop .stop-btn-nav:hover { background: #7aa0b8; }
 
 .driver-cancelled-block {
   padding: 12px 14px;

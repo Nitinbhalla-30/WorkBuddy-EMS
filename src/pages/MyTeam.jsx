@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useSearchParams } from 'react-router-dom'
 import {
   getAttendance,
   getEmployeeById,
@@ -15,16 +16,18 @@ import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import TeamChat from '../components/TeamChat.jsx'
 import TeamTasksPanel from './TeamTasks.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { Users } from 'lucide-react'
+import { MessageCircle, Users } from 'lucide-react'
 
 // Merged team module. Managers get three tabs: the team directory, the
 // team's tasks, and the team's paid-leave requests waiting for approval.
 // Non-manager employees see only the directory (no tab bar).
 export default function MyTeam() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState('team')
 
   const teammates = useMemo(() => getMyTeamDirectory(user.id), [user.id])
@@ -64,6 +67,18 @@ export default function MyTeam() {
   const [teamLeaves, setTeamLeaves] = useState(loadTeamLeaves)
   const [rejectLeave, setRejectLeave] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [openChatId, setOpenChatId] = useState(null)
+  const [chatRefresh, setChatRefresh] = useState(0)
+
+  // Open chat panel when navigating from a team message notification.
+  useEffect(() => {
+    const chatPeerId = searchParams.get('chat')
+    if (chatPeerId) {
+      setOpenChatId(chatPeerId)
+      // Clear the query parameter so it doesn't re-open on every render.
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   function approveLeave(leaveId) {
     managerDecideLeave(leaveId, user.id, true)
@@ -120,6 +135,11 @@ export default function MyTeam() {
     : user.managerId
       ? 'No team members found.'
       : 'You are not assigned to a team yet. Ask HR if this looks wrong.'
+
+  function refreshTeam() {
+    // Force re-render to pick up new messages.
+    setChatRefresh((n) => n + 1)
+  }
 
   return (
     <div>
@@ -225,28 +245,31 @@ export default function MyTeam() {
               endIndex={endIndex}
               placeholder="Search team members..."
             />
-            <table className="table" style={{ tableLayout: 'fixed' }}>
+            <div style={{ overflowX: 'auto' }}>
+            <table className="table" style={{ tableLayout: 'fixed', minWidth: 1500 }}>
               <colgroup>
                 {user.isManager ? (
                   <>
-                    <col style={{ width: '11.7%' }} />
-                    <col style={{ width: '7.2%' }} />
-                    <col style={{ width: '13.5%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '8.1%' }} />
-                    <col style={{ width: '7.2%' }} />
-                    <col style={{ width: '7.2%' }} />
-                    <col style={{ width: '8.1%' }} />
-                    <col style={{ width: '8.1%' }} />
-                    <col style={{ width: '18.9%' }} />
+                    <col style={{ width: '180px' }} />
+                    <col style={{ width: '120px' }} />
+                    <col style={{ width: '260px' }} />
+                    <col style={{ width: '140px' }} />
+                    <col style={{ width: '130px' }} />
+                    <col style={{ width: '80px' }} />
+                    <col style={{ width: '110px' }} />
+                    <col style={{ width: '110px' }} />
+                    <col style={{ width: '110px' }} />
+                    <col style={{ width: '100px' }} />
+                    <col style={{ width: '190px' }} />
                   </>
                 ) : (
                   <>
-                    <col style={{ width: '22%' }} />
-                    <col style={{ width: '16%' }} />
-                    <col style={{ width: '26%' }} />
-                    <col style={{ width: '18%' }} />
-                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '220px' }} />
+                    <col style={{ width: '140px' }} />
+                    <col style={{ width: '280px' }} />
+                    <col style={{ width: '180px' }} />
+                    <col style={{ width: '160px' }} />
+                    <col style={{ width: '80px' }} />
                   </>
                 )}
               </colgroup>
@@ -287,6 +310,7 @@ export default function MyTeam() {
                     sortDir={table.sortDir}
                     onSort={table.toggleSort}
                   />
+                  <th>Message</th>
                   {user.isManager && (
                     <>
                       <SortableTh
@@ -295,6 +319,7 @@ export default function MyTeam() {
                         sortKey={table.sortKey}
                         sortDir={table.sortDir}
                         onSort={table.toggleSort}
+                        className="th-wrap"
                       />
                       <SortableTh
                         label="Avg time out"
@@ -302,6 +327,7 @@ export default function MyTeam() {
                         sortKey={table.sortKey}
                         sortDir={table.sortDir}
                         onSort={table.toggleSort}
+                        className="th-wrap"
                       />
                       <SortableTh
                         label="Avg worked hours"
@@ -309,6 +335,7 @@ export default function MyTeam() {
                         sortKey={table.sortKey}
                         sortDir={table.sortDir}
                         onSort={table.toggleSort}
+                        className="th-wrap"
                       />
                       <SortableTh
                         label="Avg break time"
@@ -316,6 +343,7 @@ export default function MyTeam() {
                         sortKey={table.sortKey}
                         sortDir={table.sortDir}
                         onSort={table.toggleSort}
+                        className="th-wrap"
                       />
                       <SortableTh
                         label="Tasks"
@@ -331,7 +359,7 @@ export default function MyTeam() {
               <tbody>
                 {table.count === 0 && (
                   <tr>
-                    <td colSpan={user.isManager ? 10 : 5} className="muted">
+                    <td colSpan={user.isManager ? 11 : 6} className="muted">
                       {teammates.length === 0 ? emptyMessage : 'No team members match your search.'}
                     </td>
                   </tr>
@@ -346,24 +374,35 @@ export default function MyTeam() {
                           <span>{m.id === user.id ? `${m.name} (me)` : m.name}</span>
                         </div>
                       </td>
-                      <td>
+                      <td className="cell-nowrap">
                         {m.mobile
                           ? <a href={`tel:${m.mobile}`} className="phone-link">{m.mobile}</a>
                           : <span className="muted">--</span>}
                       </td>
-                      <td>
+                      <td className="cell-ellipsis">
                         {m.email
                           ? <a href={`mailto:${m.email}`} className="phone-link">{m.email}</a>
                           : <span className="muted">--</span>}
                       </td>
-                      <td>{m.designation || <span className="muted">--</span>}</td>
-                      <td>{m.reportsTo || <span className="muted">--</span>}</td>
+                      <td className="cell-ellipsis">{m.designation || <span className="muted">--</span>}</td>
+                      <td className="cell-ellipsis">{m.reportsTo || <span className="muted">--</span>}</td>
+                      <td className="team-msg-cell">
+                        <button
+                          type="button"
+                          className="team-msg-btn"
+                          onClick={() => setOpenChatId(m.id)}
+                          aria-label={`Message ${m.name}`}
+                          title={`Message ${m.name}`}
+                        >
+                          <MessageCircle size={16} />
+                        </button>
+                      </td>
                       {user.isManager && (
                         <>
-                          <td>{st.avgTimeIn}</td>
-                          <td>{st.avgTimeOut}</td>
-                          <td>{st.avgWorked}</td>
-                          <td>{st.avgBreak}</td>
+                          <td className="cell-nowrap">{st.avgTimeIn}</td>
+                          <td className="cell-nowrap">{st.avgTimeOut}</td>
+                          <td className="cell-nowrap">{st.avgWorked}</td>
+                          <td className="cell-nowrap">{st.avgBreak}</td>
                           <td>
                             <div className="team-task-counts">
                               <span className="tag tag-absent">{st.todoCount} To do</span>
@@ -378,6 +417,7 @@ export default function MyTeam() {
                 })}
               </tbody>
             </table>
+            </div>
             <Pagination
               page={page}
               totalPages={totalPages}
@@ -395,6 +435,19 @@ export default function MyTeam() {
             )}.
             If anything looks incorrect, please ask HR to update it.
           </p>
+        </div>
+      )}
+
+      {openChatId && (
+        <div className="team-chat-overlay" onClick={() => setOpenChatId(null)}>
+          <div className="team-chat-slide" onClick={(e) => e.stopPropagation()}>
+            <TeamChat
+              peerId={openChatId}
+              currentUser={user}
+              onClose={() => setOpenChatId(null)}
+              refresh={refreshTeam}
+            />
+          </div>
         </div>
       )}
 

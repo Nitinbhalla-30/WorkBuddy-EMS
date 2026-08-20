@@ -41,7 +41,7 @@ import {
   tripLabel,
   vehicleById
 } from '../utils/cab.js'
-import { CarFront, Check, MoreHorizontal, X } from 'lucide-react'
+import { CarFront, Check, Copy, ExternalLink, MoreHorizontal, Pencil, Trash2, X } from 'lucide-react'
 
 const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Requests', 'Messages', 'Today']
 
@@ -223,6 +223,7 @@ function VehiclesTab({ vehicles, bump }) {
                           closeMenu()
                         }}
                       >
+                        <Pencil size={14} aria-hidden="true" />
                         Edit
                       </button>
                       <button
@@ -233,6 +234,7 @@ function VehiclesTab({ vehicles, bump }) {
                           closeMenu()
                         }}
                       >
+                        <Trash2 size={14} aria-hidden="true" />
                         Delete
                       </button>
                     </div>
@@ -482,6 +484,7 @@ function DriversTab({ drivers, bump }) {
                           closeMenu()
                         }}
                       >
+                        <Pencil size={14} aria-hidden="true" />
                         Edit
                       </button>
                       <button
@@ -492,6 +495,7 @@ function DriversTab({ drivers, bump }) {
                           closeMenu()
                         }}
                       >
+                        <Trash2 size={14} aria-hidden="true" />
                         Delete
                       </button>
                     </div>
@@ -557,7 +561,7 @@ function DriversTab({ drivers, bump }) {
                 <input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} maxLength={10} />
               </label>
               <label className="field">
-                <span>New PIN (leave blank to keep current)</span>
+                <span>New PIN</span>
                 <input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} placeholder={editDriver.pin ? '••••' : 'Set PIN'} maxLength={8} />
               </label>
             </div>
@@ -891,6 +895,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
                             closeMenu()
                           }}
                         >
+                          <Pencil size={14} aria-hidden="true" />
                           Edit
                         </button>
                         <button
@@ -901,6 +906,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
                             closeMenu()
                           }}
                         >
+                          <Trash2 size={14} aria-hidden="true" />
                           Delete
                         </button>
                       </div>
@@ -1421,6 +1427,7 @@ function TodayTab({ employees, bump }) {
                               className="task-menu-item"
                               onClick={closeMenu}
                             >
+                              <ExternalLink size={14} aria-hidden="true" />
                               Open run sheet
                             </a>
                             <button
@@ -1428,7 +1435,7 @@ function TodayTab({ employees, bump }) {
                               className="task-menu-item"
                               onClick={() => copyRunSheetLink(d)}
                             >
-                              {copiedId === d.id ? (<span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>Link copied <Check size={14} /></span>) : 'Copy link'}
+                              {copiedId === d.id ? (<><Check size={14} aria-hidden="true" /> Link copied</>) : (<><Copy size={14} aria-hidden="true" /> Copy link</>)}
                             </button>
                           </div>
                         )}

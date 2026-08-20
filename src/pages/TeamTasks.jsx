@@ -30,7 +30,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { MoreHorizontal, X } from 'lucide-react'
+import { CircleCheck, Eye, MessageCircleQuestionMark, MoreHorizontal, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
@@ -176,19 +176,9 @@ export default function TeamTasksPanel() {
 
     if (!canChange) {
       return (
-        <div>
-          <span className={`tag ${statusTagClass(task.status)}`}>
-            {statusLabel(task.status)}
-          </span>
-          {task.status === 'done' && !isSelfAssigned(task) && task.completedOn && (
-            <div className="muted small">
-              Employee marked done on {formatDate(task.completedOn)}
-            </div>
-          )}
-          {closureNotice(task, nameOf) && task.status === 'closed' && (
-            <div className="muted small">{closureNotice(task, nameOf)}</div>
-          )}
-        </div>
+        <span className={`tag ${statusTagClass(task.status)}`}>
+          {statusLabel(task.status)}
+        </span>
       )
     }
 
@@ -360,6 +350,16 @@ export default function TeamTasksPanel() {
                      aria-label="More actions"><MoreHorizontal size={16} /></button>
                     {openMenuId === task.id && (
                       <div className="task-menu-dropdown">
+                        <button
+                          className="task-menu-item"
+                          onClick={() => {
+                            setOpenTaskId(task.id)
+                            closeMenu()
+                          }}
+                        >
+                          <Eye size={14} aria-hidden="true" />
+                          View details
+                        </button>
                         {/* For a task the manager assigned to themself only
                             Delete remains; marking done happens in My Tasks. */}
                         {!isSelfAssigned(task) && (
@@ -370,6 +370,7 @@ export default function TeamTasksPanel() {
                               closeMenu()
                             }}
                           >
+                            <MessageCircleQuestionMark size={14} aria-hidden="true" />
                             Ask question
                           </button>
                         )}
@@ -381,6 +382,7 @@ export default function TeamTasksPanel() {
                               closeMenu()
                             }}
                           >
+                            <CircleCheck size={14} aria-hidden="true" />
                             Approve closure
                           </button>
                         )}
@@ -392,6 +394,7 @@ export default function TeamTasksPanel() {
                               closeMenu()
                             }}
                           >
+                            <Trash2 size={14} aria-hidden="true" />
                             Delete
                           </button>
                         )}

@@ -13,7 +13,7 @@ import Pagination from '../components/Pagination.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
-import { Megaphone, MoreHorizontal, X } from 'lucide-react'
+import { Eye, Megaphone, MoreHorizontal, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const ANNOUNCEMENT_TYPE_OPTS = [
@@ -261,6 +261,7 @@ export default function AdminAnnouncements() {
                             closeMenu()
                           }}
                         >
+                          <Eye size={14} aria-hidden="true" />
                           Open
                         </button>
                         <button
@@ -270,6 +271,7 @@ export default function AdminAnnouncements() {
                             handleDelete(announcement.id)
                           }}
                         >
+                          <Trash2 size={14} aria-hidden="true" />
                           Delete
                         </button>
                       </div>

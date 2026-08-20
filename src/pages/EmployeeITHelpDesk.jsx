@@ -26,7 +26,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import ITIssueThread from '../components/ITIssueThread.jsx'
 import Modal from '../components/Modal.jsx'
-import { MoreHorizontal, Wrench, X } from 'lucide-react'
+import { Eye, MoreHorizontal, Pencil, RefreshCw, Trash2, Undo2, Wrench, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const IT_STATUS_FILTER_OPTS = [
@@ -536,6 +536,7 @@ export default function EmployeeITHelpDesk() {
                               closeMenu()
                             }}
                           >
+                            <Eye size={14} aria-hidden="true" />
                             Open
                           </button>
                           <button
@@ -548,6 +549,7 @@ export default function EmployeeITHelpDesk() {
                               closeMenu()
                             }}
                           >
+                            <Pencil size={14} aria-hidden="true" />
                             Edit
                           </button>
                           <button
@@ -559,6 +561,7 @@ export default function EmployeeITHelpDesk() {
                               closeMenu()
                             }}
                           >
+                            <RefreshCw size={14} aria-hidden="true" />
                             Re-Open
                           </button>
                           <button
@@ -569,6 +572,7 @@ export default function EmployeeITHelpDesk() {
                               handleWithdraw(issue.id)
                             }}
                           >
+                            <Undo2 size={14} aria-hidden="true" />
                             Withdraw
                           </button>
                         </div>

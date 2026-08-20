@@ -35,7 +35,7 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { LEAVE_TYPES } from '../data/sampleData.js'
-import { AlarmClock, Award, CalendarDays, HeartPulse, MoreHorizontal, Sun, Timer, X } from 'lucide-react'
+import { AlarmClock, Award, CalendarDays, Eye, HeartPulse, MoreHorizontal, Pencil, Sun, Timer, Trash2, Undo2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 // Icon per leave type for the balance cards.
@@ -440,6 +440,7 @@ export default function EmployeeLeaves() {
                             closeMenu()
                           }}
                         >
+                          <Eye size={14} aria-hidden="true" />
                           Open
                         </button>
                         <button
@@ -452,6 +453,7 @@ export default function EmployeeLeaves() {
                             closeMenu()
                           }}
                         >
+                          <Pencil size={14} aria-hidden="true" />
                           Edit
                         </button>
                         <button
@@ -462,6 +464,7 @@ export default function EmployeeLeaves() {
                             handleWithdraw(lv.id)
                           }}
                         >
+                          <Undo2 size={14} aria-hidden="true" />
                           Withdraw
                         </button>
                       </div>

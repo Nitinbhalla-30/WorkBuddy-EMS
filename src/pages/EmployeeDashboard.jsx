@@ -41,7 +41,7 @@ import Modal from '../components/Modal.jsx'
 import AttendanceCorrectionForm from '../components/AttendanceCorrectionForm.jsx'
 import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
 import { formatTime12 } from '../utils/cab.js'
-import { Briefcase, Clock, Coffee, Download, LogIn, LogOut, MoreHorizontal, X } from 'lucide-react'
+import { Briefcase, Clock, Coffee, Download, Eye, LogIn, LogOut, MoreHorizontal, Pencil, Trash2, Undo2, X } from 'lucide-react'
 import { downloadExcelXlsx } from '../utils/exportExcel.js'
 import TableEmpty from '../components/TableEmpty.jsx'
 
@@ -60,6 +60,7 @@ export default function EmployeeDashboard() {
   const [editCorrectionId, setEditCorrectionId] = useState(null)
   const [openCorrectionId, setOpenCorrectionId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [withdrawCorrectionId, setWithdrawCorrectionId] = useState(null)
   const [selectedHistoryMonth, setSelectedHistoryMonth] = useState(() => monthKey())
   const [statsPeriod, setStatsPeriod] = useState('this-month')
   const [tab, setTab] = useState(0)
@@ -258,10 +259,23 @@ export default function EmployeeDashboard() {
   }
 
   function handleCorrectionWithdraw(id) {
-    withdrawAttendanceCorrection(id, user.id)
-    refreshCorrections()
-    setOpenMenuId(null)
-    setMessage('Your correction request was withdrawn.')
+    setWithdrawCorrectionId(id)
+  }
+
+  function confirmCorrectionWithdraw() {
+    if (withdrawCorrectionId) {
+      withdrawAttendanceCorrection(withdrawCorrectionId, user.id)
+      refreshCorrections()
+      setOpenMenuId(null)
+      if (openCorrectionId === withdrawCorrectionId) setOpenCorrectionId(null)
+      if (editCorrectionId === withdrawCorrectionId) setEditCorrectionId(null)
+      setWithdrawCorrectionId(null)
+      setMessage('Your correction request was withdrawn.')
+    }
+  }
+
+  function cancelCorrectionWithdraw() {
+    setWithdrawCorrectionId(null)
   }
 
   function handleCorrectionReply(text) {
@@ -654,6 +668,7 @@ export default function EmployeeDashboard() {
                                 closeMenu()
                               }}
                             >
+                              <Eye size={14} aria-hidden="true" />
                               Open
                             </button>
                             <button
@@ -665,6 +680,7 @@ export default function EmployeeDashboard() {
                                 closeMenu()
                               }}
                             >
+                              <Pencil size={14} aria-hidden="true" />
                               Edit
                             </button>
                             <button
@@ -673,6 +689,7 @@ export default function EmployeeDashboard() {
                               disabled={c.status !== 'pending'}
                               onClick={() => handleCorrectionWithdraw(c.id)}
                             >
+                              <Undo2 size={14} aria-hidden="true" />
                               Withdraw
                             </button>
                           </div>
@@ -786,6 +803,28 @@ export default function EmployeeDashboard() {
               onReply={handleCorrectionReply}
               onClose={() => setOpenCorrectionId(null)}
             />
+          </div>
+        </Modal>
+      )}
+
+      {withdrawCorrectionId && (
+        <Modal onClose={cancelCorrectionWithdraw} title="Confirm Withdraw">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Withdraw</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelCorrectionWithdraw} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This will cancel your correction request permanently. You will not be able to restore it afterwards.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmCorrectionWithdraw}>
+                Withdraw
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelCorrectionWithdraw}>
+                Cancel
+              </button>
+            </div>
           </div>
         </Modal>
       )}

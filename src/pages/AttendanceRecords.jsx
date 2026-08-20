@@ -30,7 +30,7 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
 import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
 import { downloadExcelXlsx } from '../utils/exportExcel.js'
-import { Clock, Download, MoreHorizontal, X } from 'lucide-react'
+import { CircleCheck, CircleX, Clock, Download, Eye, MessageCircleQuestionMark, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const PERIOD_FILTER_OPTS = [
@@ -546,7 +546,9 @@ export default function AttendanceRecords() {
                             className="task-menu-item"
                             onClick={() => openReview(c.id, false)}
                           >
-                            {c.status === 'pending' ? 'Ask question' : 'View thread'}
+                            {c.status === 'pending'
+                              ? (<><MessageCircleQuestionMark size={14} aria-hidden="true" /> Ask question</>)
+                              : (<><Eye size={14} aria-hidden="true" /> View thread</>)}
                           </button>
                           <button
                             type="button"
@@ -557,6 +559,7 @@ export default function AttendanceRecords() {
                               closeMenu()
                             }}
                           >
+                            <CircleCheck size={14} aria-hidden="true" />
                             Approve
                           </button>
                           <button
@@ -565,6 +568,7 @@ export default function AttendanceRecords() {
                             disabled={c.status !== 'pending'}
                             onClick={() => openReview(c.id, true)}
                           >
+                            <CircleX size={14} aria-hidden="true" />
                             Reject
                           </button>
                         </div>

@@ -4,29 +4,33 @@
 // Supabase the app falls back to the old localStorage-only mode.
 
 import { supabase } from './supabaseClient.js'
-import {
-  DEFAULT_SETTINGS,
-  SAMPLE_EMPLOYEES,
-  SAMPLE_ATTENDANCE,
-  SAMPLE_LEAVES,
-  SAMPLE_TASKS,
-  SAMPLE_PROFILES,
-  SAMPLE_TICKETS,
-  SAMPLE_VEHICLES,
-  SAMPLE_DRIVERS,
-  SAMPLE_TRIPS,
-  SAMPLE_CAB_ASSIGNMENTS,
-  SAMPLE_CAB_REQUESTS,
-  SAMPLE_CAB_MESSAGES,
-  SAMPLE_IT_ISSUES,
-  SAMPLE_IT_STAFF,
-  SAMPLE_ANNOUNCEMENTS,
-  SAMPLE_REIMBURSEMENTS,
-  SAMPLE_ATTENDANCE_CORRECTIONS
-} from './sampleData.js'
+import { DEFAULT_SETTINGS } from './sampleData.js'
 import { blankProfile } from '../utils/profile.js'
 import { combineDateAndTime } from '../utils/attendance.js'
 import { isManagerLeaveExpired } from '../utils/leaves.js'
+
+// Sample employee data used as fallback when Supabase is not configured or empty.
+const SAMPLE_EMPLOYEES = [
+  {"id":"EMP001","name":"Arjun Mehta","pin":"1111","role":"employee","department":"Sales","isManager":true,"managerId":null,"email":"arjun.mehta@company.com","designation":"Sales Manager","dateJoined":"2024-06-10","salary":{"basic":45000,"hra":20000,"other":8000,"tdsMonthly":3000}},
+  {"id":"EMP002","name":"Kavya Reddy","pin":"2222","role":"employee","department":"Design","isManager":false,"managerId":"EMP001","email":"kavya.reddy@company.com","designation":"UI Designer","dateJoined":"2025-03-15","salary":{"basic":22000,"hra":10000,"other":4000,"tdsMonthly":0}},
+  {"id":"EMP003","name":"Sameer Joshi","pin":"3333","role":"employee","department":"Support","isManager":false,"managerId":"EMP001","email":"sameer.joshi@company.com","designation":"Support Executive","dateJoined":"2025-01-10","salary":{"basic":12000,"hra":5000,"other":2000,"tdsMonthly":0}},
+  {"id":"EMP004","name":"Divya Menon","pin":"4444","role":"employee","department":"Sales","isManager":false,"managerId":"EMP001","email":"divya.menon@company.com","designation":"Sales Executive","dateJoined":"2024-11-01","salary":{"basic":16000,"hra":7000,"other":3000,"tdsMonthly":0}},
+  {"id":"EMP005","name":"Rahul Verma","pin":"8888","role":"employee","department":"Marketing","isManager":false,"managerId":"EMP001","email":"rahul.verma@company.com","designation":"Marketing Associate","dateJoined":"2025-05-02","salary":{"basic":14000,"hra":6000,"other":2500,"tdsMonthly":0}},
+  {"id":"EMP006","name":"Neha Kulkarni","pin":"9999","role":"employee","department":"Operations","isManager":true,"managerId":null,"email":"neha.kulkarni@company.com","designation":"Operations Manager","dateJoined":"2024-04-18","salary":{"basic":40000,"hra":18000,"other":7000,"tdsMonthly":2500}},
+  {"id":"EMP007","name":"Aditya Rao","pin":"1010","role":"employee","department":"Operations","isManager":false,"managerId":"EMP006","email":"aditya.rao@company.com","designation":"Operations Executive","dateJoined":"2025-02-20","salary":{"basic":13000,"hra":5500,"other":2000,"tdsMonthly":0}},
+  {"id":"EMP008","name":"Ishita Bose","pin":"2020","role":"employee","department":"Marketing","isManager":false,"managerId":"EMP001","email":"ishita.bose@company.com","designation":"Content Writer","dateJoined":"2025-06-09","salary":{"basic":15000,"hra":6500,"other":2500,"tdsMonthly":0}},
+  {"id":"EMP009","name":"Karan Malhotra","pin":"3030","role":"employee","department":"Quality","isManager":false,"managerId":"EMP006","email":"karan.malhotra@company.com","designation":"QA Analyst","dateJoined":"2025-04-07","salary":{"basic":17000,"hra":7500,"other":3000,"tdsMonthly":0}},
+  {"id":"EMP010","name":"Pooja Hegde","pin":"4040","role":"employee","department":"Human Resources","isManager":false,"managerId":"EMP006","email":"pooja.hegde@company.com","designation":"HR Executive","dateJoined":"2025-07-01","salary":{"basic":18000,"hra":8000,"other":3500,"tdsMonthly":0}},
+  {"id":"ADM001","name":"Meera Kapoor","pin":"0000","role":"admin","department":"Human Resources","isManager":false,"managerId":null,"salary":{"basic":0,"hra":0,"other":0,"tdsMonthly":0}},
+  {"id":"IT001","name":"Rajesh Kumar","pin":"5555","role":"it","department":"IT Support","isManager":false,"managerId":null,"salary":{"basic":20000,"hra":8000,"other":5000,"tdsMonthly":1000}},
+  {"id":"IT002","name":"Anita Desai","pin":"6666","role":"it","department":"IT Support","isManager":false,"managerId":null,"salary":{"basic":18000,"hra":7000,"other":4000,"tdsMonthly":800}},
+  {"id":"IT003","name":"Vikram Singh","pin":"7777","role":"it","department":"IT Support","isManager":true,"managerId":null,"salary":{"basic":25000,"hra":10000,"other":6000,"tdsMonthly":1500}}
+]
+
+const SAMPLE_DRIVERS = [
+  {"id":"DRV01","name":"Suresh Yadav","pin":"1234","phone":"9876543210","vehicleId":"VH001","licenseNumber":"DL-0420110012345"},
+  {"id":"DRV02","name":"Ramesh Kumar","pin":"1234","phone":"9876543211","vehicleId":"VH002","licenseNumber":"DL-0420110012346"}
+]
 
 const KEYS = {
   employees: 'hr_employees',
@@ -50,7 +54,9 @@ const KEYS = {
   reimbursements: 'hr_reimbursements',
   attendanceCorrections: 'hr_attendance_corrections',
   notificationReads: 'hr_notification_reads',
-  notificationDismissed: 'hr_notification_dismissed'
+  notificationDismissed: 'hr_notification_dismissed',
+  teamConversations: 'hr_team_conversations',
+  teamClearedChats: 'hr_team_cleared_chats'
 }
 
 // In-memory cache of every collection; reads hit this first.
@@ -100,29 +106,32 @@ function write(key, value) {
   }, 250)
 }
 
-// Defaults used to seed a brand-new store (sample data for most keys).
+// Defaults used to seed a brand-new store (sample data for development; data comes from Supabase in production).
 const DEFAULTS = {
   [KEYS.employees]: SAMPLE_EMPLOYEES,
-  [KEYS.attendance]: SAMPLE_ATTENDANCE,
-  [KEYS.leaves]: SAMPLE_LEAVES,
+  [KEYS.attendance]: [],
+  [KEYS.leaves]: [],
   [KEYS.settings]: DEFAULT_SETTINGS,
-  [KEYS.tasks]: SAMPLE_TASKS,
-  [KEYS.profiles]: SAMPLE_PROFILES,
-  [KEYS.tickets]: SAMPLE_TICKETS,
-  [KEYS.vehicles]: SAMPLE_VEHICLES,
+  [KEYS.tasks]: [],
+  [KEYS.profiles]: [],
+  [KEYS.tickets]: [],
+  [KEYS.vehicles]: [],
   [KEYS.drivers]: SAMPLE_DRIVERS,
-  [KEYS.trips]: SAMPLE_TRIPS,
-  [KEYS.cabAssignments]: SAMPLE_CAB_ASSIGNMENTS,
-  [KEYS.cabRequests]: SAMPLE_CAB_REQUESTS,
-  [KEYS.cabMessages]: SAMPLE_CAB_MESSAGES,
-  [KEYS.itIssues]: SAMPLE_IT_ISSUES,
-  [KEYS.itStaff]: SAMPLE_IT_STAFF,
-  [KEYS.announcements]: SAMPLE_ANNOUNCEMENTS,
+  [KEYS.trips]: [],
+  [KEYS.cabAssignments]: [],
+  [KEYS.cabRequests]: [],
+  [KEYS.cabMessages]: [],
+  [KEYS.cabCancellations]: [],
+  [KEYS.itIssues]: [],
+  [KEYS.itStaff]: [],
+  [KEYS.announcements]: [],
   [KEYS.readAnnouncements]: {},
-  [KEYS.reimbursements]: SAMPLE_REIMBURSEMENTS,
-  [KEYS.attendanceCorrections]: SAMPLE_ATTENDANCE_CORRECTIONS,
+  [KEYS.reimbursements]: [],
+  [KEYS.attendanceCorrections]: [],
   [KEYS.notificationReads]: {},
-  [KEYS.notificationDismissed]: {}
+  [KEYS.notificationDismissed]: {},
+  [KEYS.teamConversations]: [],
+  [KEYS.teamClearedChats]: {}
 }
 
 // Bootstrap the store before the app renders. With Supabase: load every
@@ -180,7 +189,7 @@ export function initStore() {
   return initPromise
 }
 
-// Put sample data in place the first time the app runs.
+// Seed a brand-new store with empty collections (data comes from Supabase).
 export function seedIfEmpty() {
   for (const [key, value] of Object.entries(DEFAULTS)) {
     if (!(key in mem) && localStorage.getItem(key) === null) {
@@ -189,7 +198,7 @@ export function seedIfEmpty() {
   }
 }
 
-// Wipe everything and load fresh sample data (handy while testing).
+// Wipe everything and load fresh empty collections (data comes from Supabase).
 export function resetToSampleData() {
   for (const [key, value] of Object.entries(DEFAULTS)) {
     write(key, value)
@@ -1413,6 +1422,95 @@ export function setCabRequestStatus(requestId, status, adminNote) {
   if (idx < 0) return null
   all[idx] = { ...all[idx], status, adminNote: adminNote || '' }
   write(KEYS.cabRequests, all); return all[idx]
+}
+export function updateCabRequest(requestId, data) {
+  const all = getCabRequests()
+  const idx = all.findIndex((r) => r.id === requestId)
+  if (idx < 0) return null
+  all[idx] = { ...all[idx], ...data }
+  write(KEYS.cabRequests, all); return all[idx]
+}
+export function deleteCabRequest(requestId) {
+  const all = getCabRequests().filter((r) => r.id !== requestId)
+  write(KEYS.cabRequests, all)
+}
+
+// Team chat messages (one thread per pair of employees).
+// Conversation key is always sorted so both participants share the same thread.
+export function getTeamConversations() { return read(KEYS.teamConversations, []) }
+
+export function getTeamConversationKey(a, b) {
+  return [a, b].sort().join('__')
+}
+
+export function getTeamMessages(employeeId, peerId) {
+  const key = getTeamConversationKey(employeeId, peerId)
+  // Check if this user has cleared the conversation and get the timestamp.
+  const cleared = read(KEYS.teamClearedChats, {})
+  const clearedAt = cleared[employeeId]?.[key]
+  const messages = getTeamConversations()
+    .filter((m) => m.conversationKey === key)
+  // If cleared, only show messages sent after the clear timestamp.
+  if (clearedAt) {
+    return messages
+      .filter((m) => m.on > clearedAt)
+      .sort((a, b) => (a.on > b.on ? 1 : -1))
+  }
+  return messages.sort((a, b) => (a.on > b.on ? 1 : -1)) // oldest first (newest at bottom)
+}
+
+export function addTeamMessage({ fromId, toId, text, attachments }) {
+  const all = getTeamConversations()
+  const msg = {
+    id: `TMSG${Date.now()}`,
+    conversationKey: getTeamConversationKey(fromId, toId),
+    fromId,
+    toId,
+    text: text || '',
+    attachments: attachments || [],
+    on: new Date().toISOString(),
+    read: false
+  }
+  all.push(msg)
+  write(KEYS.teamConversations, all)
+  return msg
+}
+
+export function markTeamMessagesRead(employeeId, peerId) {
+  const key = getTeamConversationKey(employeeId, peerId)
+  const all = getTeamConversations()
+  let changed = false
+  for (let i = 0; i < all.length; i++) {
+    if (all[i].conversationKey === key && all[i].toId === employeeId && !all[i].read) {
+      all[i] = { ...all[i], read: true }
+      changed = true
+    }
+  }
+  if (changed) write(KEYS.teamConversations, all)
+}
+
+export function getTeamUnreadCount(employeeId) {
+  const counts = {}
+  const cleared = read(KEYS.teamClearedChats, {})
+  const userCleared = cleared[employeeId] || {}
+  for (const m of getTeamConversations()) {
+    // Skip if this message was sent before the clear timestamp.
+    const clearedAt = userCleared[m.conversationKey]
+    if (clearedAt && m.on <= clearedAt) continue
+    if (m.toId === employeeId && !m.read) {
+      counts[m.fromId] = (counts[m.fromId] || 0) + 1
+    }
+  }
+  return counts
+}
+
+export function clearTeamConversation(employeeId, peerId) {
+  const key = getTeamConversationKey(employeeId, peerId)
+  // Store the clear timestamp so only messages after this point are shown.
+  const cleared = read(KEYS.teamClearedChats, {})
+  if (!cleared[employeeId]) cleared[employeeId] = {}
+  cleared[employeeId][key] = new Date().toISOString()
+  write(KEYS.teamClearedChats, cleared)
 }
 
 // Cab chat messages (one ongoing thread per employee).

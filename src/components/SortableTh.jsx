@@ -1,12 +1,12 @@
 import { ArrowDown, ArrowUp } from 'lucide-react'
 
-export default function SortableTh({ label, keyName, sortKey, sortDir, onSort }) {
+export default function SortableTh({ label, keyName, sortKey, sortDir, onSort, className }) {
   const active = sortKey === keyName
   const Arrow = active && sortDir === 'desc' ? ArrowDown : ArrowUp
 
   return (
     <th
-      className={`th-sortable${active ? ' th-sort-active' : ''}`}
+      className={`th-sortable${active ? ' th-sort-active' : ''}${className ? ` ${className}` : ''}`}
       onClick={() => onSort(keyName)}
     >
       <span className="th-sort-inner">

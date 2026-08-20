@@ -6,7 +6,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead
 } from '../data/store.js'
-import { formatDate } from '../utils/attendance.js'
+import { formatDateTime } from '../utils/cab.js'
 import { getNotificationFeed } from '../utils/notifications.js'
 import Modal from './Modal.jsx'
 
@@ -35,6 +35,16 @@ export default function NotificationBell({ employeeId, viewerRole = 'employee' }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [open])
+
+  useEffect(() => {
+    function onTeamMessage() { refresh() }
+    window.addEventListener('teamMessageReceived', onTeamMessage)
+    window.addEventListener('teamMessageSent', onTeamMessage)
+    return () => {
+      window.removeEventListener('teamMessageReceived', onTeamMessage)
+      window.removeEventListener('teamMessageSent', onTeamMessage)
+    }
+  }, [])
 
   function handleOpenToggle() {
     setOpen((v) => !v)
@@ -108,7 +118,7 @@ export default function NotificationBell({ employeeId, viewerRole = 'employee' }
                     <div className="notif-item-title">{n.title}</div>
                     <div className="notif-item-body">{n.body}</div>
                     {n.on && (
-                      <div className="notif-item-meta muted small">{formatDate(n.on)}</div>
+                      <div className="notif-item-meta muted small">{formatDateTime(n.on)}</div>
                     )}
                   </button>
                 </li>

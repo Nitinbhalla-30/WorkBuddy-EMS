@@ -26,7 +26,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CircleCheck, Hourglass, MoreHorizontal, ReceiptText, Wallet, X } from 'lucide-react'
+import { CircleCheck, Eye, Hourglass, MoreHorizontal, Pencil, ReceiptText, Trash2, Undo2, Wallet, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const STATUS_FILTERS = [
@@ -399,6 +399,7 @@ export default function EmployeeReimbursements() {
                             closeMenu()
                           }}
                         >
+                          <Eye size={14} aria-hidden="true" />
                           Open
                         </button>
                         <button
@@ -411,6 +412,7 @@ export default function EmployeeReimbursements() {
                             closeMenu()
                           }}
                         >
+                          <Pencil size={14} aria-hidden="true" />
                           Edit
                         </button>
                         <button
@@ -421,6 +423,7 @@ export default function EmployeeReimbursements() {
                             handleWithdraw(c.id)
                           }}
                         >
+                          <Undo2 size={14} aria-hidden="true" />
                           Withdraw
                         </button>
                       </div>

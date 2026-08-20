@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import {
   getSettings,
-  resetToSampleData,
   saveSettings
 } from '../data/store.js'
 import { fetchPublicIp } from '../utils/network.js'
 import Modal from '../components/Modal.jsx'
 import TimeInput from '../components/TimeInput.jsx'
-import { Building2, Clock, Car, Coffee, CalendarDays, Shield, Wifi, Plus, Trash2, Check, RotateCcw, Inbox, Settings as SettingsIcon, X } from 'lucide-react'
+import { Building2, Clock, Car, Coffee, CalendarDays, Shield, Wifi, Plus, Trash2, Check, Inbox, Settings as SettingsIcon, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 // HR/Admin settings: branding, timing rules, and the office-internet check.
@@ -16,7 +15,6 @@ export default function Settings() {
   const [saved, setSaved] = useState(false)
   const [detectedIp, setDetectedIp] = useState('')
   const [detecting, setDetecting] = useState(false)
-  const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [deleteHolidayId, setDeleteHolidayId] = useState(null)
 
   function update(key, value) {
@@ -92,19 +90,6 @@ export default function Settings() {
     const ip = await fetchPublicIp()
     setDetectedIp(ip || 'Could not read the address.')
     setDetecting(false)
-  }
-
-  function handleReset() {
-    setShowResetConfirm(true)
-  }
-
-  function confirmReset() {
-    resetToSampleData()
-    window.location.reload()
-  }
-
-  function cancelReset() {
-    setShowResetConfirm(false)
   }
 
   return (
@@ -493,42 +478,6 @@ export default function Settings() {
           {saved && <span className="saved-note">Saved!</span>}
         </div>
       </form>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3 className="section-title first" style={{ display: 'flex', alignItems: 'center' }}>
-          <RotateCcw size={15} style={{ marginRight: 6, opacity: 0.7 }} aria-hidden="true" />
-          Testing tools
-        </h3>
-        <p className="hint first">
-          Reload the built-in sample employees and attendance data. Use this if
-          you changed the data during testing and want to start fresh.
-        </p>
-        <button className="btn btn-danger" onClick={handleReset}>
-          Reset to sample data
-        </button>
-      </div>
-
-      {showResetConfirm && (
-        <Modal onClose={cancelReset} title="Confirm Reset">
-          <div className="modal-form">
-            <div className="modal-header">
-              <h3 className="section-title first">Confirm Reset</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={cancelReset} aria-label="Close"><X size={15} /></button>
-            </div>
-            <p className="hint first">
-              This will erase all current data and reload the sample data. This cannot be undone. Continue?
-            </p>
-            <div className="button-row">
-              <button type="button" className="btn btn-danger" onClick={confirmReset}>
-                <RotateCcw size={14} style={{ marginRight: 6 }} aria-hidden="true" /> Reset
-              </button>
-              <button type="button" className="btn btn-light" onClick={cancelReset}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
 
       {deleteHolidayId && (
         <Modal onClose={cancelDeleteHoliday} title="Confirm Delete">

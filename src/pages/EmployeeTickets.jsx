@@ -18,7 +18,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { MoreHorizontal, MessageSquareText, X } from 'lucide-react'
+import { Eye, MoreHorizontal, MessageSquareText, Pencil, Trash2, Undo2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TICKET_KIND_OPTS = [
@@ -258,6 +258,7 @@ export default function EmployeeTickets() {
                             closeMenu()
                           }}
                         >
+                          <Eye size={14} aria-hidden="true" />
                           Open
                         </button>
                         <button
@@ -270,6 +271,7 @@ export default function EmployeeTickets() {
                             closeMenu()
                           }}
                         >
+                          <Pencil size={14} aria-hidden="true" />
                           Edit
                         </button>
                         <button
@@ -280,6 +282,7 @@ export default function EmployeeTickets() {
                             handleWithdraw(t.id)
                           }}
                         >
+                          <Undo2 size={14} aria-hidden="true" />
                           Withdraw
                         </button>
                       </div>

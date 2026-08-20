@@ -27,7 +27,7 @@ import LeaveThread from '../components/LeaveThread.jsx'
 import Modal from '../components/Modal.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CalendarDays, MoreHorizontal, X } from 'lucide-react'
+import { CalendarDays, ClipboardCheck, CircleCheck, CircleX, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const STATUS_FILTER_OPTS = [
@@ -274,6 +274,7 @@ export default function AdminLeaves() {
                             className="task-menu-item"
                             onClick={() => openReview(lv.id, false)}
                           >
+                            <ClipboardCheck size={14} aria-hidden="true" />
                             Review
                           </button>
                           <button
@@ -282,6 +283,7 @@ export default function AdminLeaves() {
                             disabled={lv.status !== 'pending'}
                             onClick={() => handleApprove(lv.id)}
                           >
+                            <CircleCheck size={14} aria-hidden="true" />
                             Approve
                           </button>
                           <button
@@ -290,6 +292,7 @@ export default function AdminLeaves() {
                             disabled={lv.status !== 'pending'}
                             onClick={() => openReview(lv.id, true)}
                           >
+                            <CircleX size={14} aria-hidden="true" />
                             Reject
                           </button>
                         </div>

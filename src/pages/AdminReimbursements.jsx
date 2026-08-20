@@ -23,7 +23,7 @@ import Pagination from '../components/Pagination.jsx'
 import ReimbursementThread from '../components/ReimbursementThread.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { ReceiptText, MoreHorizontal, X } from 'lucide-react'
+import { CircleCheck, CircleX, Eye, ReceiptText, MoreHorizontal, Banknote, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const STATUS_FILTER_OPTS = [
@@ -235,6 +235,7 @@ export default function AdminReimbursements() {
                               closeMenu()
                             }}
                           >
+                            <Eye size={14} aria-hidden="true" />
                             Open
                           </button>
                           {c.status === 'pending' && (
@@ -247,6 +248,7 @@ export default function AdminReimbursements() {
                                   closeMenu()
                                 }}
                               >
+                                <CircleCheck size={14} aria-hidden="true" />
                                 Approve
                               </button>
                               <button
@@ -258,6 +260,7 @@ export default function AdminReimbursements() {
                                   closeMenu()
                                 }}
                               >
+                                <CircleX size={14} aria-hidden="true" />
                                 Reject
                               </button>
                             </>
@@ -271,6 +274,7 @@ export default function AdminReimbursements() {
                                 closeMenu()
                               }}
                             >
+                              <Banknote size={14} aria-hidden="true" />
                               Mark paid
                             </button>
                           )}

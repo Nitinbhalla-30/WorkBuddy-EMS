@@ -22,7 +22,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { MessageSquareText, MoreHorizontal, X } from 'lucide-react'
+import { Eye, MessageSquareText, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TICKET_KIND_OPTS = [
@@ -198,6 +198,7 @@ export default function AdminTickets() {
                             closeMenu()
                           }}
                         >
+                          <Eye size={14} aria-hidden="true" />
                           Open
                         </button>
                       </div>

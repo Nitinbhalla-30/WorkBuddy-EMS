@@ -29,7 +29,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { ListTodo, MoreHorizontal, X } from 'lucide-react'
+import { ListTodo, MessagesSquare, MoreHorizontal, Pencil, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
@@ -384,6 +384,7 @@ export default function AdminTasks() {
                             closeMenu()
                           }}
                         >
+                          <Pencil size={14} aria-hidden="true" />
                           Edit
                         </button>
                         <button
@@ -394,6 +395,7 @@ export default function AdminTasks() {
                             closeMenu()
                           }}
                         >
+                          <MessagesSquare size={14} aria-hidden="true" />
                           Follow-up
                         </button>
                         <button
@@ -401,6 +403,7 @@ export default function AdminTasks() {
                           className="task-menu-item task-menu-item-danger"
                           onClick={() => handleDelete(task.id)}
                         >
+                          <Trash2 size={14} aria-hidden="true" />
                           Delete
                         </button>
                       </div>

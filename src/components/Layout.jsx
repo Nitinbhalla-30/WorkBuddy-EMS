@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getProfileForEmployee, getSettings, getUnreadAnnouncementCount } from '../data/store.js'
+import { getProfileForEmployee, getSettings, getUnreadAnnouncementCount, getTeamUnreadCount } from '../data/store.js'
 import { profilePhotoUrl } from '../utils/profile.js'
 import Avatar from './Avatar.jsx'
 import Modal from './Modal.jsx'
@@ -8,7 +8,7 @@ import NotificationBell from './NotificationBell.jsx'
 import CinematicThemeSwitcher from './ui/cinematic-theme-switcher.tsx'
 import { OriginButton } from './ui/origin-button.tsx'
 import { useState, useEffect } from 'react'
-import { Banknote, Briefcase, CalendarDays, CarFront, CircleUser, Clock, Contact, LayoutDashboard, ListTodo, Megaphone, MessageSquareText, ReceiptText, Settings, Users, Wrench, X } from 'lucide-react'
+import { Banknote, Briefcase, CalendarDays, CarFront, CircleUser, Clock, Contact, LayoutDashboard, ListTodo, LogOut, Megaphone, MessageSquareText, ReceiptText, Settings, Users, Wrench, X } from 'lucide-react'
 
 // The shared frame: top bar with the company name, side menu, and content.
 export default function Layout() {
@@ -20,6 +20,7 @@ export default function Layout() {
   const isIT = user?.department === 'IT Support'
   const showAnnouncements = !isAdmin
   const [unreadCount, setUnreadCount] = useState(0)
+  const [teamUnreadCount, setTeamUnreadCount] = useState(0)
   const [confirmLogout, setConfirmLogout] = useState(false)
 
   useEffect(() => {
@@ -27,6 +28,13 @@ export default function Layout() {
       setUnreadCount(getUnreadAnnouncementCount(user.id))
     } else {
       setUnreadCount(0)
+    }
+    if (user) {
+      const counts = getTeamUnreadCount(user.id)
+      const total = Object.values(counts).reduce((sum, n) => sum + n, 0)
+      setTeamUnreadCount(total)
+    } else {
+      setTeamUnreadCount(0)
     }
   }, [user, showAnnouncements, location])
 
@@ -44,6 +52,24 @@ export default function Layout() {
     }
   }, [user, showAnnouncements])
 
+  // Listen for team message events to update badge in real-time
+  useEffect(() => {
+    const handleTeamMessage = () => {
+      if (user) {
+        const counts = getTeamUnreadCount(user.id)
+        const total = Object.values(counts).reduce((sum, n) => sum + n, 0)
+        setTeamUnreadCount(total)
+      }
+    }
+
+    window.addEventListener('teamMessageSent', handleTeamMessage)
+    window.addEventListener('teamMessageReceived', handleTeamMessage)
+    return () => {
+      window.removeEventListener('teamMessageSent', handleTeamMessage)
+      window.removeEventListener('teamMessageReceived', handleTeamMessage)
+    }
+  }, [user])
+
   function handleLogout() {
     setConfirmLogout(false)
     logout()
@@ -59,7 +85,7 @@ export default function Layout() {
     { to: '/my-salary', label: 'My Salary', icon: Banknote },
     { to: '/my-reimbursements', label: 'My Reimbursements', icon: ReceiptText },
     { to: '/my-tasks', label: 'My Tasks', icon: ListTodo },
-    { to: '/my-team', label: 'My Team', icon: Users },
+    { to: '/my-team', label: 'My Team', icon: Users, badge: true },
     { to: '/my-cab', label: 'My Cab', icon: CarFront },
     { to: '/it-help', label: 'My IT Issues', icon: Wrench },
     { to: '/help', label: 'My Queries & Grievances', icon: MessageSquareText },
@@ -112,22 +138,25 @@ export default function Layout() {
             fillClassName="bg-[#e81123] dark:bg-[#e81123]"
             onClick={() => setConfirmLogout(true)}
           >
-            Log out
+            <LogOut size={16} aria-hidden="true" /> Log out
           </OriginButton>
         </div>
       </header>
 
       <div className="body">
         <nav className="sidebar">
-          {navItems.map(({ to, label, icon: Icon, badge }) => (
-            <NavLink key={to} to={to} className="nav-item">
-              <Icon className="nav-icon" size={17} aria-hidden="true" />
-              <span className="nav-label">{label}</span>
-              {badge && unreadCount > 0 && (
-                <span className="notification-badge">{unreadCount}</span>
-              )}
-            </NavLink>
-          ))}
+          {navItems.map(({ to, label, icon: Icon, badge }) => {
+            const count = badge && label === 'My Team' ? teamUnreadCount : unreadCount
+            return (
+              <NavLink key={to} to={to} className="nav-item">
+                <Icon className="nav-icon" size={17} aria-hidden="true" />
+                <span className="nav-label">{label}</span>
+                {badge && count > 0 && (
+                  <span className="notification-badge">{count}</span>
+                )}
+              </NavLink>
+            )
+          })}
         </nav>
 
         <main className="content">
@@ -148,8 +177,8 @@ export default function Layout() {
               You will be signed out and need to log in again to access your account.
             </p>
             <div className="button-row">
-              <button type="button" className="btn btn-danger" onClick={handleLogout}>
-                Log out
+              <button type="button" className="btn btn-danger" onClick={handleLogout} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <LogOut size={14} aria-hidden="true" /> Log out
               </button>
               <button type="button" className="btn btn-light" onClick={() => setConfirmLogout(false)}>
                 Cancel
