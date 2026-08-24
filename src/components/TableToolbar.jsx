@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 
 export default function TableToolbar({
   search,
@@ -10,6 +10,16 @@ export default function TableToolbar({
   actions,
   children
 }) {
+  const hasActiveFilters = filters.some((f) => f.value && f.value !== 'all')
+
+  function handleClearFilters() {
+    filters.forEach((f) => {
+      if (f.value && f.value !== 'all') {
+        onFilterChange(f.key, 'all')
+      }
+    })
+  }
+
   return (
     <div className="table-toolbar">
       <div className="table-toolbar-left">
@@ -40,6 +50,16 @@ export default function TableToolbar({
             </select>
           </label>
         ))}
+        {hasActiveFilters && (
+          <button
+            type="button"
+            className="btn btn-light btn-tiny table-toolbar-action"
+            onClick={handleClearFilters}
+          >
+            <X size={14} style={{ marginRight: 2 }} />
+            Clear filters
+          </button>
+        )}
         {children}
       </div>
       {actions && <div className="table-toolbar-right">{actions}</div>}

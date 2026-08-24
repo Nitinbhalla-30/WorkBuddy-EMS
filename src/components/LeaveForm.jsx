@@ -86,7 +86,7 @@ export default function LeaveForm({ onApply, onCancel, initial = null, submitLab
         <label className="field">
           <span>Leave type</span>
           <select value={type} onChange={(e) => changeType(e.target.value)}>
-            {LEAVE_TYPES.map((t) => (
+            {LEAVE_TYPES.filter((t) => t.key !== 'unpaid').map((t) => (
               <option key={t.key} value={t.key}>
                 {t.label}
               </option>

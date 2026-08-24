@@ -72,14 +72,15 @@ select * from (values
 union all
 select id, i + 100, manager_id, wants_cab from tmp_new_emps;
 
--- ============ 2. ATTENDANCE (~25,000 rows, 200 days × 137 people) ============
+-- ============ 2. ATTENDANCE (~75,000 rows, 600 days × 137 people) ============
 insert into app_store (key, value)
 select 'hr_attendance', coalesce(jsonb_agg(rec order by emp_id, day), '[]'::jsonb)
 from (
+  -- Base attendance: all employees, last 200 days
   select
     p.id as emp_id, d.day,
     jsonb_build_object(
-      'id', 'ATT' || lpad(row_number() over (order by p.id, d.day)::text, 5, '0'),
+      'id', 'ATT' || lpad(row_number() over (order by p.id, d.day)::text, 6, '0'),
       'employeeId', p.id,
       'date', to_char(d.day, 'YYYY-MM-DD'),
       'timeIn', to_char(d.day + make_interval(mins => 530 + mod(p.i*7 + d.di*13, 75)), 'YYYY-MM-DD"T"HH24:MI:SS'),
@@ -100,10 +101,16 @@ from (
   from tmp_people p
   cross join (
     select gs::date as day, row_number() over (order by gs)::int as di
-    from generate_series(current_date - 200, current_date, interval '1 day') gs
+    from generate_series(current_date - 600, current_date, interval '1 day') gs
     where extract(dow from gs) between 1 and 5
   ) d
   where mod(p.i*31 + d.di*17, 100) > 7
+  -- Skip attendance for employees who are on approved leave that day
+  -- (same deterministic formula as section 3b: 12 employees per weekday)
+  and not exists (
+    select 1 from generate_series(0, 11) s
+    where p.id = 'EMP' || lpad((10 + mod(d.di * 12 + s * 11, 123) + 1)::text, 3, '0')
+  )
 ) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
@@ -187,6 +194,42 @@ from (
     'decidedBy', 'ADM001', 'decidedOn', to_char(current_date - 7, 'YYYY-MM-DD'),
     'messages', '[]'::jsonb, 'rejectionReason', '')
 ) x
+on conflict (key) do update set value = excluded.value, updated_at = now();
+
+-- ============ 3b. ADDITIONAL APPROVED LEAVES (~12 employees on leave per weekday) ============
+-- Ensures ~10-15 employees are on approved leave every weekday for dashboard testing.
+-- Uses deterministic formula: employee index = (day_offset * 12 + slot * 11) % 123 + 1
+-- Since gcd(11, 123) = 1, each day gets 12 distinct employees from EMP011..EMP133.
+insert into app_store (key, value)
+select 'hr_leaves', (
+  select value from app_store where key = 'hr_leaves'
+) || (
+  select coalesce(jsonb_agg(rec order by rn), '[]'::jsonb)
+  from (
+    select row_number() over () as rn,
+      jsonb_build_object(
+        'id', 'LVX' || lpad(row_number() over (order by d.day, s)::text, 5, '0'),
+        'employeeId', 'EMP' || lpad((10 + mod(d.di * 12 + s * 11, 123) + 1)::text, 3, '0'),
+        'type', (array['casual','sick','earned','halfday','short','unpaid'])[mod(d.di + s, 6) + 1],
+        'fromDate', to_char(d.day, 'YYYY-MM-DD'),
+        'toDate', to_char(d.day, 'YYYY-MM-DD'),
+        'reason', (array['Personal work','Family function','Medical appointment','Out of station','Festival','Bank work'])[mod(d.di + s, 6) + 1],
+        'status', 'approved',
+        'stage', null,
+        'appliedOn', to_char(d.day - 3, 'YYYY-MM-DD'),
+        'decidedBy', 'ADM001',
+        'decidedOn', to_char(d.day - 2, 'YYYY-MM-DD'),
+        'messages', '[]'::jsonb,
+        'rejectionReason', ''
+      ) as rec
+    from (
+      select gs::date as day, row_number() over (order by gs)::int as di
+      from generate_series(current_date - 600, current_date, interval '1 day') gs
+      where extract(dow from gs) between 1 and 5
+    ) d
+    cross join generate_series(0, 11) s
+  ) sub
+)
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
 -- ============ 4. TASKS (~2,400, all statuses, overdue, threads) ============
@@ -451,11 +494,72 @@ from (
 ) x
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
--- IT staff roster (used by the IT help desk assign dropdown) and an empty
--- cab-cancellations list so both features work right after the load.
+-- IT staff roster (used by the IT help desk assign dropdown).
 insert into app_store (key, value) values
-('hr_it_staff', '[{"id":"IT001","name":"Rajesh Kumar","mobile":"9876543210","email":"rajesh.kumar@company.com"},{"id":"IT002","name":"Anita Desai","mobile":"9876543211","email":"anita.desai@company.com"},{"id":"IT003","name":"Vikram Singh","mobile":"9876543212","email":"vikram.singh@company.com"}]'::jsonb),
-('hr_cab_cancellations', '[]'::jsonb)
+('hr_it_staff', '[{"id":"IT001","name":"Rajesh Kumar","mobile":"9876543210","email":"rajesh.kumar@company.com"},{"id":"IT002","name":"Anita Desai","mobile":"9876543211","email":"anita.desai@company.com"},{"id":"IT003","name":"Vikram Singh","mobile":"9876543212","email":"vikram.singh@company.com"}]'::jsonb)
+on conflict (key) do update set value = excluded.value, updated_at = now();
+
+-- Cab cancellations: generate sample data for August and September 2026.
+-- Mix of skip-pickup-only, skip-drop-only, and skip-both for various employees.
+insert into app_store (key, value)
+select 'hr_cab_cancellations', coalesce(jsonb_agg(rec), '[]'::jsonb)
+from (
+  select jsonb_build_object(
+    'employeeId', emp_id,
+    'date', dt::text,
+    'skipPickup', skip_p,
+    'skipDrop', skip_d
+  ) as rec
+  from (
+    -- August 2026: various employees cancel on different days
+    select 'EMP002' as emp_id, '2026-08-01'::date as dt, true as skip_p, false as skip_d union all
+    select 'EMP003', '2026-08-01', false, true union all
+    select 'EMP004', '2026-08-04', true, true union all
+    select 'EMP005', '2026-08-05', true, false union all
+    select 'EMP007', '2026-08-06', false, true union all
+    select 'EMP008', '2026-08-07', true, true union all
+    select 'EMP009', '2026-08-08', true, false union all
+    select 'EMP010', '2026-08-11', false, true union all
+    select 'EMP002', '2026-08-12', true, true union all
+    select 'EMP003', '2026-08-13', true, false union all
+    select 'EMP004', '2026-08-14', false, true union all
+    select 'EMP005', '2026-08-15', true, false union all
+    select 'EMP007', '2026-08-18', true, true union all
+    select 'EMP008', '2026-08-19', false, true union all
+    select 'EMP009', '2026-08-20', true, false union all
+    select 'EMP010', '2026-08-21', true, true union all
+    select 'EMP002', '2026-08-22', false, true union all
+    select 'EMP002', '2026-08-24', true, false union all
+    select 'EMP003', '2026-08-25', true, false union all
+    select 'EMP004', '2026-08-26', true, true union all
+    select 'EMP005', '2026-08-27', false, true union all
+    select 'EMP007', '2026-08-28', true, false union all
+    select 'EMP008', '2026-08-29', true, true union all
+    -- September 2026: similar pattern
+    select 'EMP002', '2026-09-01', true, false union all
+    select 'EMP003', '2026-09-02', false, true union all
+    select 'EMP004', '2026-09-03', true, true union all
+    select 'EMP005', '2026-09-04', true, false union all
+    select 'EMP007', '2026-09-05', false, true union all
+    select 'EMP008', '2026-09-08', true, true union all
+    select 'EMP009', '2026-09-09', true, false union all
+    select 'EMP010', '2026-09-10', false, true union all
+    select 'EMP002', '2026-09-11', true, true union all
+    select 'EMP003', '2026-09-12', true, false union all
+    select 'EMP004', '2026-09-15', false, true union all
+    select 'EMP005', '2026-09-16', true, false union all
+    select 'EMP007', '2026-09-17', true, true union all
+    select 'EMP008', '2026-09-18', false, true union all
+    select 'EMP009', '2026-09-19', true, false union all
+    select 'EMP010', '2026-09-22', true, true union all
+    select 'EMP002', '2026-09-23', false, true union all
+    select 'EMP003', '2026-09-24', true, false union all
+    select 'EMP004', '2026-09-25', true, true union all
+    select 'EMP005', '2026-09-26', false, true union all
+    select 'EMP007', '2026-09-29', true, false union all
+    select 'EMP008', '2026-09-30', true, true
+  ) cancels
+) sub
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
 -- ============ 12. ANNOUNCEMENTS (36) + read maps ============
@@ -475,6 +579,202 @@ on conflict (key) do update set value = excluded.value, updated_at = now();
 insert into app_store (key, value) values
 ('hr_read_announcements', '{}'::jsonb),
 ('hr_notification_reads', '{}'::jsonb)
+on conflict (key) do update set value = excluded.value, updated_at = now();
+
+-- ============ 13. COMPREHENSIVE TEST DATA FOR EMP001 & EMP002 ============
+-- Appends records that cover every possible case in every feature/dropdown.
+-- Uses tmp_people (still available from section 1 within this transaction).
+
+-- ---- 13a. LEAVES: every type × status × stage for EMP001 & EMP002 ----
+update app_store
+set value = (
+  coalesce((select value from app_store where key = 'hr_leaves'), '[]'::jsonb)
+  || (
+    -- EMP001 (i=1, manager, managerId=null)
+    select coalesce(jsonb_agg(rec), '[]'::jsonb) from (values
+      (1, jsonb_build_object('id','LVX001','employeeId','EMP001','type','casual','fromDate','2026-09-01','toDate','2026-09-01','reason','Personal work','status','pending','stage','manager','appliedOn','2026-08-22','decidedBy',null,'decidedOn',null,'rejectionReason','','messages','[]'::jsonb)),
+      (2, jsonb_build_object('id','LVX002','employeeId','EMP001','type','sick','fromDate','2026-08-10','toDate','2026-08-11','reason','Fever and cold','status','approved','stage',null,'appliedOn','2026-08-09','decidedBy','ADM001','decidedOn','2026-08-10','rejectionReason','','messages','[]'::jsonb)),
+      (3, jsonb_build_object('id','LVX003','employeeId','EMP001','type','earned','fromDate','2026-12-25','toDate','2026-12-31','reason','Year-end vacation','status','approved','stage',null,'appliedOn','2026-08-01','decidedBy','ADM001','decidedOn','2026-08-02','rejectionReason','','messages','[]'::jsonb)),
+      (4, jsonb_build_object('id','LVX004','employeeId','EMP001','type','halfday','halfDayPart','first','fromDate','2026-08-20','toDate','2026-08-20','reason','Bank work in morning','status','approved','stage',null,'appliedOn','2026-08-18','decidedBy','ADM001','decidedOn','2026-08-18','rejectionReason','','messages','[]'::jsonb)),
+      (5, jsonb_build_object('id','LVX005','employeeId','EMP001','type','halfday','halfDayPart','second','fromDate','2026-08-22','toDate','2026-08-22','reason','Family dinner','status','pending','stage','hr','appliedOn','2026-08-20','decidedBy',null,'decidedOn',null,'rejectionReason','','messages','[]'::jsonb)),
+      (6, jsonb_build_object('id','LVX006','employeeId','EMP001','type','short','fromDate','2026-08-15','toDate','2026-08-15','reason','Doctor appointment','status','approved','stage',null,'appliedOn','2026-08-14','decidedBy','ADM001','decidedOn','2026-08-14','rejectionReason','','messages','[]'::jsonb)),
+      (7, jsonb_build_object('id','LVX007','employeeId','EMP001','type','unpaid','fromDate','2026-07-10','toDate','2026-07-12','reason','Personal emergency','status','approved','stage',null,'appliedOn','2026-07-08','decidedBy','ADM001','decidedOn','2026-07-09','rejectionReason','','messages','[]'::jsonb)),
+      (8, jsonb_build_object('id','LVX008','employeeId','EMP001','type','casual','fromDate','2026-10-05','toDate','2026-10-05','reason','Friend wedding','status','rejected','stage',null,'appliedOn','2026-09-28','decidedBy','ADM001','decidedOn','2026-09-29','rejectionReason','Team has a critical deadline that week. Please reschedule.','messages','[]'::jsonb)),
+      (9, jsonb_build_object('id','LVX009','employeeId','EMP001','type','sick','fromDate','2026-06-15','toDate','2026-06-15','reason','Migraine','status','withdrawn','stage',null,'appliedOn','2026-06-14','decidedBy',null,'decidedOn',null,'rejectionReason','','withdrawnOn','2026-06-15','messages','[]'::jsonb)),
+      (10, jsonb_build_object('id','LVX010','employeeId','EMP001','type','earned','fromDate','2026-11-01','toDate','2026-11-05','reason','Diwali vacation','status','pending','stage','hr','appliedOn','2026-08-20','managerStatus','approved','managerDecidedBy','EMP001','managerDecidedOn','2026-08-21','decidedBy',null,'decidedOn',null,'rejectionReason','','messages','[]'::jsonb)),
+      -- EMP002 (i=2, reports to EMP001)
+      (11, jsonb_build_object('id','LVX011','employeeId','EMP002','type','casual','fromDate','2026-09-10','toDate','2026-09-10','reason','Personal errand','status','pending','stage','manager','appliedOn','2026-08-23','decidedBy',null,'decidedOn',null,'rejectionReason','','messages','[]'::jsonb)),
+      (12, jsonb_build_object('id','LVX012','employeeId','EMP002','type','sick','fromDate','2026-08-05','toDate','2026-08-06','reason','Food poisoning','status','approved','stage',null,'appliedOn','2026-08-05','decidedBy','ADM001','decidedOn','2026-08-06','rejectionReason','','supportingDocuments',jsonb_build_array(jsonb_build_object('name','medical-cert.pdf','size',85000,'type','application/pdf','uploadedOn','2026-08-05')),'messages','[]'::jsonb)),
+      (13, jsonb_build_object('id','LVX013','employeeId','EMP002','type','earned','fromDate','2026-10-15','toDate','2026-10-20','reason','Holiday trip','status','approved','stage',null,'appliedOn','2026-08-01','decidedBy','ADM001','decidedOn','2026-08-02','rejectionReason','','messages','[]'::jsonb)),
+      (14, jsonb_build_object('id','LVX014','employeeId','EMP002','type','halfday','halfDayPart','first','fromDate','2026-08-25','toDate','2026-08-25','reason','Dentist appointment','status','pending','stage','manager','appliedOn','2026-08-22','decidedBy',null,'decidedOn',null,'rejectionReason','','messages','[]'::jsonb)),
+      (15, jsonb_build_object('id','LVX015','employeeId','EMP002','type','halfday','halfDayPart','second','fromDate','2026-08-18','toDate','2026-08-18','reason','College seminar','status','approved','stage',null,'appliedOn','2026-08-15','decidedBy','EMP001','decidedOn','2026-08-16','rejectionReason','','messages','[]'::jsonb)),
+      (16, jsonb_build_object('id','LVX016','employeeId','EMP002','type','short','fromDate','2026-08-20','toDate','2026-08-20','reason','Passport renewal','status','approved','stage',null,'appliedOn','2026-08-18','decidedBy','EMP001','decidedOn','2026-08-19','rejectionReason','','messages','[]'::jsonb)),
+      (17, jsonb_build_object('id','LVX017','employeeId','EMP002','type','unpaid','fromDate','2026-07-20','toDate','2026-07-22','reason','Moving to new apartment','status','approved','stage',null,'appliedOn','2026-07-15','decidedBy','ADM001','decidedOn','2026-07-16','rejectionReason','','messages','[]'::jsonb)),
+      (18, jsonb_build_object('id','LVX018','employeeId','EMP002','type','casual','fromDate','2026-09-25','toDate','2026-09-25','reason','Sibling function','status','rejected','stage',null,'appliedOn','2026-09-18','decidedBy','EMP001','decidedOn','2026-09-19','rejectionReason','Sprint review scheduled that day.','messages','[]'::jsonb)),
+      (19, jsonb_build_object('id','LVX019','employeeId','EMP002','type','sick','fromDate','2026-06-10','toDate','2026-06-11','reason','Flu','status','withdrawn','stage',null,'appliedOn','2026-06-09','decidedBy',null,'decidedOn',null,'rejectionReason','','withdrawnOn','2026-06-10','messages','[]'::jsonb)),
+      (20, jsonb_build_object('id','LVX020','employeeId','EMP002','type','earned','fromDate','2026-11-10','toDate','2026-11-14','reason','Thanksgiving travel','status','pending','stage','hr','appliedOn','2026-08-20','managerStatus','approved','managerDecidedBy','EMP001','managerDecidedOn','2026-08-21','decidedBy',null,'decidedOn',null,'rejectionReason','','messages','[]'::jsonb))
+    ) AS t(rn, rec)
+  )
+)
+where key = 'hr_leaves';
+
+-- ---- 13b. TASKS: every priority × status for EMP001 & EMP002 ----
+update app_store
+set value = (
+  coalesce((select value from app_store where key = 'hr_tasks'), '[]'::jsonb)
+  || (
+    select coalesce(jsonb_agg(rec), '[]'::jsonb) from (values
+      -- EMP001 tasks (manager, self-assigned and assigned by system)
+      (1, jsonb_build_object('id','TSKX001','title','Review Q3 sales report','description','Go through the quarterly sales numbers and prepare summary.','assigneeId','EMP001','createdById','EMP001','dueDate','2026-08-28','priority','high','status','todo','createdOn','2026-08-20','completedOn',null,'closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      (2, jsonb_build_object('id','TSKX002','title','Update team attendance policy','description','Draft updated policy for hybrid work model.','assigneeId','EMP001','createdById','ADM001','dueDate','2026-09-05','priority','medium','status','inprogress','createdOn','2026-08-15','completedOn',null,'closedBy',null,'closedOn',null,'messages',jsonb_build_array(jsonb_build_object('id','TSMX001','byId','ADM001','text','Please prioritise this before the review meeting.','on','2026-08-16')))),
+      (3, jsonb_build_object('id','TSKX003','title','Submit monthly expense sheet','description','Compile and submit all team expenses for August.','assigneeId','EMP001','createdById','EMP001','dueDate','2026-08-15','priority','low','status','done','createdOn','2026-08-01','completedOn','2026-08-14','closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      (4, jsonb_build_object('id','TSKX004','title','Close Q2 support tickets','description','Review and close all resolved support tickets from Q2.','assigneeId','EMP001','createdById','EMP001','dueDate','2026-07-31','priority','high','status','closed','createdOn','2026-07-15','completedOn','2026-07-28','closedBy','EMP001','closedOn','2026-07-30','messages','[]'::jsonb)),
+      (5, jsonb_build_object('id','TSKX005','title','Prepare onboarding checklist','description','New hire joining next week. Prepare all documents.','assigneeId','EMP001','createdById','ADM001','dueDate','2026-08-10','priority','high','status','todo','createdOn','2026-08-05','completedOn',null,'closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      (6, jsonb_build_object('id','TSKX006','title','Organise team lunch','description','Book restaurant for team celebration.','assigneeId','EMP001','createdById','EMP001','dueDate','2026-09-15','priority','low','status','inprogress','createdOn','2026-08-18','completedOn',null,'closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      (7, jsonb_build_object('id','TSKX007','title','Update CRM data','description','Clean up duplicate entries in CRM.','assigneeId','EMP001','createdById','EMP001','dueDate','2026-07-20','priority','medium','status','done','createdOn','2026-07-10','completedOn','2026-07-18','closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      (8, jsonb_build_object('id','TSKX008','title','Archive old project files','description','Move completed project files to archive.','assigneeId','EMP001','createdById','ADM001','dueDate','2026-08-01','priority','low','status','closed','createdOn','2026-07-20','completedOn','2026-07-30','closedBy','ADM001','closedOn','2026-08-01','messages','[]'::jsonb)),
+      (9, jsonb_build_object('id','TSKX009','title','Send client proposal','description','Finalise and send the proposal for the new client.','assigneeId','EMP001','createdById','EMP001','dueDate','2026-08-18','priority','high','status','done','createdOn','2026-08-10','completedOn','2026-08-17','closedBy',null,'closedOn',null,'messages',jsonb_build_array(jsonb_build_object('id','TSMX002','byId','EMP001','text','Client confirmed receipt. Good work.','on','2026-08-18')))),
+      (10, jsonb_build_object('id','TSKX010','title','Plan sprint retrospective','description','Schedule and prepare retro for current sprint.','assigneeId','EMP001','createdById','EMP001','dueDate','2026-09-01','priority','medium','status','todo','createdOn','2026-08-20','completedOn',null,'closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      -- EMP002 tasks (assigned by manager EMP001)
+      (11, jsonb_build_object('id','TSKX011','title','Create wireframes for dashboard','description','Design low-fi wireframes for the new analytics dashboard.','assigneeId','EMP002','createdById','EMP001','dueDate','2026-08-28','priority','high','status','todo','createdOn','2026-08-20','completedOn',null,'closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      (12, jsonb_build_object('id','TSKX012','title','Update icon library','description','Replace outdated icons with new Phosphor set.','assigneeId','EMP002','createdById','EMP001','dueDate','2026-09-03','priority','medium','status','inprogress','createdOn','2026-08-18','completedOn',null,'closedBy',null,'closedOn',null,'messages',jsonb_build_array(jsonb_build_object('id','TSMX003','byId','EMP001','text','Please prioritise this before the review meeting.','on','2026-08-19')))),
+      (13, jsonb_build_object('id','TSKX013','title','Fix button alignment bug','description','Buttons in the settings modal are misaligned on mobile.','assigneeId','EMP002','createdById','EMP001','dueDate','2026-08-15','priority','high','status','done','createdOn','2026-08-10','completedOn','2026-08-14','closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      (14, jsonb_build_object('id','TSKX014','title','Redesign login page','description','Complete visual overhaul of the login screen.','assigneeId','EMP002','createdById','EMP001','dueDate','2026-07-31','priority','medium','status','closed','createdOn','2026-07-15','completedOn','2026-07-28','closedBy','EMP001','closedOn','2026-07-30','messages','[]'::jsonb)),
+      (15, jsonb_build_object('id','TSKX015','title','Prepare design system tokens','description','Define colour and spacing tokens for the design system.','assigneeId','EMP002','createdById','EMP002','dueDate','2026-08-10','priority','low','status','todo','createdOn','2026-08-01','completedOn',null,'closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      (16, jsonb_build_object('id','TSKX016','title','Create email templates','description','Design responsive HTML email templates.','assigneeId','EMP002','createdById','EMP001','dueDate','2026-09-10','priority','low','status','inprogress','createdOn','2026-08-20','completedOn',null,'closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      (17, jsonb_build_object('id','TSKX017','title','Update user profile page','description','Add new fields to the profile view.','assigneeId','EMP002','createdById','EMP001','dueDate','2026-07-25','priority','medium','status','done','createdOn','2026-07-10','completedOn','2026-07-22','closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      (18, jsonb_build_object('id','TSKX018','title','Audit accessibility issues','description','Run axe audit and fix critical issues.','assigneeId','EMP002','createdById','EMP001','dueDate','2026-08-05','priority','high','status','closed','createdOn','2026-07-20','completedOn','2026-08-03','closedBy','EMP001','closedOn','2026-08-05','messages','[]'::jsonb)),
+      (19, jsonb_build_object('id','TSKX019','title','Design notification bell','description','Create UI for the notification dropdown.','assigneeId','EMP002','createdById','EMP002','dueDate','2026-08-22','priority','low','status','done','createdOn','2026-08-12','completedOn','2026-08-21','closedBy',null,'closedOn',null,'messages','[]'::jsonb)),
+      (20, jsonb_build_object('id','TSKX020','title','Prototype dark mode','description','Build a quick prototype for dark mode toggle.','assigneeId','EMP002','createdById','EMP001','dueDate','2026-09-20','priority','medium','status','todo','createdOn','2026-08-22','completedOn',null,'closedBy',null,'closedOn',null,'messages','[]'::jsonb))
+    ) AS t(rn, rec)
+  )
+)
+where key = 'hr_tasks';
+
+-- ---- 13c. TICKETS: every kind × category × status ----
+update app_store
+set value = (
+  coalesce((select value from app_store where key = 'hr_tickets'), '[]'::jsonb)
+  || (
+    select coalesce(jsonb_agg(rec), '[]'::jsonb) from (values
+      (1, jsonb_build_object('id','TKTX001','kind','query','category','payslip','subject','Doubt about August payslip','status','open','employeeId','EMP001','anonymous',false,'confidential',false,'createdOn','2026-08-20','updatedOn','2026-08-20','messages',jsonb_build_array(jsonb_build_object('id','MSGX001','byId','EMP001','byRole','employee','text','My HRA deduction seems higher than expected.','on','2026-08-20')))),
+      (2, jsonb_build_object('id','TKTX002','kind','query','category','leave','subject','Leave balance not matching','status','inprogress','employeeId','EMP001','anonymous',false,'confidential',false,'createdOn','2026-08-15','updatedOn','2026-08-18','messages',jsonb_build_array(jsonb_build_object('id','MSGX002','byId','EMP001','byRole','employee','text','I have 5 earned leaves but system shows 3.','on','2026-08-15'),jsonb_build_object('id','MSGX003','byId','ADM001','byRole','admin','text','Looking into this. Will update shortly.','on','2026-08-18')))),
+      (3, jsonb_build_object('id','TKTX003','kind','query','category','pfuan','subject','PF passbook download issue','status','resolved','employeeId','EMP001','anonymous',false,'confidential',false,'createdOn','2026-07-10','updatedOn','2026-07-15','messages',jsonb_build_array(jsonb_build_object('id','MSGX004','byId','EMP001','byRole','employee','text','Cannot download PF passbook from portal.','on','2026-07-10'),jsonb_build_object('id','MSGX005','byId','ADM001','byRole','admin','text','Fixed. Please try again.','on','2026-07-15')))),
+      (4, jsonb_build_object('id','TKTX004','kind','query','category','form16','subject','Form 16 request for FY 2025-26','status','closed','employeeId','EMP001','anonymous',false,'confidential',false,'createdOn','2026-06-01','updatedOn','2026-06-10','messages',jsonb_build_array(jsonb_build_object('id','MSGX006','byId','EMP001','byRole','employee','text','Please issue my Form 16.','on','2026-06-01')))),
+      (5, jsonb_build_object('id','TKTX005','kind','query','category','policy','subject','WFH policy clarification','status','open','employeeId','EMP001','anonymous',false,'confidential',false,'createdOn','2026-08-22','updatedOn','2026-08-22','messages',jsonb_build_array(jsonb_build_object('id','MSGX007','byId','EMP001','byRole','employee','text','How many WFH days are allowed per month?','on','2026-08-22')))),
+      (6, jsonb_build_object('id','TKTX006','kind','query','category','itasset','subject','Second monitor request','status','withdrawn','employeeId','EMP001','anonymous',false,'confidential',false,'createdOn','2026-07-20','updatedOn','2026-07-25','messages',jsonb_build_array(jsonb_build_object('id','MSGX008','byId','EMP001','byRole','employee','text','Requesting a second monitor for my desk.','on','2026-07-20')))),
+      (7, jsonb_build_object('id','TKTX007','kind','grievance','category','compensation','subject','Salary discrepancy','status','inprogress','employeeId','EMP001','anonymous',false,'confidential',true,'createdOn','2026-08-10','updatedOn','2026-08-15','messages',jsonb_build_array(jsonb_build_object('id','MSGX009','byId','EMP001','byRole','employee','text','My last increment was not reflected correctly.','on','2026-08-10')))),
+      (8, jsonb_build_object('id','TKTX008','kind','grievance','category','posh','subject','Workplace harassment complaint','status','open','employeeId','EMP001','anonymous',true,'confidential',true,'createdOn','2026-08-18','updatedOn','2026-08-18','messages',jsonb_build_array(jsonb_build_object('id','MSGX010','byId','EMP001','byRole','employee','text','I wish to report an incident confidentially.','on','2026-08-18')))),
+      -- EMP002 tickets
+      (9, jsonb_build_object('id','TKTX009','kind','query','category','payslip','subject','TDS deduction query','status','open','employeeId','EMP002','anonymous',false,'confidential',false,'createdOn','2026-08-21','updatedOn','2026-08-21','messages',jsonb_build_array(jsonb_build_object('id','MSGX011','byId','EMP002','byRole','employee','text','Why is TDS deducted when my CTC is below the threshold?','on','2026-08-21')))),
+      (10, jsonb_build_object('id','TKTX010','kind','query','category','leave','subject','Earned leave carry-forward','status','resolved','employeeId','EMP002','anonymous',false,'confidential',false,'createdOn','2026-07-05','updatedOn','2026-07-12','messages',jsonb_build_array(jsonb_build_object('id','MSGX012','byId','EMP002','byRole','employee','text','Can I carry forward unused earned leaves?','on','2026-07-05'),jsonb_build_object('id','MSGX013','byId','ADM001','byRole','admin','text','Yes, up to 15 days can be carried forward.','on','2026-07-12')))),
+      (11, jsonb_build_object('id','TKTX011','kind','query','category','form16','subject','Incorrect PAN in records','status','closed','employeeId','EMP002','anonymous',false,'confidential',false,'createdOn','2026-06-15','updatedOn','2026-06-20','messages',jsonb_build_array(jsonb_build_object('id','MSGX014','byId','EMP002','byRole','employee','text','My PAN number is incorrectly recorded.','on','2026-06-15')))),
+      (12, jsonb_build_object('id','TKTX012','kind','query','category','policy','subject','Maternity leave policy query','status','inprogress','employeeId','EMP002','anonymous',false,'confidential',false,'createdOn','2026-08-18','updatedOn','2026-08-20','messages',jsonb_build_array(jsonb_build_object('id','MSGX015','byId','EMP002','byRole','employee','text','What is the maternity leave duration and eligibility?','on','2026-08-18')))),
+      (13, jsonb_build_object('id','TKTX013','kind','grievance','category','against_person','subject','Unprofessional behaviour by colleague','status','open','employeeId','EMP002','anonymous',false,'confidential',true,'createdOn','2026-08-19','updatedOn','2026-08-19','messages',jsonb_build_array(jsonb_build_object('id','MSGX016','byId','EMP002','byRole','employee','text','I would like to report inappropriate behaviour.','on','2026-08-19')))),
+      (14, jsonb_build_object('id','TKTX014','kind','grievance','category','disciplinary','subject','Policy violation concern','status','closed','employeeId','EMP002','anonymous',false,'confidential',true,'createdOn','2026-05-10','updatedOn','2026-05-20','messages',jsonb_build_array(jsonb_build_object('id','MSGX017','byId','EMP002','byRole','employee','text','I have concerns about a policy violation in my team.','on','2026-05-10'))))
+    ) AS t(rn, rec)
+  )
+)
+where key = 'hr_tickets';
+
+-- ---- 13d. IT ISSUES: every category × priority × status ----
+update app_store
+set value = (
+  coalesce((select value from app_store where key = 'hr_it_issues'), '[]'::jsonb)
+  || (
+    select coalesce(jsonb_agg(rec), '[]'::jsonb) from (values
+      (1, jsonb_build_object('id','ITIX001','employeeId','EMP001','issue','Laptop not starting','description','Laptop shows black screen on pressing power button.','category','hardware','priority','high','status','open','assignedTo','IT001','estimatedTime','1 hour','attachment',null,'comments','[]'::jsonb,'createdOn','2026-08-22','updatedOn','2026-08-22')),
+      (2, jsonb_build_object('id','ITIX002','employeeId','EMP001','issue','Internet slow','description','Network speed has been very slow since morning.','category','network','priority','medium','status','inprogress','assignedTo','IT002','estimatedTime','30 minutes','attachment',null,'comments',jsonb_build_array(jsonb_build_object('id','ITICX001','byId','IT002','byName','Anita Desai','byRole','it','text','Checking the switch port. Will update.','on','2026-08-22')),'createdOn','2026-08-20','updatedOn','2026-08-22')),
+      (3, jsonb_build_object('id','ITIX003','employeeId','EMP001','issue','Software licence error','description','Adobe Creative Suite showing licence expired.','category','software','priority','low','status','resolved','assignedTo','IT001','estimatedTime','2 hours','attachment',null,'comments',jsonb_build_array(jsonb_build_object('id','ITICX002','byId','IT001','byName','Rajesh Kumar','byRole','it','text','Licence renewed. Please restart the app.','on','2026-08-15')),'createdOn','2026-08-10','updatedOn','2026-08-15')),
+      (4, jsonb_build_object('id','ITIX004','employeeId','EMP001','issue','Email login failing','description','Cannot log into Outlook. Keeps showing authentication error.','category','email','priority','high','status','closed','assignedTo','IT003','estimatedTime','30 minutes','attachment',null,'comments',jsonb_build_array(jsonb_build_object('id','ITICX003','byId','IT003','byName','Vikram Singh','byRole','it','text','Password was reset. Please check.','on','2026-07-20')),'createdOn','2026-07-18','updatedOn','2026-07-20')),
+      (5, jsonb_build_object('id','ITIX005','employeeId','EMP001','issue','Printer not working','description','Floor 2 printer showing paper jam error.','category','hardware','priority','low','status','withdrawn','assignedTo',null,'estimatedTime',null,'attachment',null,'comments','[]'::jsonb,'createdOn','2026-08-05','updatedOn','2026-08-06')),
+      (6, jsonb_build_object('id','ITIX006','employeeId','EMP001','issue','VPN disconnects','description','VPN drops every 10 minutes when connected to corporate network.','category','network','priority','high','status','inprogress','assignedTo','IT001','estimatedTime','4 hours','attachment',null,'comments','[]'::jsonb,'createdOn','2026-08-23','updatedOn','2026-08-23')),
+      -- EMP002 IT issues
+      (7, jsonb_build_object('id','ITIX007','employeeId','EMP002','issue','Monitor flickering','description','External monitor flickers intermittently.','category','hardware','priority','medium','status','open','assignedTo','IT002','estimatedTime','1 hour','attachment',null,'comments','[]'::jsonb,'createdOn','2026-08-21','updatedOn','2026-08-21')),
+      (8, jsonb_build_object('id','ITIX008','employeeId','EMP002','issue','Keyboard sticking','description','Space bar and Enter key are sticking.','category','hardware','priority','low','status','resolved','assignedTo','IT001','estimatedTime','30 minutes','attachment',null,'comments',jsonb_build_array(jsonb_build_object('id','ITICX004','byId','IT001','byName','Rajesh Kumar','byRole','it','text','Replacement keyboard has been ordered.','on','2026-08-10')),'createdOn','2026-08-05','updatedOn','2026-08-10')),
+      (9, jsonb_build_object('id','ITIX009','employeeId','EMP002','issue','Software licence error','description','Figma seat licence not active.','category','software','priority','high','status','inprogress','assignedTo','IT003','estimatedTime','2 hours','attachment',null,'comments','[]'::jsonb,'createdOn','2026-08-22','updatedOn','2026-08-23')),
+      (10, jsonb_build_object('id','ITIX010','employeeId','EMP002','issue','Email login failing','description','Cannot access webmail from mobile device.','category','email','priority','medium','status','closed','assignedTo','IT002','estimatedTime','1 hour','attachment',null,'comments',jsonb_build_array(jsonb_build_object('id','ITICX005','byId','IT002','byName','Anita Desai','byRole','it','text','Mobile sync was disabled. Re-enabled now.','on','2026-07-25')),'createdOn','2026-07-22','updatedOn','2026-07-25')),
+      (11, jsonb_build_object('id','ITIX011','employeeId','EMP002','issue','VPN disconnects','description','VPN works on wired but drops on Wi-Fi.','category','other','priority','medium','status','open','assignedTo','IT001','estimatedTime','4 hours','attachment',null,'comments','[]'::jsonb,'createdOn','2026-08-23','updatedOn','2026-08-23')),
+      (12, jsonb_build_object('id','ITIX012','employeeId','EMP002','issue','Internet slow','description','Download speed is below 1 Mbps on floor 3.','category','network','priority','high','status','resolved','assignedTo','IT003','estimatedTime','2 hours','attachment',null,'comments',jsonb_build_array(jsonb_build_object('id','ITICX006','byId','IT003','byName','Vikram Singh','byRole','it','text','ISP ticket raised. Bandwidth restored.','on','2026-08-18')),'createdOn','2026-08-15','updatedOn','2026-08-18'))
+    ) AS t(rn, rec)
+  )
+)
+where key = 'hr_it_issues';
+
+-- ---- 13e. REIMBURSEMENTS: every category × status ----
+update app_store
+set value = (
+  coalesce((select value from app_store where key = 'hr_reimbursements'), '[]'::jsonb)
+  || (
+    select coalesce(jsonb_agg(rec), '[]'::jsonb) from (values
+      (1, jsonb_build_object('id','RMBX001','employeeId','EMP001','category','conveyance','expenseDate','2026-08-20','amount',1500,'description','Cab fare for client meeting','status','pending','appliedOn','2026-08-21','decidedBy',null,'decidedOn',null,'paidOn',null,'reviewNote','')),
+      (2, jsonb_build_object('id','RMBX002','employeeId','EMP001','category','travel','expenseDate','2026-08-10','amount',8500,'description','Flight tickets for Bangalore client visit','status','approved_unpaid','appliedOn','2026-08-12','decidedBy','ADM001','decidedOn','2026-08-13','paidOn',null,'reviewNote','')),
+      (3, jsonb_build_object('id','RMBX003','employeeId','EMP001','category','meals','expenseDate','2026-08-05','amount',800,'description','Team lunch with client','status','paid','appliedOn','2026-08-06','decidedBy','ADM001','decidedOn','2026-08-07','paidOn','2026-08-10','reviewNote','')),
+      (4, jsonb_build_object('id','RMBX004','employeeId','EMP001','category','office','expenseDate','2026-07-28','amount',3200,'description','Ergonomic mouse and keyboard set','status','rejected','appliedOn','2026-07-30','decidedBy','ADM001','decidedOn','2026-08-01','paidOn',null,'reviewNote','Please use the office supply request process instead.')),
+      (5, jsonb_build_object('id','RMBX005','employeeId','EMP001','category','other','expenseDate','2026-07-15','amount',2000,'description','Courier charges for document dispatch','status','withdrawn','appliedOn','2026-07-16','decidedBy',null,'decidedOn',null,'paidOn',null,'reviewNote','')),
+      (6, jsonb_build_object('id','RMBX006','employeeId','EMP001','category','conveyance','expenseDate','2026-09-01','amount',600,'description','Auto fare from metro station to office','status','pending','appliedOn','2026-09-02','decidedBy',null,'decidedOn',null,'paidOn',null,'reviewNote','')),
+      -- EMP002 reimbursements
+      (7, jsonb_build_object('id','RMBX007','employeeId','EMP002','category','meals','expenseDate','2026-08-22','amount',450,'description','Working lunch during design sprint','status','pending','appliedOn','2026-08-23','decidedBy',null,'decidedOn',null,'paidOn',null,'reviewNote','')),
+      (8, jsonb_build_object('id','RMBX008','employeeId','EMP002','category','office','expenseDate','2026-08-15','amount',1200,'description','Printer cartridges for team printer','status','approved_unpaid','appliedOn','2026-08-16','decidedBy','EMP001','decidedOn','2026-08-17','paidOn',null,'reviewNote','')),
+      (9, jsonb_build_object('id','RMBX009','employeeId','EMP002','category','travel','expenseDate','2026-08-01','amount',5000,'description','Train ticket for design workshop','status','paid','appliedOn','2026-08-02','decidedBy','EMP001','decidedOn','2026-08-03','paidOn','2026-08-05','reviewNote','')),
+      (10, jsonb_build_object('id','RMBX010','employeeId','EMP002','category','conveyance','expenseDate','2026-07-20','amount',350,'description','Cab to client site for wireframe review','status','rejected','appliedOn','2026-07-21','decidedBy','EMP001','decidedOn','2026-07-22','paidOn',null,'reviewNote','Please submit cab receipt with the claim.')),
+      (11, jsonb_build_object('id','RMBX011','employeeId','EMP002','category','other','expenseDate','2026-07-10','amount',900,'description','Stationery and art supplies for brainstorming','status','withdrawn','appliedOn','2026-07-11','decidedBy',null,'decidedOn',null,'paidOn',null,'reviewNote','')),
+      (12, jsonb_build_object('id','RMBX012','employeeId','EMP002','category','meals','expenseDate','2026-09-05','amount',600,'description','Client dinner during project delivery','status','pending','appliedOn','2026-09-06','decidedBy',null,'decidedOn',null,'paidOn',null,'reviewNote',''))
+    ) AS t(rn, rec)
+  )
+)
+where key = 'hr_reimbursements';
+
+-- ---- 13f. ATTENDANCE CORRECTIONS: every issue type × status ----
+update app_store
+set value = (
+  coalesce((select value from app_store where key = 'hr_attendance_corrections'), '[]'::jsonb)
+  || (
+    select coalesce(jsonb_agg(rec), '[]'::jsonb) from (values
+      (1, jsonb_build_object('id','ACRX001','employeeId','EMP001','date','2026-08-20','issueType','missed_time_in','description','Forgot to punch in when arriving at 9 AM.','suggestedTimeIn','09:00','suggestedTimeOut',null,'status','pending','appliedOn','2026-08-21','decidedBy',null,'decidedOn',null,'reviewNote','','messages','[]'::jsonb)),
+      (2, jsonb_build_object('id','ACRX002','employeeId','EMP001','date','2026-08-18','issueType','missed_time_out','description','Forgot to punch out at end of day.','suggestedTimeIn',null,'suggestedTimeOut','18:30','status','approved','appliedOn','2026-08-19','decidedBy','ADM001','decidedOn','2026-08-19','reviewNote','Approved. Attendance updated.','messages','[]'::jsonb)),
+      (3, jsonb_build_object('id','ACRX003','employeeId','EMP001','date','2026-08-15','issueType','wrong_times','description','Punched in twice by mistake. Times are incorrect.','suggestedTimeIn','09:15','suggestedTimeOut','18:00','status','rejected','appliedOn','2026-08-16','decidedBy','ADM001','decidedOn','2026-08-17','reviewNote','Punch records look correct. No change needed.','messages','[]'::jsonb)),
+      (4, jsonb_build_object('id','ACRX004','employeeId','EMP001','date','2026-08-10','issueType','wrong_break','description','Break timer was not stopped. Shows 2 hours instead of 30 min.','suggestedTimeIn',null,'suggestedTimeOut',null,'status','withdrawn','appliedOn','2026-08-11','decidedBy',null,'decidedOn',null,'reviewNote','','messages','[]'::jsonb)),
+      (5, jsonb_build_object('id','ACRX005','employeeId','EMP001','date','2026-08-05','issueType','other','description','System was down. Could not punch in or out.','suggestedTimeIn','08:45','suggestedTimeOut','17:30','status','approved','appliedOn','2026-08-06','decidedBy','ADM001','decidedOn','2026-08-06','reviewNote','Verified with IT. Attendance corrected.','messages','[]'::jsonb)),
+      -- EMP002 attendance corrections
+      (6, jsonb_build_object('id','ACRX006','employeeId','EMP002','date','2026-08-22','issueType','missed_time_in','description','Badge reader was not working. Forgot to manual punch.','suggestedTimeIn','09:30','suggestedTimeOut',null,'status','pending','appliedOn','2026-08-23','decidedBy',null,'decidedOn',null,'reviewNote','','messages','[]'::jsonb)),
+      (7, jsonb_build_object('id','ACRX007','employeeId','EMP002','date','2026-08-19','issueType','wrong_times','description','Swiped card at wrong terminal. Times are off by 2 hours.','suggestedTimeIn','10:00','suggestedTimeOut','19:00','status','approved','appliedOn','2026-08-20','decidedBy','EMP001','decidedOn','2026-08-20','reviewNote','Approved. Attendance updated.','messages','[]'::jsonb)),
+      (8, jsonb_build_object('id','ACRX008','employeeId','EMP002','date','2026-08-14','issueType','missed_time_out','description','Left early for appointment. Forgot to punch out.','suggestedTimeIn',null,'suggestedTimeOut','16:00','status','rejected','appliedOn','2026-08-15','decidedBy','EMP001','decidedOn','2026-08-16','reviewNote','CCTV confirms you left at 17:45. No correction needed.','messages','[]'::jsonb)),
+      (9, jsonb_build_object('id','ACRX009','employeeId','EMP002','date','2026-08-08','issueType','wrong_break','description','Break was auto-logged. Did not take a break that day.','suggestedTimeIn',null,'suggestedTimeOut',null,'status','withdrawn','appliedOn','2026-08-09','decidedBy',null,'decidedOn',null,'reviewNote','','messages','[]'::jsonb)),
+      (10, jsonb_build_object('id','ACRX010','employeeId','EMP002','date','2026-08-01','issueType','other','description','Power outage. Entire office attendance system was down.','suggestedTimeIn','09:00','suggestedTimeOut','18:00','status','approved','appliedOn','2026-08-02','decidedBy','EMP001','decidedOn','2026-08-02','reviewNote','Confirmed building-wide outage. Corrected.','messages','[]'::jsonb))
+    ) AS t(rn, rec)
+  )
+)
+where key = 'hr_attendance_corrections';
+
+-- ---- 13g. CAB REQUESTS: every status ----
+insert into app_store (key, value)
+select 'hr_cab_requests', coalesce((select value from app_store where key = 'hr_cab_requests'), '[]'::jsonb)
+  || (
+    select coalesce(jsonb_agg(rec), '[]'::jsonb) from (values
+      (1, jsonb_build_object('id','CABREQX1','employeeId','EMP001','forDates',jsonb_build_array('2026-08-25'),'newLocation','12 Sector 45, Gurugram','newGate','Gate 3','newTime','07:30','reason','Staying near sector 45 for a week.','status','pending','adminNote','','raisedOn','2026-08-23')),
+      (2, jsonb_build_object('id','CABREQX2','employeeId','EMP001','forDates',jsonb_build_array('2026-08-10'),'newLocation','5 Sector 22, Noida','newGate','Gate 1','newTime','08:00','reason','Temporary relocation for project work.','status','approved','adminNote','','raisedOn','2026-08-08')),
+      (3, jsonb_build_object('id','CABREQX3','employeeId','EMP001','forDates',jsonb_build_array('2026-08-05'),'newLocation','8 Sector 62, Noida','newGate','Gate 5','newTime','09:00','reason','Visiting a friend near Noida.','status','rejected','adminNote','Not possible on that route, sorry.','raisedOn','2026-08-03')),
+      (4, jsonb_build_object('id','CABREQX4','employeeId','EMP002','forDates',jsonb_build_array('2026-08-26'),'newLocation','20 Sector 56, Gurugram','newGate','Gate 2','newTime','07:45','reason','Moved to a new apartment temporarily.','status','pending','adminNote','','raisedOn','2026-08-24')),
+      (5, jsonb_build_object('id','CABREQX5','employeeId','EMP002','forDates',jsonb_build_array('2026-08-12'),'newLocation','15 Sector 35, Gurugram','newGate','Gate 4','newTime','08:15','reason','Staying with family for a few days.','status','approved','adminNote','','raisedOn','2026-08-10')),
+      (6, jsonb_build_object('id','CABREQX6','employeeId','EMP002','forDates',jsonb_build_array('2026-08-03'),'newLocation','30 Sector 14, Gurugram','newGate','Gate 1','newTime','07:00','reason','Hotel stay during apartment renovation.','status','rejected','adminNote','Cab does not cover Sector 14 route.','raisedOn','2026-08-01'))
+    ) AS t(rn, rec)
+  )
+on conflict (key) do update set value = excluded.value, updated_at = now();
+
+-- ---- 13h. CAB MESSAGES for EMP001 & EMP002 ----
+insert into app_store (key, value)
+select 'hr_cab_messages', coalesce((select value from app_store where key = 'hr_cab_messages'), '[]'::jsonb)
+  || (
+    select coalesce(jsonb_agg(rec), '[]'::jsonb) from (values
+      (1, jsonb_build_object('id','CABMSGX01','employeeId','EMP001','byRole','employee','text','Where is my cab? It is usually here by now.','on','2026-08-24T08:00:00','readByAdmin',true)),
+      (2, jsonb_build_object('id','CABMSGX02','employeeId','EMP001','byRole','admin','text','Driver is 5 minutes away, sorry for the wait.','on','2026-08-24T08:05:00','readByAdmin',false)),
+      (3, jsonb_build_object('id','CABMSGX03','employeeId','EMP001','byRole','employee','text','Cab reached, coming down.','on','2026-08-24T08:10:00','readByAdmin',false)),
+      (4, jsonb_build_object('id','CABMSGX04','employeeId','EMP002','byRole','employee','text','Please wait 2 minutes at the gate.','on','2026-08-24T07:50:00','readByAdmin',true)),
+      (5, jsonb_build_object('id','CABMSGX05','employeeId','EMP002','byRole','admin','text','Driver has been informed. Please be at Gate 2.','on','2026-08-24T07:55:00','readByAdmin',false)),
+      (6, jsonb_build_object('id','CABMSGX06','employeeId','EMP002','byRole','employee','text','Can the cab come 10 minutes early tomorrow?','on','2026-08-23T18:00:00','readByAdmin',true))
+    ) AS t(rn, rec)
+  )
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
 commit;

@@ -120,11 +120,11 @@ export default function EmployeeAnnouncements() {
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '38%' }} />
+            <col style={{ width: '40%' }} />
+            <col style={{ width: '15%' }} />
             <col style={{ width: '17%' }} />
-            <col style={{ width: '17%' }} />
-            <col style={{ width: '14%' }} />
-            <col style={{ width: '14%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '13%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -146,7 +146,11 @@ export default function EmployeeAnnouncements() {
                 <tr key={announcement.id}>
                   <td>
                     <strong>{announcement.title}</strong>
-                    <div className="muted small cell-ellipsis" title={announcement.content}>
+                    <div
+                      className="muted small"
+                      title={announcement.content}
+                      style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                    >
                       {announcement.content}
                     </div>
                   </td>

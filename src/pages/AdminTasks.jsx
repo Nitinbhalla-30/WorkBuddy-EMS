@@ -31,6 +31,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { ListTodo, MessagesSquare, MoreHorizontal, Pencil, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Avatar from '../components/Avatar.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -327,9 +328,9 @@ export default function AdminTasks() {
           </colgroup>
           <thead>
             <tr>
+              <SortableTh label="Assigned to" keyName="assignee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Description" keyName="description" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Assigned to" keyName="assignee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Due Date" keyName="dueDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -340,11 +341,18 @@ export default function AdminTasks() {
             {table.count === 0 && (
               <TableEmpty colSpan={7} message="No tasks match your filters." />
             )}
-            {tasksPage.map((task) => (
+            {tasksPage.map((task) => {
+              const assignee = getEmployeeById(task.assigneeId)
+              return (
               <tr key={task.id}>
+                <td>
+                  <div className="person-cell">
+                    <Avatar src={assignee?.photoUrl} name={nameOf(task.assigneeId)} size={34} />
+                    <span>{nameOf(task.assigneeId)}</span>
+                  </div>
+                </td>
                 <td><strong>{task.title}</strong></td>
                 <td className="cell-ellipsis" title={task.description || undefined}>{task.description || <span className="muted">--</span>}</td>
-                <td>{nameOf(task.assigneeId)}</td>
                 <td>
                   <span className={`tag ${priorityTagClass(task.priority)}`}>
                     {priorityLabel(task.priority)}
@@ -411,7 +419,8 @@ export default function AdminTasks() {
                   </div>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         <Pagination

@@ -326,8 +326,22 @@ export default function EmployeeLeaves() {
           const Icon = BALANCE_ICONS[b.key] || CalendarDays
           const ratio = b.allowed > 0 ? b.remaining / b.allowed : 0
           const tone = b.remaining === 0 ? ' stat-bad' : ratio <= 0.25 ? ' stat-warn' : ''
+          const isActive = table.filters.type === b.key
           return (
-            <div className={`stat-card${tone}`} key={b.key}>
+            <div
+              className={`stat-card${tone}${isActive ? ' task-status-stat-card-active' : ''}`}
+              key={b.key}
+              onClick={() => table.setFilter('type', isActive ? 'all' : b.key)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Filter by ${b.label} leave`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  table.setFilter('type', isActive ? 'all' : b.key)
+                }
+              }}
+            >
               <span className="stat-chip"><Icon size={18} aria-hidden="true" /></span>
               <div className="stat-num">{b.remaining}</div>
               <div className="stat-label">
@@ -365,12 +379,25 @@ export default function EmployeeLeaves() {
           ]}
           onFilterChange={table.setFilter}
           actions={
-            <button
-              className="btn btn-primary btn-tiny"
-              onClick={() => setShowForm(true)}
-            >
-              Apply for leave
-            </button>
+            <>
+              {table.filters.type && table.filters.type !== 'all' && (
+                <button
+                  type="button"
+                  className="quick-filter-chip"
+                  onClick={() => table.setFilter('type', 'all')}
+                  aria-label={`Clear ${table.filters.type} filter`}
+                >
+                  {LEAVE_TYPES.find((t) => t.key === table.filters.type)?.label || table.filters.type}
+                  <X size={13} aria-hidden="true" />
+                </button>
+              )}
+              <button
+                className="btn btn-primary btn-tiny"
+                onClick={() => setShowForm(true)}
+              >
+                Apply for leave
+              </button>
+            </>
           }
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
@@ -486,6 +513,7 @@ export default function EmployeeLeaves() {
       </div>
 
       <p className="hint">
+        <strong>Quick filters:</strong> click a leave balance card above to show only requests of that type; click again to see all.
         Your leave balance updates as requests are approved or rejected. Paid leave needs your
         manager&rsquo;s approval first, then HR&rsquo;s final sign-off. Sick leave does not
         require a balance — just upload a medical certificate if asked.

@@ -47,6 +47,8 @@ const KEYS = {
   cabRequests: 'hr_cab_requests',
   cabMessages: 'hr_cab_messages',
   cabCancellations: 'hr_cab_cancellations',
+  cabClearedChats: 'hr_cab_cleared_chats',
+  cabClearedChatsAdmin: 'hr_cab_cleared_chats_admin',
   itIssues: 'hr_it_issues',
   itStaff: 'hr_it_staff',
   announcements: 'hr_announcements',
@@ -122,6 +124,8 @@ const DEFAULTS = {
   [KEYS.cabRequests]: [],
   [KEYS.cabMessages]: [],
   [KEYS.cabCancellations]: [],
+  [KEYS.cabClearedChats]: {},
+  [KEYS.cabClearedChatsAdmin]: {},
   [KEYS.itIssues]: [],
   [KEYS.itStaff]: [],
   [KEYS.announcements]: [],
@@ -1544,6 +1548,29 @@ export function markCabThreadRead(employeeId) {
     }
   }
   if (changed) write(KEYS.cabMessages, all)
+}
+
+// Employee-side "clear chat" for the cab thread: stores a timestamp so the
+// employee only sees messages sent after it. The transport desk (admin) keeps
+// the full history.
+export function clearCabChat(employeeId) {
+  const cleared = read(KEYS.cabClearedChats, {})
+  cleared[employeeId] = new Date().toISOString()
+  write(KEYS.cabClearedChats, cleared)
+}
+export function getCabClearedAt(employeeId) {
+  return read(KEYS.cabClearedChats, {})[employeeId] || null
+}
+
+// Admin-side "clear chat" for the same cab thread: independent timestamp so the
+// transport desk can clear their view without affecting the employee's copy.
+export function clearCabChatAdmin(employeeId) {
+  const cleared = read(KEYS.cabClearedChatsAdmin, {})
+  cleared[employeeId] = new Date().toISOString()
+  write(KEYS.cabClearedChatsAdmin, cleared)
+}
+export function getCabClearedAtAdmin(employeeId) {
+  return read(KEYS.cabClearedChatsAdmin, {})[employeeId] || null
 }
 
 // Unread count per employee, e.g. { EMP004: 2 }. Only counts employee messages

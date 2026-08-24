@@ -25,6 +25,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { CircleCheck, CircleX, Eye, ReceiptText, MoreHorizontal, Banknote, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Avatar from '../components/Avatar.jsx'
 
 const STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -170,22 +171,22 @@ export default function AdminReimbursements() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table table-compact">
+        <table className="table table-compact" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '11.65%' }} />
-            <col style={{ width: '11.6%' }} />
-            <col style={{ width: '11.6%' }} />
-            <col style={{ width: '11.6%' }} />
-            <col style={{ width: '18.35%' }} />
-            <col style={{ width: '11.6%' }} />
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '5.6%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '5%' }} />
           </colgroup>
           <thead>
             <tr>
               <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Category" keyName="category" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Expense date" keyName="expenseDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Expense date" keyName="expenseDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
               <SortableTh label="Amount" keyName="amount" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Description" keyName="description" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Submitted" keyName="appliedOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -202,8 +203,13 @@ export default function AdminReimbursements() {
               return (
                 <tr key={c.id}>
                   <td>
-                    <strong>{emp?.name || c.employeeId}</strong>
-                    <div className="muted small">{emp?.department || '--'}</div>
+                    <div className="person-cell">
+                      <Avatar src={emp?.photoUrl} name={emp?.name} size={34} />
+                      <div>
+                        <strong>{emp?.name || c.employeeId}</strong>
+                        <div className="muted small">{emp?.department || '--'}</div>
+                      </div>
+                    </div>
                   </td>
                   <td>{categoryLabel(c.category)}</td>
                   <td>{formatDate(c.expenseDate)}</td>

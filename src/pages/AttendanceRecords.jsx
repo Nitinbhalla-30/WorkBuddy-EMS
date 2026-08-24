@@ -32,6 +32,7 @@ import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread
 import { downloadExcelXlsx } from '../utils/exportExcel.js'
 import { CircleCheck, CircleX, Clock, Download, Eye, MessageCircleQuestionMark, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Avatar from '../components/Avatar.jsx'
 
 const PERIOD_FILTER_OPTS = [
   { value: 'all', label: 'All period' },
@@ -299,16 +300,6 @@ export default function AttendanceRecords() {
     downloadExcelXlsx(`attendance-records-${today}`, headers, rows)
   }
 
-  const hasActiveFilters =
-    (table.filters.employeeId && table.filters.employeeId !== 'all') ||
-    (table.filters.department && table.filters.department !== 'all') ||
-    (table.filters.period && table.filters.period !== 'all')
-
-  const hasActiveCorrectionFilters =
-    (correctionsTable.filters.employeeId && correctionsTable.filters.employeeId !== 'all') ||
-    (correctionsTable.filters.period && correctionsTable.filters.period !== 'all') ||
-    (correctionsTable.filters.status && correctionsTable.filters.status !== 'all')
-
   return (
     <div>
       <div className="page-head">
@@ -367,31 +358,17 @@ export default function AttendanceRecords() {
               <Download size={14} style={{ marginRight: 4 }} />Export to Excel
             </button>
           }
-        >
-          {hasActiveFilters && (
-            <button
-              type="button"
-              className="btn btn-light btn-tiny table-toolbar-action"
-              onClick={() => {
-                table.setFilter('employeeId', 'all')
-                table.setFilter('period', 'all')
-                table.setFilter('department', 'all')
-              }}
-            >
-              Clear filters
-            </button>
-          )}
-        </TableToolbar>
-        <table className="table">
+        />
+        <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '14%' }} />
-            <col style={{ width: '18%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '17%' }} />
             <col style={{ width: '12%' }} />
             <col style={{ width: '12%' }} />
             <col style={{ width: '10%' }} />
             <col style={{ width: '10%' }} />
             <col style={{ width: '8%' }} />
-            <col style={{ width: '6%' }} />
+            <col style={{ width: '8%' }} />
             <col style={{ width: '10%' }} />
           </colgroup>
           <thead>
@@ -399,9 +376,9 @@ export default function AttendanceRecords() {
               <SortableTh label="Date" keyName="date" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Department" keyName="department" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Reports to" keyName="reportsTo" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Time In" keyName="timeIn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Time Out" keyName="timeOut" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Reports to" keyName="reportsTo" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
+              <SortableTh label="Time In" keyName="timeIn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
+              <SortableTh label="Time Out" keyName="timeOut" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
               <SortableTh label="Worked" keyName="worked" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Break" keyName="break" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -417,7 +394,12 @@ export default function AttendanceRecords() {
               return (
                 <tr key={r.id}>
                   <td>{formatDate(r.date)}</td>
-                  <td>{emp ? emp.name : r.employeeId}</td>
+                  <td>
+                    <div className="person-cell">
+                      <Avatar src={emp?.photoUrl} name={emp?.name} size={34} />
+                      <span>{emp ? emp.name : r.employeeId}</span>
+                    </div>
+                  </td>
                   <td>{emp?.department || <span className="muted">--</span>}</td>
                   <td>{manager?.name || <span className="muted">None</span>}</td>
                   <td>{formatClock(r.timeIn)}</td>
@@ -472,30 +454,16 @@ export default function AttendanceRecords() {
             }
           ]}
           onFilterChange={correctionsTable.setFilter}
-        >
-          {hasActiveCorrectionFilters && (
-            <button
-              type="button"
-              className="btn btn-light btn-tiny table-toolbar-action"
-              onClick={() => {
-                correctionsTable.setFilter('employeeId', 'all')
-                correctionsTable.setFilter('period', 'all')
-                correctionsTable.setFilter('status', 'all')
-              }}
-            >
-              Clear filters
-            </button>
-          )}
-        </TableToolbar>
+        />
         <table className="table table-corrections" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '16%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '22%' }} />
+            <col style={{ width: '14%' }} />
             <col style={{ width: '11%' }} />
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '21.5%' }} />
-            <col style={{ width: '13.5%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '7%' }} />
+            <col style={{ width: '6%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -516,7 +484,12 @@ export default function AttendanceRecords() {
               const emp = getEmployeeById(c.employeeId)
               return (
                 <tr key={c.id}>
-                  <td>{emp?.name || c.employeeId}</td>
+                  <td>
+                    <div className="person-cell">
+                      <Avatar src={emp?.photoUrl} name={emp?.name} size={34} />
+                      <span>{emp?.name || c.employeeId}</span>
+                    </div>
+                  </td>
                   <td>{formatDate(c.date)}</td>
                   <td>{correctionIssueLabel(c.issueType)}</td>
                   <td className="cell-ellipsis" title={c.description || undefined}>{c.description || <span className="muted">--</span>}</td>

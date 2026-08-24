@@ -19,6 +19,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { Contact, Eye, MoreHorizontal, Users, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Avatar from '../components/Avatar.jsx'
 
 const ROLE_FILTER_OPTS = [
   { value: 'all', label: 'All roles' },
@@ -263,26 +264,26 @@ export default function EmployeeRecords() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
+            <col style={{ width: '16%' }} />
             <col style={{ width: '8%' }} />
-            <col style={{ width: '13%' }} />
-            <col style={{ width: '12%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '9%' }} />
             <col style={{ width: '8%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '13%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '19%' }} />
-            <col style={{ width: '7%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '5%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '5%' }} />
           </colgroup>
           <thead>
             <tr>
-              <SortableTh label="ID" keyName="id" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Name" keyName="name" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="ID" keyName="id" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Department" keyName="department" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Role" keyName="role" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Manager" keyName="isManager" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Reports to" keyName="manager" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Reports to" keyName="manager" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
               <SortableTh label="Days" keyName="days" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Record" keyName="record" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
@@ -296,8 +297,13 @@ export default function EmployeeRecords() {
               const profile = profileOf(e)
               return (
                 <tr key={e.id}>
+                  <td>
+                    <div className="person-cell">
+                      <Avatar src={e.photoUrl} name={e.name} size={34} />
+                      <strong>{e.name}</strong>
+                    </div>
+                  </td>
                   <td>{e.id}</td>
-                  <td><strong>{e.name}</strong></td>
                   <td>{e.department}</td>
                   <td>{e.role === 'admin' ? 'HR / Admin' : 'Employee'}</td>
                   <td>{e.isManager ? <span className="tag tag-ok">Manager</span> : <span className="muted">--</span>}</td>
@@ -305,8 +311,15 @@ export default function EmployeeRecords() {
                   <td>{getAttendanceForEmployee(e.id).length}</td>
                   <td>
                     {profile ? (
-                      <span className={`tag ${profileStatusTagClass(profile.status)}`}>
-                        {profileStatusLabel(profile.status)}
+                      <span className={`tag ${profileStatusTagClass(profile.status)}`} style={{ whiteSpace: 'normal', lineHeight: 1.4 }}>
+                        {(() => {
+                          const label = profileStatusLabel(profile.status)
+                          const match = label.match(/^(.+?)\s*(\(.*\)$)/)
+                          if (match) {
+                            return <>{match[1]}<br /><span style={{ opacity: 0.8, fontSize: '0.9em' }}>{match[2]}</span></>
+                          }
+                          return label
+                        })()}
                       </span>
                     ) : (
                       <span className={`tag ${profileStatusTagClass('none')}`}>

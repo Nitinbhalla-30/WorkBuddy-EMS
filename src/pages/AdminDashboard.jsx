@@ -21,7 +21,8 @@ import { AttendanceTodayChart } from '../components/dashboard/AttendanceTodayCha
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import TableEmpty from '../components/TableEmpty.jsx'
-import { LayoutDashboard, Users } from 'lucide-react'
+import Avatar from '../components/Avatar.jsx'
+import { LayoutDashboard, Users, X } from 'lucide-react'
 
 function todayKey() {
   const d = new Date()
@@ -56,15 +57,44 @@ export default function AdminDashboard() {
 
   const STATUS_FILTER_OPTS = [
     { value: 'all', label: 'All statuses' },
-    { value: 'Present', label: 'Present' },
     { value: 'On time', label: 'On time' },
     { value: 'Late', label: 'Late' },
-    { value: 'Absent', label: 'Absent' }
+    { value: 'Absent', label: 'Absent' },
+    { value: 'On leave', label: 'On leave' }
   ]
 
+  const onLeaveIds = useMemo(() => new Set(
+    getLeaves()
+      .filter((l) => l.status === 'approved' && l.fromDate <= today && today <= l.toDate)
+      .map((l) => l.employeeId)
+  ), [today])
+
+  const leaveTypeByEmployee = useMemo(() => {
+    const map = new Map()
+    getLeaves()
+      .filter((l) => l.status === 'approved' && l.fromDate <= today && today <= l.toDate)
+      .forEach((l) => {
+        if (!map.has(l.employeeId)) {
+          map.set(l.employeeId, l.type)
+        }
+      })
+    return map
+  }, [today])
+
+  const LEAVE_TYPE_LABELS = {
+    casual: 'Casual',
+    sick: 'Sick',
+    earned: 'Earned',
+    halfday: 'Half-day',
+    short: 'Short',
+    unpaid: 'Unpaid'
+  }
+
   const table = useTableControls(allRows, {
-    getSearchText: ({ emp, rec }) =>
-      [emp.name, emp.id, emp.department, formatClock(rec?.timeIn), formatClock(rec?.timeOut), statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes)].join(' '),
+    getSearchText: ({ emp, rec }) => {
+      const leaveType = leaveTypeByEmployee.get(emp.id) || ''
+      return [emp.name, emp.id, emp.department, formatClock(rec?.timeIn), formatClock(rec?.timeOut), onLeaveIds.has(emp.id) && !(rec && rec.timeIn) ? 'On leave' : statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes), leaveType].join(' ')
+    },
     getSortValue: ({ emp, rec }, key) => {
       if (key === 'name') return emp.name
       if (key === 'department') return emp.department
@@ -72,14 +102,26 @@ export default function AdminDashboard() {
       if (key === 'timeOut') return rec?.timeOut || ''
       if (key === 'worked') return rec ? workedMinutes(rec) : -1
       if (key === 'break') return rec ? totalBreakMinutes(rec) : -1
-      if (key === 'status') return statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes)
+      if (key === 'status') return onLeaveIds.has(emp.id) && !(rec && rec.timeIn) ? 'On leave' : statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes)
+      if (key === 'leaveType') return leaveTypeByEmployee.get(emp.id) || ''
       return ''
     },
     initialSortKey: 'name',
     initialSortDir: 'asc',
     filterFns: {
       department: ({ emp }, val) => emp.department === val,
-      status: ({ rec }, val) => statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes) === val
+      status: ({ emp, rec }, val) => {
+        if (val === 'On leave') return onLeaveIds.has(emp.id) && !(rec && rec.timeIn)
+        if (val === 'Absent') return !onLeaveIds.has(emp.id) && (!rec || !rec.timeIn)
+        return statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes) === val
+      },
+      quick: ({ emp, rec }, val) => {
+        if (val === 'ontime') return rec && rec.timeIn && !isLate(rec, settings.officeStartTime, settings.lateGraceMinutes)
+        if (val === 'late') return rec && rec.timeIn && isLate(rec, settings.officeStartTime, settings.lateGraceMinutes)
+        if (val === 'absent') return !onLeaveIds.has(emp.id) && (!rec || !rec.timeIn)
+        if (val === 'onleave') return onLeaveIds.has(emp.id) && !(rec && rec.timeIn)
+        return true
+      }
     }
   })
   const {
@@ -96,14 +138,7 @@ export default function AdminDashboard() {
   const late = allRows.filter(
     (r) => r.rec && isLate(r.rec, settings.officeStartTime, settings.lateGraceMinutes)
   ).length
-  const onLeave = useMemo(() => {
-    const ids = new Set(
-      getLeaves()
-        .filter((l) => l.status === 'approved' && l.fromDate <= today && today <= l.toDate)
-        .map((l) => l.employeeId)
-    )
-    return allRows.filter(({ emp, rec }) => ids.has(emp.id) && !(rec && rec.timeIn)).length
-  }, [allRows, today])
+  const onLeave = allRows.filter(({ emp, rec }) => onLeaveIds.has(emp.id) && !(rec && rec.timeIn)).length
   const absent = employees.length - present - onLeave
 
   return (
@@ -124,6 +159,13 @@ export default function AdminDashboard() {
         late={late}
         absent={absent}
         onLeave={onLeave}
+        activeKey={table.filters.quick || null}
+        onToggleKey={(key) => {
+          table.setFilter('department', 'all')
+          table.setFilter('status', 'all')
+          table.setFilter('quick', table.filters.quick === key ? null : key)
+          setRowsPage(1)
+        }}
       />
 
       <div className="section-head-row">
@@ -154,17 +196,38 @@ export default function AdminDashboard() {
               options: STATUS_FILTER_OPTS
             }
           ]}
-          onFilterChange={table.setFilter}
+          onFilterChange={(key, val) => {
+            table.setFilter('quick', null)
+            table.setFilter(key, val)
+            setRowsPage(1)
+          }}
+          actions={
+            table.filters.quick && table.filters.quick !== 'all' ? (
+              <button
+                type="button"
+                className="quick-filter-chip"
+                onClick={() => {
+                  table.setFilter('quick', null)
+                  setRowsPage(1)
+                }}
+                aria-label={`Clear ${table.filters.quick} filter`}
+              >
+                {table.filters.quick === 'ontime' ? 'On time' : table.filters.quick === 'late' ? 'Late' : table.filters.quick === 'onleave' ? 'On leave' : 'Absent'}
+                <X size={13} aria-hidden="true" />
+              </button>
+            ) : null
+          }
         />
         <table className="table">
           <colgroup>
-            <col style={{ width: '22%' }} />
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '10%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -174,39 +237,51 @@ export default function AdminDashboard() {
               <SortableTh label="Time Out" keyName="timeOut" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Worked" keyName="worked" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Break" keyName="break" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Leave Type" keyName="leaveType" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
             </tr>
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={7} message="No employees match your filters." />
+              <TableEmpty colSpan={8} message="No employees match your filters." />
             )}
-            {rowsPage.map(({ emp, rec }) => (
+            {rowsPage.map(({ emp, rec }) => {
+              const leaveType = leaveTypeByEmployee.get(emp.id)
+              return (
               <tr key={emp.id}>
                 <td>
-                  <strong>{emp.name}</strong>
-                  <div className="muted small">{emp.id}</div>
+                  <div className="person-cell">
+                    <Avatar src={emp.photoUrl} name={emp.name} size={34} />
+                    <div>
+                      <strong>{emp.name}</strong>
+                      <div className="muted small">{emp.id}</div>
+                    </div>
+                  </div>
                 </td>
                 <td>{emp.department}</td>
                 <td>{formatClock(rec?.timeIn)}</td>
                 <td>{formatClock(rec?.timeOut)}</td>
                 <td>{rec ? formatMinutes(workedMinutes(rec)) : '--'}</td>
                 <td>{rec ? formatMinutes(totalBreakMinutes(rec)) : '--'}</td>
+                <td>{leaveType ? LEAVE_TYPE_LABELS[leaveType] || leaveType : '--'}</td>
                 <td>
                   <span
                     className={`tag ${
-                      !rec || !rec.timeIn
+                      onLeaveIds.has(emp.id) && !(rec && rec.timeIn)
                         ? 'tag-absent'
-                        : isLate(rec, settings.officeStartTime, settings.lateGraceMinutes)
-                        ? 'tag-late'
-                        : 'tag-ok'
+                        : !rec || !rec.timeIn
+                          ? 'tag-absent'
+                          : isLate(rec, settings.officeStartTime, settings.lateGraceMinutes)
+                            ? 'tag-late'
+                            : 'tag-ok'
                     }`}
                   >
-                    {statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes)}
+                    {onLeaveIds.has(emp.id) && !(rec && rec.timeIn) ? 'On leave' : statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes)}
                   </span>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         <Pagination
@@ -220,8 +295,8 @@ export default function AdminDashboard() {
       </div>
 
       <p className="hint">
-        This dashboard shows today&rsquo;s attendance at a glance. Use the filters to narrow by
-        department or status. For detailed daily records, correction requests, or monthly trends,
+        <strong>Quick filters:</strong> click the On time, Late, Absent, or On leave cards above to show only those employees; click again to see all.
+        Use the filters to narrow by department or status. For detailed daily records, correction requests, or monthly trends,
         go to Attendance Records.
       </p>
     </div>

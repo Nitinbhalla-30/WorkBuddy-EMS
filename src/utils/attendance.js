@@ -77,7 +77,6 @@ export function isLate(record, officeStartTime, lateGraceMinutes = 0) {
 // A short status word for a record.
 export function statusOf(record, officeStartTime, lateGraceMinutes = 0) {
   if (!record || !record.timeIn) return 'Absent'
-  if (record.timeIn && !record.timeOut) return 'Present'
   return isLate(record, officeStartTime, lateGraceMinutes) ? 'Late' : 'On time'
 }
 

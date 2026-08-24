@@ -4,11 +4,13 @@ import {
   addDriver,
   addTrip,
   addVehicle,
+  clearCabChatAdmin,
   deleteDriver,
   deleteTrip,
   deleteVehicle,
   getCabAssignments,
   getCabCancellationsForDate,
+  getCabClearedAtAdmin,
   getCabMessagesForEmployee,
   getCabRequests,
   getCabUnreadByEmployee,
@@ -29,6 +31,7 @@ import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import TimeInput from '../components/TimeInput.jsx'
+import Avatar from '../components/Avatar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { formatDate } from '../utils/attendance.js'
@@ -41,7 +44,7 @@ import {
   tripLabel,
   vehicleById
 } from '../utils/cab.js'
-import { CarFront, Check, Copy, ExternalLink, MoreHorizontal, Pencil, Trash2, X } from 'lucide-react'
+import { CarFront, Check, Copy, ExternalLink, MoreHorizontal, MoreVertical, Pencil, Send, Trash2, X } from 'lucide-react'
 
 const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Requests', 'Messages', 'Today']
 
@@ -69,7 +72,7 @@ export default function CabManagement() {
   }
 
   return (
-    <div>
+    <div className={tab === 5 ? 'chat-fill-page' : undefined}>
       <div className="page-head">
         <div>
           <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
@@ -443,7 +446,12 @@ function DriversTab({ drivers, bump }) {
         <tbody>
           {driversPage.map((d) => (
             <tr key={d.id}>
-              <td><strong>{d.name}</strong></td>
+              <td>
+                <div className="person-cell">
+                  <Avatar name={d.name} size={34} />
+                  <strong>{d.name}</strong>
+                </div>
+              </td>
               <td>{d.mobile}</td>
               <td><code>{d.id}</code></td>
               <td>
@@ -837,25 +845,25 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
           <button className="btn btn-primary btn-tiny" onClick={openAdd}>Add trip</button>
         }
       />
-      <table className="table">
+      <table className="table" style={{ tableLayout: 'fixed' }}>
         <colgroup>
           <col style={{ width: '9%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '12%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '16%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '18%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '11%' }} />
           <col style={{ width: '15%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '17%' }} />
+          <col style={{ width: '5%' }} />
         </colgroup>
         <thead>
           <tr>
             <SortableTh label="Direction" keyName="direction" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
             <SortableTh label="Cab time" keyName="time" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
-            <SortableTh label="Office time" keyName="officeTime" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Office time" keyName="officeTime" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} className="th-wrap" />
             <SortableTh label="Vehicle" keyName="vehicle" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
             <SortableTh label="Driver" keyName="driver" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
-            <SortableTh label="Office Gate" keyName="gate" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Office Gate" keyName="gate" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} className="th-wrap" />
             <SortableTh label="Supervisor" keyName="supervisor" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
             <th>Action</th>
           </tr>
@@ -1085,7 +1093,15 @@ function AssignTab({ employees, trips, assignments, bump }) {
             const a = assignedTo(emp.id)
             return (
               <tr key={emp.id}>
-                <td><strong>{emp.name}</strong><div className="muted small">{emp.id}</div></td>
+                <td>
+                  <div className="person-cell">
+                    <Avatar src={emp.photoUrl} name={emp.name} size={34} />
+                    <div>
+                      <strong>{emp.name}</strong>
+                      <div className="muted small">{emp.id}</div>
+                    </div>
+                  </div>
+                </td>
                 <td>
                   <select
                     className="inline-select"
@@ -1154,10 +1170,15 @@ function RequestsTab({ requests, nameOf, bump }) {
     <div className="card">
       <h3 className="section-title first">Temporary change requests</h3>
       {sorted.length === 0 && <p className="muted">No requests yet.</p>}
-      {requestsPage.map((r) => (
+      {requestsPage.map((r) => {
+        const reqEmp = getEmployees().find((e) => e.id === r.employeeId)
+        return (
         <div className="cab-request" key={r.id}>
           <div className="cab-request-head">
-            <strong>{nameOf(r.employeeId)}</strong>
+            <div className="person-cell">
+              <Avatar src={reqEmp?.photoUrl} name={nameOf(r.employeeId)} size={34} />
+              <strong>{nameOf(r.employeeId)}</strong>
+            </div>
             <span className={`tag ${requestStatusTagClass(r.status)}`}>{requestStatusLabel(r.status)}</span>
           </div>
           <div className="muted small">
@@ -1184,7 +1205,8 @@ function RequestsTab({ requests, nameOf, bump }) {
             r.adminNote && <div className="info-box">Note: {r.adminNote}</div>
           )}
         </div>
-      ))}
+        )
+      })}
       <Pagination
         page={requestsPageNum}
         totalPages={requestsTotalPages}
@@ -1201,11 +1223,20 @@ function RequestsTab({ requests, nameOf, bump }) {
 function MessagesTab({ employees, unreadByEmp, bump }) {
   const [selected, setSelected] = useState('')
   const [text, setText] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const threadRef = useRef(null)
+  const inputRef = useRef(null)
 
-  const messages = useMemo(
-    () => (selected ? getCabMessagesForEmployee(selected) : []),
-    [selected, bump]
-  )
+  const messages = useMemo(() => {
+    if (!selected) return []
+    const clearedAt = getCabClearedAtAdmin(selected)
+    return getCabMessagesForEmployee(selected).filter(
+      (m) => !clearedAt || m.on > clearedAt
+    )
+  }, [selected, bump])
+
+  const selectedEmp = employees.find((e) => e.id === selected)
 
   // Employees with unread messages first (highest count on top), then the rest.
   const sortedEmployees = useMemo(() => {
@@ -1217,68 +1248,173 @@ function MessagesTab({ employees, unreadByEmp, bump }) {
     })
   }, [employees, unreadByEmp])
 
+  // Auto-scroll to the bottom when new messages arrive.
+  useEffect(() => {
+    if (threadRef.current) {
+      threadRef.current.scrollTop = threadRef.current.scrollHeight
+    }
+  }, [messages, selected])
+
+  // Close the three-dot menu when clicking outside.
+  useEffect(() => {
+    if (!menuOpen) return
+    function onDocClick(e) {
+      if (!e.target.closest('.team-chat-menu-container')) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [menuOpen])
+
   function chooseEmployee(id) {
     setSelected(id)
+    setMenuOpen(false)
     if (id) markCabThreadRead(id) // opening the thread marks it read
     bump()
   }
 
-  function send(e) {
-    e.preventDefault()
+  function send() {
     const t = text.trim()
     if (!t || !selected) return
     addCabMessage({ employeeId: selected, byRole: 'admin', text: t })
     setText('')
+    requestAnimationFrame(() => {
+      if (inputRef.current) inputRef.current.focus()
+    })
+    bump()
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      send()
+    }
+  }
+
+  function handleClearChat() {
+    clearCabChatAdmin(selected)
+    setMenuOpen(false)
+    setConfirmClear(false)
     bump()
   }
 
   return (
-    <div className="card">
-      <h3 className="section-title first">Messages from employees</h3>
-      <label className="field">
-        <span>Choose an employee to view their chat (unread shown first)</span>
-        <select value={selected} onChange={(e) => chooseEmployee(e.target.value)}>
-          <option value="">-- choose employee --</option>
-          {sortedEmployees.map((emp) => {
-            const n = unreadByEmp[emp.id] || 0
-            return (
-              <option key={emp.id} value={emp.id}>
-                {emp.name} ({emp.id}){n > 0 ? ` — ${n} new` : ''}
-              </option>
-            )
-          })}
-        </select>
-      </label>
+    <>
+      <div className="card" style={{ padding: '12px 16px', marginBottom: 12 }}>
+        <label className="field" style={{ margin: 0 }}>
+          <span>Choose an employee to view their chat (unread shown first)</span>
+          <select value={selected} onChange={(e) => chooseEmployee(e.target.value)}>
+            <option value="">-- choose employee --</option>
+            {sortedEmployees.map((emp) => {
+              const n = unreadByEmp[emp.id] || 0
+              return (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name} ({emp.id}){n > 0 ? ` — ${n} new` : ''}
+                </option>
+              )
+            })}
+          </select>
+        </label>
+      </div>
 
       {selected && (
-        <>
-          <div className="thread">
-            {messages.length === 0 && <p className="muted">No messages from this employee yet.</p>}
+        <div className="team-chat-panel">
+          <div className="team-chat-header">
+            <div className="team-chat-peer">
+              <Avatar src={selectedEmp?.photoUrl} name={selectedEmp?.name || selected} size={32} />
+              <div>
+                <div className="team-chat-peer-name">{selectedEmp?.name || selected}</div>
+                <div className="team-chat-peer-role muted small">{selected}</div>
+              </div>
+            </div>
+            <div className="task-menu-container team-chat-menu-container">
+              <button
+                type="button"
+                className="btn btn-tiny btn-light task-menu-button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label="Chat options"
+              >
+                <MoreVertical size={16} />
+              </button>
+              {menuOpen && (
+                <div className="task-menu-dropdown">
+                  <button
+                    type="button"
+                    className="task-menu-item task-menu-item-danger"
+                    onClick={() => { setMenuOpen(false); setConfirmClear(true) }}
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                    Clear chat
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="team-chat-thread" ref={threadRef}>
+            {messages.length === 0 && (
+              <p className="muted team-chat-empty">
+                No messages in this conversation yet.
+              </p>
+            )}
             {messages.map((m) => (
               <div key={m.id} className={`msg ${m.byRole === 'admin' ? 'msg-mine' : 'msg-them'}`}>
-                <div className="msg-head">
-                  <span className="msg-who">{m.byRole === 'admin' ? 'You (Transport desk)' : 'Employee'}</span>
-                  <span>{formatDateTime(m.on)}</span>
-                </div>
-                <div className="msg-body">{m.text}</div>
+                {m.text && <div className="msg-body">{m.text}</div>}
+                <div className="msg-time">{formatDateTime(m.on)}</div>
               </div>
             ))}
           </div>
-          <form className="reply-box" onSubmit={send}>
-            <textarea
-              className="reply-input"
-              rows={2}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Type a reply to the employee..."
-            />
-            <div className="button-row">
-              <button type="submit" className="btn btn-primary" disabled={!text.trim()}>Send reply</button>
+
+          <div className="team-chat-reply">
+            <div className="team-chat-composer">
+              <textarea
+                ref={inputRef}
+                className="team-chat-composer-input"
+                rows={1}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={`Reply to ${selectedEmp?.name || 'employee'}...`}
+              />
+              <div className="team-chat-composer-actions">
+                <button
+                  type="button"
+                  className={`team-chat-composer-send ${text.trim() ? 'active' : ''}`}
+                  disabled={!text.trim()}
+                  onClick={send}
+                  aria-label="Send message"
+                  title="Send message"
+                >
+                  <Send size={18} />
+                </button>
+              </div>
             </div>
-          </form>
-        </>
+          </div>
+        </div>
       )}
-    </div>
+
+      {confirmClear && (
+        <Modal onClose={() => setConfirmClear(false)} title="Clear chat">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first" style={{ margin: 0 }}>Clear chat</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmClear(false)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This will clear the conversation with {selectedEmp?.name || selected} from
+              your side only. The employee keeps their copy of the messages.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={handleClearChat}>
+                Clear chat
+              </button>
+              <button type="button" className="btn btn-light" onClick={() => setConfirmClear(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
   )
 }
 
@@ -1407,7 +1543,12 @@ function TodayTab({ employees, bump }) {
               <tbody>
                 {driversPage.map((d) => (
                   <tr key={d.id}>
-                    <td><strong>{d.name}</strong></td>
+                    <td>
+                      <div className="person-cell">
+                        <Avatar name={d.name} size={34} />
+                        <strong>{d.name}</strong>
+                      </div>
+                    </td>
                     <td>{d.mobile}</td>
                     <td><code>{d.id}</code></td>
                     <td>

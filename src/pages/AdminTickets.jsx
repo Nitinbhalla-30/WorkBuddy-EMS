@@ -24,6 +24,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { Eye, MessageSquareText, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Avatar from '../components/Avatar.jsx'
 
 const TICKET_KIND_OPTS = [
   { value: 'all', label: 'All types' },
@@ -132,18 +133,18 @@ export default function AdminTickets() {
         />
         <table className="table">
           <colgroup>
-            <col style={{ width: '18%' }} />
             <col style={{ width: '14%' }} />
-            <col style={{ width: '11%' }} />
             <col style={{ width: '22%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '18%' }} />
             <col style={{ width: '14%' }} />
             <col style={{ width: '13%' }} />
             <col style={{ width: '8%' }} />
           </colgroup>
           <thead>
             <tr>
-              <SortableTh label="Subject" keyName="subject" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="From" keyName="from" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Subject" keyName="subject" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Type" keyName="kind" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Category" keyName="category" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -155,15 +156,22 @@ export default function AdminTickets() {
             {table.count === 0 && (
               <TableEmpty colSpan={7} message="Nothing matches your filters." />
             )}
-            {ticketsPage.map((t) => (
+            {ticketsPage.map((t) => {
+              const ticketEmp = !t.anonymous ? getEmployeeById(t.employeeId) : null
+              return (
               <tr key={t.id}>
+                <td>
+                  <div className="person-cell">
+                    {!t.anonymous && <Avatar src={ticketEmp?.photoUrl} name={raisedByName(t, nameOf)} size={34} />}
+                    <div>
+                      {raisedByName(t, nameOf)}
+                      {!t.anonymous && <div className="muted small">{t.employeeId}</div>}
+                    </div>
+                  </div>
+                </td>
                 <td className="cell-ellipsis" title={t.subject}>
                   <strong>{t.subject}</strong>
                   {t.confidential && <span className="tag tag-high" style={{ marginLeft: 8 }}>Confidential</span>}
-                </td>
-                <td>
-                  {raisedByName(t, nameOf)}
-                  {!t.anonymous && <div className="muted small">{t.employeeId}</div>}
                 </td>
                 <td>{kindLabel(t.kind)}</td>
                 <td>{categoryLabel(t.category)}</td>
@@ -206,7 +214,8 @@ export default function AdminTickets() {
                   </div>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         <Pagination

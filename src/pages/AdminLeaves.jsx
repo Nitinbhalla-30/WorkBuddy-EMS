@@ -29,6 +29,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { CalendarDays, ClipboardCheck, CircleCheck, CircleX, MoreHorizontal, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Avatar from '../components/Avatar.jsx'
 
 const STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -205,17 +206,17 @@ export default function AdminLeaves() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '15%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '5%' }} />
+            <col style={{ width: '18%' }} />
             <col style={{ width: '11%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '6.5%' }} />
-            <col style={{ width: '16.5%' }} />
-            <col style={{ width: '12%' }} />
             <col style={{ width: '13%' }} />
-            <col style={{ width: '6%' }} />
+            <col style={{ width: '5%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -225,7 +226,7 @@ export default function AdminLeaves() {
               <SortableTh label="To" keyName="toDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Days" keyName="days" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Reason" keyName="reason" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Supporting doc" keyName="doc" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Supporting docs" keyName="doc" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Action</th>
             </tr>
@@ -241,8 +242,13 @@ export default function AdminLeaves() {
               return (
                 <tr key={lv.id}>
                   <td>
-                    <strong>{emp ? emp.name : lv.employeeId}</strong>
-                    <div className="muted small">{emp ? emp.department : ''}</div>
+                    <div className="person-cell">
+                      <Avatar src={emp?.photoUrl} name={emp?.name} size={34} />
+                      <div>
+                        <strong>{emp ? emp.name : lv.employeeId}</strong>
+                        <div className="muted small">{emp ? emp.department : ''}</div>
+                      </div>
+                    </div>
                   </td>
                   <td>{leaveTypeLabelWithPart(lv)}</td>
                   <td>{formatDate(lv.fromDate)}</td>

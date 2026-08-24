@@ -20,6 +20,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { Wrench, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Avatar from '../components/Avatar.jsx'
 
 const IT_STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -194,15 +195,15 @@ export default function AdminITHelpDesk() {
         />
         <table className="table table-compact" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '15.3%' }} />
             <col style={{ width: '13%' }} />
-            <col style={{ width: '8.4%' }} />
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '10.5%' }} />
-            <col style={{ width: '14.5%' }} />
-            <col style={{ width: '9%' }} />
-            <col style={{ width: '5.5%' }} />
+            <col style={{ width: '17%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '5%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -212,8 +213,8 @@ export default function AdminITHelpDesk() {
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Assigned To" keyName="assigned" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Expected Response Time" keyName="estimatedTime" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Reported On" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Response Time" keyName="estimatedTime" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
+              <SortableTh label="Reported On" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
               {canAssign && <th>Actions</th>}
             </tr>
           </thead>
@@ -231,7 +232,12 @@ export default function AdminITHelpDesk() {
 
               return (
                 <tr key={issue.id}>
-                  <td>{employee?.name || issue.employeeId}</td>
+                  <td>
+                    <div className="person-cell">
+                      <Avatar src={employee?.photoUrl} name={employee?.name} size={34} />
+                      <span>{employee?.name || issue.employeeId}</span>
+                    </div>
+                  </td>
                   <td>
                     <button type="button" className="issue-link" onClick={() => setViewId(issue.id)} title="Open issue details and discussion">
                       <strong>{issue.issue}</strong>

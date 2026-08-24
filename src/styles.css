@@ -431,6 +431,22 @@ code {
   height: 100%;
   min-height: 0;
 }
+/* Chat pages (My Cab chat, Cab Management messages): stretch the chat to fill
+   the viewport so the hint line sits at the bottom with balanced spacing. */
+.chat-fill-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 112px); /* topbar 60px + content padding 26px top/bottom */
+}
+.chat-fill-page .team-chat-panel {
+  flex: 1;
+  height: auto;
+  min-height: 320px;
+}
+.chat-fill-page .hint {
+  margin-top: 10px;
+  margin-bottom: 0; /* keep the standard content padding as breathing room below */
+}
 .team-chat-header {
   display: flex;
   align-items: center;
@@ -653,7 +669,7 @@ code {
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
 .hint { color: var(--muted); font-size: 13px; line-height: 1.5; }
-.hint.first { margin-top: 0; }
+.hint.first { margin-top: 0; margin-bottom: 16px; }
 
 .card {
   background: var(--card);
@@ -879,6 +895,51 @@ textarea::placeholder {
 /* Correction requests table: keep row height consistent with All Records */
 .table-corrections td { white-space: nowrap; }
 .table-corrections td.cell-ellipsis { white-space: nowrap; }
+.table-corrections { overflow: visible; }
+.table-corrections tbody { overflow: visible; }
+.table-corrections tr { overflow: visible; }
+.table-corrections td:last-child { overflow: visible; position: relative; }
+.table-corrections .task-menu-container { overflow: visible; position: relative; }
+.table-corrections .task-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  min-width: 180px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  padding: 6px 0;
+  z-index: 1000;
+}
+.table-corrections .task-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.table-corrections .task-menu-item:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+.table-corrections .task-menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.table-corrections .task-menu-item svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
 .corrections-menu-button,
 .table-corrections .corrections-menu-button {
   font-size: 12px;
@@ -1297,6 +1358,21 @@ textarea::placeholder {
 .cab-detail:last-child { border-bottom: none; }
 .cab-detail span { color: var(--muted); }
 .cab-detail strong { text-align: right; }
+/* Driver avatar in My Cab Today tab */
+.cab-detail .avatar-fallback {
+  background: #6b7280;
+  color: #fff;
+}
+.cab-detail .avatar-fallback .avatar-initials {
+  color: #fff;
+  transform: none;
+}
+[data-theme="dark"] .cab-detail .avatar-fallback {
+  background: #4b5563;
+}
+[data-theme="dark"] .cab-detail .avatar-fallback .avatar-initials {
+  color: #e5e7eb;
+}
 .cab-supervisor {
   background: var(--notice-warn-bg);
   border: 1px solid var(--notice-warn-border);
@@ -2315,23 +2391,71 @@ button.task-status-stat-card {
 }
 .stop-card-head {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 10px;
 }
-.stop-num {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--brand);
-  color: var(--on-brand);
-  font-size: 13px;
-  font-weight: 700;
+.stop-card-index-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  margin-top: 2px;
+}
+.stop-card-person {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.stop-avatar.avatar-fallback {
+  background: #6b7280;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stop-avatar .avatar-initials {
+  transform: none;
+}
+[data-theme="dark"] .stop-avatar.avatar-fallback {
+  background: #4b5563;
+  color: #e5e7eb;
+}
+.stop-num {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.stop-num::before {
+  content: '#';
+  opacity: 0.7;
+  font-weight: 400;
+}
+/* Driver topbar avatar: white/light background to contrast with teal header */
+.driver-avatar.avatar-fallback {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--brand);
+  font-weight: 700;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.driver-avatar .avatar-initials {
+  transform: none;
+}
+[data-theme="dark"] .driver-avatar.avatar-fallback {
+  background: #1e293b;
+  color: #f1f5f9;
+  border: 2px solid #475569;
+  text-shadow: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 .stop-head-text { flex: 1; min-width: 0; }
 .stop-name {

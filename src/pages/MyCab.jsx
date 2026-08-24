@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addCabMessage,
+  clearCabChat,
   createCabRequest,
   getCabAssignmentForEmployee,
+  getCabClearedAt,
   getCabCancellationForEmployee,
   getCabMessagesForEmployee,
   getCabRequestsForEmployee,
@@ -24,6 +26,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
 import TimeInput from '../components/TimeInput.jsx'
+import Avatar from '../components/Avatar.jsx'
 import {
   driverById,
   formatDateTime,
@@ -37,7 +40,7 @@ import {
   tripById,
   vehicleById
 } from '../utils/cab.js'
-import { CarFront, Check, Eye, MoreHorizontal, Pencil, Undo2, X } from 'lucide-react'
+import { CarFront, Check, Eye, MoreHorizontal, MoreVertical, Pencil, Send, Trash2, Undo2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TABS = ["Today's Cab", 'My Change Requests', 'Chat with Transport Desk']
@@ -160,10 +163,12 @@ export default function MyCab() {
     endIndex: requestsEnd,
     setPage: setRequestsPage
   } = usePagination(requestsTable.rows)
-  const messages = useMemo(
-    () => getCabMessagesForEmployee(user.id),
-    [user.id, refresh]
-  )
+  const messages = useMemo(() => {
+    const clearedAt = getCabClearedAt(user.id)
+    return getCabMessagesForEmployee(user.id).filter(
+      (m) => !clearedAt || m.on > clearedAt
+    )
+  }, [user.id, refresh])
 
   // Today's cancellation preference for this employee
   const cancellation = useMemo(
@@ -204,7 +209,7 @@ export default function MyCab() {
     profile.personal.dropSameAsPickup !== false ? pickupPoint : profile.personal.dropPoint
 
   return (
-    <div>
+    <div className={tab === 2 ? 'chat-fill-page' : undefined}>
       <div className="page-head">
         <div>
           <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
@@ -265,22 +270,26 @@ export default function MyCab() {
                   {skipDrop ? (<><Check size={14} /> Skipping drop today</>) : 'Skip drop today'}
                 </button>
               </div>
-              {(!pickupOpen || !dropOpen) && (
+              {(!pickupOpen || !dropOpen || skipPickup || skipDrop) && (
                 <div className="cab-cancellation-notice">
-                  {!pickupOpen && !dropOpen
-                    ? `Today's changes are locked. Pickup closed at ${todayChangeDeadline(pickupTrip?.shiftStart, cutoffHours)} and drop closed at ${todayChangeDeadline(dropTrip?.shiftEnd, cutoffHours)}.`
-                    : !pickupOpen
-                    ? `Pickup changes for today are locked since ${todayChangeDeadline(pickupTrip?.shiftStart, cutoffHours)} (${cutoffHours} hours before shift start).`
-                    : `Drop changes for today are locked since ${todayChangeDeadline(dropTrip?.shiftEnd, cutoffHours)} (${cutoffHours} hours before shift end).`}
-                </div>
-              )}
-              {(skipPickup || skipDrop) && (
-                <div className="cab-cancellation-notice">
-                  {skipPickup && skipDrop
-                    ? 'You have skipped both pickup and drop for today. The driver will not collect or drop you.'
-                    : skipPickup
-                    ? 'You have skipped pickup for today. The driver will not collect you this morning.'
-                    : 'You have skipped drop for today. The driver will not drop you this evening.'}
+                  {(() => {
+                    const parts = []
+                    if (!pickupOpen && !dropOpen) {
+                      parts.push(`Today's changes are locked. Pickup closed at ${todayChangeDeadline(pickupTrip?.shiftStart, cutoffHours)} and drop closed at ${todayChangeDeadline(dropTrip?.shiftEnd, cutoffHours)}.`)
+                    } else if (!pickupOpen) {
+                      parts.push(`Pickup changes for today are locked since ${todayChangeDeadline(pickupTrip?.shiftStart, cutoffHours)} (${cutoffHours} hours before shift start).`)
+                    } else if (!dropOpen) {
+                      parts.push(`Drop changes for today are locked since ${todayChangeDeadline(dropTrip?.shiftEnd, cutoffHours)} (${cutoffHours} hours before shift end).`)
+                    }
+                    if (skipPickup && skipDrop) {
+                      parts.push('You have skipped both pickup and drop for today. The driver will not collect or drop you.')
+                    } else if (skipPickup) {
+                      parts.push('You have skipped pickup for today. The driver will not collect you this morning.')
+                    } else if (skipDrop) {
+                      parts.push('You have skipped drop for today. The driver will not drop you this evening.')
+                    }
+                    return parts.join(' ')
+                  })()}
                 </div>
               )}
             </div>
@@ -297,7 +306,7 @@ export default function MyCab() {
                 <div className="cab-detail"><span>Pickup time</span><strong>{formatTime12(pickupTrip?.time)}</strong></div>
                 <div className="cab-detail"><span>Office starts</span><strong>{formatTime12(pickupTrip?.shiftStart)}</strong></div>
                 <div className="cab-detail"><span>Vehicle</span><strong>{pickupVehicle?.number || '--'}</strong></div>
-                <div className="cab-detail"><span>Driver</span><strong>{pickupDriver?.name || '--'}</strong></div>
+                <div className="cab-detail"><span>Driver</span><strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Avatar name={pickupDriver?.name} size={28} />{pickupDriver?.name || '--'}</strong></div>
                 <div className="cab-detail"><span>Driver mobile</span><strong>{pickupDriver?.mobile ? <a href={`tel:${pickupDriver.mobile}`} className="phone-link">{pickupDriver.mobile}</a> : '--'}</strong></div>
                 <div className="cab-detail"><span>Your address</span><strong>{homeAddress}</strong></div>
                 <div className="cab-detail"><span>Your gate</span><strong>{homeGate}</strong></div>
@@ -325,7 +334,7 @@ export default function MyCab() {
                 <div className="cab-detail"><span>Office ends</span><strong>{formatTime12(dropTrip?.shiftEnd)}</strong></div>
                 <div className="cab-detail"><span>Cab leaves office</span><strong>{formatTime12(dropTrip?.time)}</strong></div>
                 <div className="cab-detail"><span>Vehicle</span><strong>{dropVehicle?.number || '--'}</strong></div>
-                <div className="cab-detail"><span>Driver</span><strong>{dropDriver?.name || '--'}</strong></div>
+                <div className="cab-detail"><span>Driver</span><strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Avatar name={dropDriver?.name} size={28} />{dropDriver?.name || '--'}</strong></div>
                 <div className="cab-detail"><span>Driver mobile</span><strong>{dropDriver?.mobile ? <a href={`tel:${dropDriver.mobile}`} className="phone-link">{dropDriver.mobile}</a> : '--'}</strong></div>
                 <div className="cab-detail"><span>Drop address</span><strong>{homeAddress}</strong></div>
                 <div className="cab-detail"><span>Office gate</span><strong>{dropTrip?.officeGate || '--'}</strong></div>
@@ -469,6 +478,10 @@ export default function MyCab() {
           messages={messages}
           onSend={(text) => {
             addCabMessage({ employeeId: user.id, byRole: 'employee', text })
+            setRefresh((n) => n + 1)
+          }}
+          onClear={() => {
+            clearCabChat(user.id)
             setRefresh((n) => n + 1)
           }}
         />
@@ -668,51 +681,154 @@ function RequestForm({ pickupTrip, onSubmit, onCancel, initial }) {
 }
 
 // ---- Chat with the transport desk (one ongoing thread) ----
-function ChatSection({ messages, onSend }) {
+function ChatSection({ messages, onSend, onClear }) {
   const [text, setText] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const threadRef = useRef(null)
+  const inputRef = useRef(null)
 
-  function send(e) {
-    e.preventDefault()
+  // Auto-scroll to the bottom when new messages arrive.
+  useEffect(() => {
+    if (threadRef.current) {
+      threadRef.current.scrollTop = threadRef.current.scrollHeight
+    }
+  }, [messages])
+
+  // Close the three-dot menu when clicking outside.
+  useEffect(() => {
+    if (!menuOpen) return
+    function onDocClick(e) {
+      if (!e.target.closest('.team-chat-menu-container')) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [menuOpen])
+
+  function send() {
     const t = text.trim()
     if (!t) return
     onSend(t)
     setText('')
+    requestAnimationFrame(() => {
+      if (inputRef.current) inputRef.current.focus()
+    })
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      send()
+    }
+  }
+
+  function handleClearChat() {
+    onClear()
+    setMenuOpen(false)
+    setConfirmClear(false)
   }
 
   return (
     <>
-      <p className="hint first cab-chat-hint">
-        Need help? If the cab is late, the driver isn&rsquo;t responding, or something else is wrong,
-        send a message here instead of calling.
-      </p>
-      <div className="card">
-        <div className="thread">
-          {messages.length === 0 && (
-            <p className="muted">No messages yet. Type below to start.</p>
-          )}
-          {messages.map((m) => (
-            <div key={m.id} className={`msg ${m.byRole === 'employee' ? 'msg-mine' : 'msg-them'}`}>
-              <div className="msg-head">
-                <span className="msg-who">{m.byRole === 'employee' ? 'You' : 'Transport desk'}</span>
-                <span>{formatDateTime(m.on)}</span>
-              </div>
-              <div className="msg-body">{m.text}</div>
+      <div className="team-chat-panel">
+        <div className="team-chat-header">
+          <div className="team-chat-peer">
+            <Avatar name="Transport Desk" size={32} />
+            <div>
+              <div className="team-chat-peer-name">Transport Desk</div>
+              <div className="team-chat-peer-role muted small">Cab support team</div>
             </div>
-          ))}
+          </div>
+          <div className="task-menu-container team-chat-menu-container">
+            <button
+              type="button"
+              className="btn btn-tiny btn-light task-menu-button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Chat options"
+            >
+              <MoreVertical size={16} />
+            </button>
+            {menuOpen && (
+              <div className="task-menu-dropdown">
+                <button
+                  type="button"
+                  className="task-menu-item task-menu-item-danger"
+                  onClick={() => { setMenuOpen(false); setConfirmClear(true) }}
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                  Clear chat
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-        <form className="reply-box" onSubmit={send}>
+
+      <div className="team-chat-thread" ref={threadRef}>
+        {messages.length === 0 && (
+          <p className="muted team-chat-empty">
+            No messages yet. Ask about your cab, driver, or any issue.
+          </p>
+        )}
+        {messages.map((m) => {
+          const mine = m.byRole === 'employee'
+          return (
+            <div key={m.id} className={`msg ${mine ? 'msg-mine' : 'msg-them'}`}>
+              {m.text && <div className="msg-body">{m.text}</div>}
+              <div className="msg-time">{formatDateTime(m.on)}</div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="team-chat-reply">
+        <div className="team-chat-composer">
           <textarea
-            className="reply-input"
-            rows={2}
+            ref={inputRef}
+            className="team-chat-composer-input"
+            rows={1}
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder='e.g. "Where is my cab?" or "Driver is not answering my call"'
           />
-          <div className="button-row">
-            <button type="submit" className="btn btn-primary" disabled={!text.trim()}>Send</button>
+          <div className="team-chat-composer-actions">
+            <button
+              type="button"
+              className={`team-chat-composer-send ${text.trim() ? 'active' : ''}`}
+              disabled={!text.trim()}
+              onClick={send}
+              aria-label="Send message"
+              title="Send message"
+            >
+              <Send size={18} />
+            </button>
           </div>
-        </form>
+        </div>
       </div>
+      </div>
+
+      {confirmClear && (
+        <Modal onClose={() => setConfirmClear(false)} title="Clear chat">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first" style={{ margin: 0 }}>Clear chat</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmClear(false)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This will clear the conversation from your side only. The transport
+              desk keeps their copy of the messages.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={handleClearChat}>
+                Clear chat
+              </button>
+              <button type="button" className="btn btn-light" onClick={() => setConfirmClear(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   )
 }

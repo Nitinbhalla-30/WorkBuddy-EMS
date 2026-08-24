@@ -5,6 +5,7 @@ import { getDriverRunSheet, getSettings } from '../data/store.js'
 import { formatTime12, googleMapsUrl } from '../utils/cab.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import CinematicThemeSwitcher from '../components/ui/cinematic-theme-switcher.tsx'
+import Avatar from '../components/Avatar.jsx'
 
 // Driver's run-sheet page. Requires driver login.
 // Mobile-first: plain page scroll, one full card per stop, large tap targets.
@@ -79,7 +80,10 @@ export default function DriverView() {
           </div>
         </div>
         <div className="driver-topbar-driver">
-          <span className="driver-name">{driver.name}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Avatar name={driver.name} size={36} className="driver-avatar" />
+            <span className="driver-name">{driver.name}</span>
+          </div>
           <span className="driver-date">{todayLabel}</span>
         </div>
       </header>
@@ -127,6 +131,7 @@ export default function DriverView() {
                 </div>
                 {cancelledStops.map((stop) => (
                   <div key={`${stop.employee.id}-${stop.trip.direction}`} className="driver-cancelled-row">
+                    <Avatar src={stop.employee.photoUrl} name={stop.employee.name} size={28} />
                     <strong>{stop.employee.name}</strong>
                     <span className="muted">{stop.employee.id}</span>
                     <span className={`tag ${stop.trip.direction === 'pickup' ? 'tag-pickup' : 'tag-drop'}`}>
@@ -165,18 +170,23 @@ function StopCard({ index, stop }) {
   return (
     <article className={`stop-card ${direction === 'pickup' ? 'stop-card-pickup' : 'stop-card-drop'}`}>
       <div className="stop-card-head">
-        <span className="stop-num">{index}</span>
-        <div className="stop-head-text">
-          <div className="stop-name">
-            {employee.name}
-            <span className={`stop-direction-badge ${direction === 'pickup' ? 'badge-pickup' : 'badge-drop'}`}>
-              {direction === 'pickup' ? 'PICKUP' : 'DROP'}
-            </span>
-          </div>
-          <div className="stop-time">
-            {direction === 'pickup' ? 'Pickup at' : 'Drop at'}{' '}
-            <strong>{formatTime12(trip.time)}</strong>
-            {shiftText && <span className="stop-shift"> · {shiftText}</span>}
+        <div className="stop-card-index-row">
+          <span className="stop-num">{index}</span>
+        </div>
+        <div className="stop-card-person">
+          <Avatar src={employee.photoUrl} name={employee.name} size={44} className="stop-avatar" />
+          <div className="stop-head-text">
+            <div className="stop-name">
+              {employee.name}
+              <span className={`stop-direction-badge ${direction === 'pickup' ? 'badge-pickup' : 'badge-drop'}`}>
+                {direction === 'pickup' ? 'PICKUP' : 'DROP'}
+              </span>
+            </div>
+            <div className="stop-time">
+              {direction === 'pickup' ? 'Pickup at' : 'Drop at'}{' '}
+              <strong>{formatTime12(trip.time)}</strong>
+              {shiftText && <span className="stop-shift"> · {shiftText}</span>}
+            </div>
           </div>
         </div>
       </div>

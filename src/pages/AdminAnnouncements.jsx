@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 import {
   createAnnouncement,
   deleteAnnouncement,
-  getAnnouncements
+  getAnnouncements,
+  getEmployeeById
 } from '../data/store.js'
 import { ANNOUNCEMENT_TYPES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
@@ -15,6 +16,7 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
 import { Eye, Megaphone, MoreHorizontal, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Avatar from '../components/Avatar.jsx'
 
 const ANNOUNCEMENT_TYPE_OPTS = [
   { value: 'all', label: 'All types' },
@@ -37,16 +39,35 @@ export default function AdminAnnouncements() {
   const announcements = useMemo(() => getAnnouncements(), [refresh])
   const open = announcements.find((a) => a.id === openId) || null
 
+  const createdByOpts = useMemo(() => {
+    const seen = new Map()
+    announcements.forEach((a) => {
+      if (!seen.has(a.createdBy)) {
+        const emp = getEmployeeById(a.createdBy)
+        seen.set(a.createdBy, emp?.name || a.createdBy)
+      }
+    })
+    return [
+      { value: 'all', label: 'All creators' },
+      ...Array.from(seen, ([id, name]) => ({ value: id, label: name }))
+    ]
+  }, [announcements])
+
   const table = useTableControls(announcements, {
-    getSearchText: (a) => [a.title, a.content, a.type, a.createdOn].join(' '),
+    getSearchText: (a) => {
+      const creator = getEmployeeById(a.createdBy)
+      return [a.title, a.content, a.type, creator?.name, a.createdOn].join(' ')
+    },
     getSortValue: (a, key) => {
       if (key === 'type') return a.type
+      if (key === 'createdBy') return getEmployeeById(a.createdBy)?.name || a.createdBy
       return a[key]
     },
     initialSortKey: 'createdOn',
     initialSortDir: 'desc',
     filterFns: {
-      type: (a, val) => a.type === val
+      type: (a, val) => a.type === val,
+      createdBy: (a, val) => a.createdBy === val
     }
   })
   const {
@@ -202,38 +223,44 @@ export default function AdminAnnouncements() {
           showing={table.count}
           total={table.total}
           placeholder="Search announcements..."
-          filters={[{
-            key: 'type',
-            label: 'Type',
-            value: table.filters.type || 'all',
-            options: ANNOUNCEMENT_TYPE_OPTS
-          }]}
+          filters={[
+            { key: 'type', label: 'Type', value: table.filters.type || 'all', options: ANNOUNCEMENT_TYPE_OPTS },
+            { key: 'createdBy', label: 'Created By', value: table.filters.createdBy || 'all', options: createdByOpts }
+          ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '50%' }} />
+            <col style={{ width: '38%' }} />
+            <col style={{ width: '12%' }} />
             <col style={{ width: '20%' }} />
-            <col style={{ width: '20%' }} />
+            <col style={{ width: '15%' }} />
             <col style={{ width: '10%' }} />
           </colgroup>
           <thead>
             <tr>
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Type" keyName="type" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Created By" keyName="createdBy" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Created On" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={4} message="No announcements match your filters." />
+              <TableEmpty colSpan={5} message="No announcements match your filters." />
             )}
-            {announcementsPage.map((announcement) => (
+            {announcementsPage.map((announcement) => {
+              const creator = getEmployeeById(announcement.createdBy)
+              return (
               <tr key={announcement.id}>
                 <td>
                   <strong>{announcement.title}</strong>
-                  <div className="muted small cell-ellipsis" title={announcement.content}>
+                  <div
+                    className="muted small"
+                    title={announcement.content}
+                    style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                  >
                     {announcement.content}
                   </div>
                 </td>
@@ -241,6 +268,12 @@ export default function AdminAnnouncements() {
                   <span className={`tag ${getTypeClass(announcement.type)}`}>
                     {getTypeLabel(announcement.type)}
                   </span>
+                </td>
+                <td>
+                  <div className="person-cell">
+                    <Avatar src={creator?.photoUrl} name={creator?.name || announcement.createdBy} size={34} />
+                    <span>{creator?.name || announcement.createdBy}</span>
+                  </div>
                 </td>
                 <td>{formatDate(announcement.createdOn)}</td>
                 <td>
@@ -279,7 +312,8 @@ export default function AdminAnnouncements() {
                   </div>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         <Pagination

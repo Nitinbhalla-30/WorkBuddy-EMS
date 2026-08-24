@@ -22,6 +22,7 @@ import {
 } from '../utils/salary.js'
 import { Download, FileText, MoreHorizontal, Banknote, Pencil, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Avatar from '../components/Avatar.jsx'
 
 // HR/Admin salary screen: everyone's pay for a month, edit structure, view slip.
 export default function AdminSalary() {
@@ -217,14 +218,24 @@ export default function AdminSalary() {
             </button>
           }
         />
-        <table className="table">
+        <table className="table" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '5%' }} />
+          </colgroup>
           <thead>
             <tr>
-              <SortableTh label="Employee ID" keyName="id" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Employee ID" keyName="id" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
               <SortableTh label="Month" keyName="month" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Gross" keyName="gross" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="LOP days" keyName="lopDays" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="LOP days" keyName="lopDays" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
               <SortableTh label="Deductions" keyName="deductions" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Net pay" keyName="netPay" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Action</th>
@@ -236,11 +247,16 @@ export default function AdminSalary() {
             )}
             {rowsPage.map(({ emp, calc }) => (
               <tr key={emp.id}>
-                <td>{emp.id}</td>
                 <td>
-                  <strong>{emp.name}</strong>
-                  <div className="muted small">{emp.department}</div>
+                  <div className="person-cell">
+                    <Avatar src={emp.photoUrl} name={emp.name} size={34} />
+                    <div>
+                      <strong>{emp.name}</strong>
+                      <div className="muted small">{emp.department}</div>
+                    </div>
+                  </div>
                 </td>
+                <td>{emp.id}</td>
                 <td>{selectedMonthLabel}</td>
                 <td>{formatRupees(calc.gross)}</td>
                 <td>{calc.lopDays}</td>
