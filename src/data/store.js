@@ -4,7 +4,7 @@
 // Supabase the app falls back to the old localStorage-only mode.
 
 import { supabase } from './supabaseClient.js'
-import { DEFAULT_SETTINGS } from './sampleData.js'
+import { DEFAULT_SETTINGS, DEFAULT_SHIFTS } from './sampleData.js'
 import { blankProfile } from '../utils/profile.js'
 import { combineDateAndTime } from '../utils/attendance.js'
 import { isManagerLeaveExpired } from '../utils/leaves.js'
@@ -58,7 +58,10 @@ const KEYS = {
   notificationReads: 'hr_notification_reads',
   notificationDismissed: 'hr_notification_dismissed',
   teamConversations: 'hr_team_conversations',
-  teamClearedChats: 'hr_team_cleared_chats'
+  teamClearedChats: 'hr_team_cleared_chats',
+  shifts: 'hr_shifts',
+  shiftChangeRequests: 'hr_shift_change_requests',
+  shiftHistory: 'hr_shift_history'
 }
 
 // In-memory cache of every collection; reads hit this first.
@@ -135,7 +138,10 @@ const DEFAULTS = {
   [KEYS.notificationReads]: {},
   [KEYS.notificationDismissed]: {},
   [KEYS.teamConversations]: [],
-  [KEYS.teamClearedChats]: {}
+  [KEYS.teamClearedChats]: {},
+  [KEYS.shifts]: DEFAULT_SHIFTS,
+  [KEYS.shiftChangeRequests]: [],
+  [KEYS.shiftHistory]: []
 }
 
 // Bootstrap the store before the app renders. With Supabase: load every
@@ -1938,4 +1944,189 @@ export function dismissAllNotifications(employeeId, notificationIds) {
   for (const id of notificationIds) existing.add(id)
   all[employeeId] = [...existing]
   write(KEYS.notificationDismissed, all)
+}
+
+// ---- shifts ----
+// A shift defines a working time window (e.g. Morning 06:00–14:00).
+// Every employee is assigned to one shift; attendance is calculated against it.
+
+export function getShifts() {
+  return read(KEYS.shifts, DEFAULT_SHIFTS)
+}
+
+export function getShiftById(shiftId) {
+  return getShifts().find((s) => s.id === shiftId) || null
+}
+
+// Return the shift assigned to an employee, or null if none.
+export function getShiftForEmployee(employeeId) {
+  const emp = getEmployeeById(employeeId)
+  if (!emp || !emp.shiftId) return null
+  return getShiftById(emp.shiftId)
+}
+
+// Return the start time string (e.g. "09:30") for an employee's shift,
+// or the global officeStartTime fallback when no shift is assigned.
+export function getEmployeeShiftStartTime(employeeId) {
+  const shift = getShiftForEmployee(employeeId)
+  if (shift) return shift.startTime
+  return getSettings().officeStartTime
+}
+
+export function addShift(shift) {
+  const all = getShifts()
+  const newShift = {
+    id: shift.id || `SHIFT_${Date.now()}`,
+    name: shift.name || '',
+    startTime: shift.startTime || '',
+    endTime: shift.endTime || ''
+  }
+  all.push(newShift)
+  write(KEYS.shifts, all)
+  return newShift
+}
+
+export function updateShift(shiftId, data) {
+  const all = getShifts()
+  const idx = all.findIndex((s) => s.id === shiftId)
+  if (idx < 0) return null
+  all[idx] = { ...all[idx], ...data }
+  write(KEYS.shifts, all)
+  return all[idx]
+}
+
+export function deleteShift(shiftId) {
+  // Remove the shift definition and clear any employee assignments to it.
+  write(KEYS.shifts, getShifts().filter((s) => s.id !== shiftId))
+  const emps = getEmployees()
+  let changed = false
+  for (const e of emps) {
+    if (e.shiftId === shiftId) {
+      e.shiftId = null
+      changed = true
+    }
+  }
+  if (changed) write(KEYS.employees, emps)
+}
+
+// Assign (or change) an employee's shift. Logs the change in history.
+export function assignEmployeeShift(employeeId, shiftId, changedBy) {
+  const all = getEmployees()
+  const idx = all.findIndex((e) => e.id === employeeId)
+  if (idx < 0) return null
+  const prevShiftId = all[idx].shiftId || null
+  if (prevShiftId === shiftId) return all[idx]
+  all[idx] = { ...all[idx], shiftId }
+  write(KEYS.employees, all)
+  // Log the change.
+  const history = getShiftHistory()
+  history.push({
+    id: `SH${Date.now()}`,
+    employeeId,
+    fromShiftId: prevShiftId,
+    toShiftId: shiftId,
+    changedBy: changedBy || '',
+    changedOn: todayKey()
+  })
+  write(KEYS.shiftHistory, history)
+  return all[idx]
+}
+
+// ---- shift change requests ----
+// An employee can ask to move to a different shift. Admin approves/rejects.
+
+export function getShiftChangeRequests() {
+  return read(KEYS.shiftChangeRequests, [])
+}
+
+export function getShiftChangeRequestsForEmployee(employeeId) {
+  return getShiftChangeRequests()
+    .filter((r) => r.employeeId === employeeId)
+    .sort((a, b) => (a.requestedOn < b.requestedOn ? 1 : -1))
+}
+
+export function requestShiftChange(employeeId, toShiftId, reason) {
+  const all = getShiftChangeRequests()
+  const emp = getEmployeeById(employeeId)
+  const req = {
+    id: `SCR${Date.now()}`,
+    employeeId,
+    fromShiftId: emp?.shiftId || null,
+    toShiftId,
+    reason: reason || '',
+    status: 'pending',
+    requestedOn: todayKey(),
+    decidedBy: null,
+    decidedOn: null,
+    rejectReason: ''
+  }
+  all.push(req)
+  write(KEYS.shiftChangeRequests, all)
+  return req
+}
+
+export function approveShiftChange(requestId, decidedBy) {
+  const all = getShiftChangeRequests()
+  const idx = all.findIndex((r) => r.id === requestId)
+  if (idx < 0) return null
+  const req = all[idx]
+  if (req.status !== 'pending') return null
+  all[idx] = {
+    ...req,
+    status: 'approved',
+    decidedBy,
+    decidedOn: todayKey()
+  }
+  write(KEYS.shiftChangeRequests, all)
+  // Actually apply the shift change.
+  assignEmployeeShift(req.employeeId, req.toShiftId, decidedBy)
+  return all[idx]
+}
+
+export function rejectShiftChange(requestId, decidedBy, rejectReason) {
+  const all = getShiftChangeRequests()
+  const idx = all.findIndex((r) => r.id === requestId)
+  if (idx < 0) return null
+  const req = all[idx]
+  if (req.status !== 'pending') return null
+  all[idx] = {
+    ...req,
+    status: 'rejected',
+    decidedBy,
+    decidedOn: todayKey(),
+    rejectReason: rejectReason || ''
+  }
+  write(KEYS.shiftChangeRequests, all)
+  return all[idx]
+}
+
+export function withdrawShiftChangeRequest(requestId, employeeId) {
+  const all = getShiftChangeRequests()
+  const idx = all.findIndex((r) => r.id === requestId && r.employeeId === employeeId)
+  if (idx < 0) return null
+  if (all[idx].status !== 'pending') return null
+  all[idx] = { ...all[idx], status: 'withdrawn' }
+  write(KEYS.shiftChangeRequests, all)
+  return all[idx]
+}
+
+export function updateShiftChangeRequest(requestId, employeeId, updates) {
+  const all = getShiftChangeRequests()
+  const idx = all.findIndex((r) => r.id === requestId && r.employeeId === employeeId)
+  if (idx < 0) return null
+  if (all[idx].status !== 'pending') return null
+  all[idx] = { ...all[idx], ...updates }
+  write(KEYS.shiftChangeRequests, all)
+  return all[idx]
+}
+
+// ---- shift history ----
+export function getShiftHistory() {
+  return read(KEYS.shiftHistory, [])
+}
+
+export function getShiftHistoryForEmployee(employeeId) {
+  return getShiftHistory()
+    .filter((h) => h.employeeId === employeeId)
+    .sort((a, b) => (a.changedOn < b.changedOn ? 1 : -1))
 }

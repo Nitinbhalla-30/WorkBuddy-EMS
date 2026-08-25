@@ -1,6 +1,7 @@
 // Helpers to turn raw time stamps into useful numbers for the screens.
 
 import { ATTENDANCE_CORRECTION_ISSUES } from '../data/sampleData.js'
+import { getShiftForEmployee, getSettings } from '../data/store.js'
 
 function toDate(iso) {
   return iso ? new Date(iso) : null
@@ -241,4 +242,13 @@ export function combineDateAndTime(dateStr, timeStr) {
 export function correctionIssueLabel(key) {
   const i = ATTENDANCE_CORRECTION_ISSUES.find((x) => x.key === key)
   return i ? i.label : key
+}
+
+// Resolve the effective shift start time for an employee.
+// Uses the employee's assigned shift if one exists, otherwise falls back to
+// the global officeStartTime from settings.
+export function resolveStartTime(employeeId) {
+  const shift = getShiftForEmployee(employeeId)
+  if (shift) return shift.startTime
+  return getSettings().officeStartTime
 }

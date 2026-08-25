@@ -17,6 +17,7 @@ import {
   formatMinutes,
   isLate,
   resolveJoinDate,
+  resolveStartTime,
   statusOf,
   todayDateKey,
   totalBreakMinutes,
@@ -112,7 +113,7 @@ export default function AttendanceRecords() {
       return [
         r.date, emp?.name, emp?.department, manager?.name,
         formatClock(r.timeIn), formatClock(r.timeOut),
-        statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)
+        statusOf(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes)
       ].join(' ')
     },
     getSortValue: (r, key) => {
@@ -124,7 +125,7 @@ export default function AttendanceRecords() {
       }
       if (key === 'worked') return workedMinutes(r)
       if (key === 'break') return totalBreakMinutes(r)
-      if (key === 'status') return statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)
+      if (key === 'status') return statusOf(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes)
       return r[key]
     },
     initialSortKey: 'date',
@@ -294,7 +295,7 @@ export default function AttendanceRecords() {
         formatClock(r.timeOut),
         formatMinutes(workedMinutes(r)),
         formatMinutes(totalBreakMinutes(r)),
-        statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)
+        statusOf(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes)
       ]
     })
     downloadExcelXlsx(`attendance-records-${today}`, headers, rows)
@@ -407,8 +408,8 @@ export default function AttendanceRecords() {
                   <td>{formatMinutes(workedMinutes(r))}</td>
                   <td>{formatMinutes(totalBreakMinutes(r))}</td>
                   <td>
-                    <span className={`tag ${isLate(r, settings.officeStartTime, settings.lateGraceMinutes) ? 'tag-late' : 'tag-ok'}`}>
-                      {statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)}
+                    <span className={`tag ${isLate(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes) ? 'tag-late' : 'tag-ok'}`}>
+                      {statusOf(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes)}
                     </span>
                   </td>
                 </tr>

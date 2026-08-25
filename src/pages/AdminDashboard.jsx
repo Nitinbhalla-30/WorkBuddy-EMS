@@ -10,6 +10,7 @@ import {
   formatDate,
   formatMinutes,
   isLate,
+  resolveStartTime,
   statusOf,
   totalBreakMinutes,
   workedMinutes
@@ -93,7 +94,7 @@ export default function AdminDashboard() {
   const table = useTableControls(allRows, {
     getSearchText: ({ emp, rec }) => {
       const leaveType = leaveTypeByEmployee.get(emp.id) || ''
-      return [emp.name, emp.id, emp.department, formatClock(rec?.timeIn), formatClock(rec?.timeOut), onLeaveIds.has(emp.id) && !(rec && rec.timeIn) ? 'On leave' : statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes), leaveType].join(' ')
+      return [emp.name, emp.id, emp.department, formatClock(rec?.timeIn), formatClock(rec?.timeOut), onLeaveIds.has(emp.id) && !(rec && rec.timeIn) ? 'On leave' : statusOf(rec, resolveStartTime(emp.id), settings.lateGraceMinutes), leaveType].join(' ')
     },
     getSortValue: ({ emp, rec }, key) => {
       if (key === 'name') return emp.name
@@ -102,7 +103,7 @@ export default function AdminDashboard() {
       if (key === 'timeOut') return rec?.timeOut || ''
       if (key === 'worked') return rec ? workedMinutes(rec) : -1
       if (key === 'break') return rec ? totalBreakMinutes(rec) : -1
-      if (key === 'status') return onLeaveIds.has(emp.id) && !(rec && rec.timeIn) ? 'On leave' : statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes)
+      if (key === 'status') return onLeaveIds.has(emp.id) && !(rec && rec.timeIn) ? 'On leave' : statusOf(rec, resolveStartTime(emp.id), settings.lateGraceMinutes)
       if (key === 'leaveType') return leaveTypeByEmployee.get(emp.id) || ''
       return ''
     },
@@ -113,11 +114,11 @@ export default function AdminDashboard() {
       status: ({ emp, rec }, val) => {
         if (val === 'On leave') return onLeaveIds.has(emp.id) && !(rec && rec.timeIn)
         if (val === 'Absent') return !onLeaveIds.has(emp.id) && (!rec || !rec.timeIn)
-        return statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes) === val
+        return statusOf(rec, resolveStartTime(emp.id), settings.lateGraceMinutes) === val
       },
       quick: ({ emp, rec }, val) => {
-        if (val === 'ontime') return rec && rec.timeIn && !isLate(rec, settings.officeStartTime, settings.lateGraceMinutes)
-        if (val === 'late') return rec && rec.timeIn && isLate(rec, settings.officeStartTime, settings.lateGraceMinutes)
+        if (val === 'ontime') return rec && rec.timeIn && !isLate(rec, resolveStartTime(emp.id), settings.lateGraceMinutes)
+        if (val === 'late') return rec && rec.timeIn && isLate(rec, resolveStartTime(emp.id), settings.lateGraceMinutes)
         if (val === 'absent') return !onLeaveIds.has(emp.id) && (!rec || !rec.timeIn)
         if (val === 'onleave') return onLeaveIds.has(emp.id) && !(rec && rec.timeIn)
         return true
@@ -136,7 +137,7 @@ export default function AdminDashboard() {
 
   const present = allRows.filter((r) => r.rec && r.rec.timeIn).length
   const late = allRows.filter(
-    (r) => r.rec && isLate(r.rec, settings.officeStartTime, settings.lateGraceMinutes)
+    (r) => r.rec && isLate(r.rec, resolveStartTime(r.emp.id), settings.lateGraceMinutes)
   ).length
   const onLeave = allRows.filter(({ emp, rec }) => onLeaveIds.has(emp.id) && !(rec && rec.timeIn)).length
   const absent = employees.length - present - onLeave
@@ -271,12 +272,12 @@ export default function AdminDashboard() {
                         ? 'tag-absent'
                         : !rec || !rec.timeIn
                           ? 'tag-absent'
-                          : isLate(rec, settings.officeStartTime, settings.lateGraceMinutes)
+                          : isLate(rec, resolveStartTime(emp.id), settings.lateGraceMinutes)
                             ? 'tag-late'
                             : 'tag-ok'
                     }`}
                   >
-                    {onLeaveIds.has(emp.id) && !(rec && rec.timeIn) ? 'On leave' : statusOf(rec, settings.officeStartTime, settings.lateGraceMinutes)}
+                    {onLeaveIds.has(emp.id) && !(rec && rec.timeIn) ? 'On leave' : statusOf(rec, resolveStartTime(emp.id), settings.lateGraceMinutes)}
                   </span>
                 </td>
               </tr>

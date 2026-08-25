@@ -54,6 +54,22 @@ export const DEFAULT_SETTINGS = {
   companyHolidays: []
 }
 
+// Default shifts for a new company. Admin can add, edit, or remove these.
+// Each shift has a name, start time, and end time (24-hour format).
+export const DEFAULT_SHIFTS = [
+  { id: 'SHIFT_MORNING', name: 'Morning Shift', startTime: '06:00', endTime: '14:00' },
+  { id: 'SHIFT_AFTERNOON', name: 'Afternoon Shift', startTime: '14:00', endTime: '22:00' },
+  { id: 'SHIFT_EVENING', name: 'Evening Shift', startTime: '18:00', endTime: '02:00' },
+  { id: 'SHIFT_NIGHT', name: 'Night Shift', startTime: '22:00', endTime: '06:00' }
+]
+
+// The statuses a shift change request can have.
+export const SHIFT_CHANGE_STATUSES = [
+  { key: 'pending', label: 'Pending' },
+  { key: 'approved', label: 'Approved' },
+  { key: 'rejected', label: 'Rejected' }
+]
+
 // The kinds of leave. "paid: true" means it does not cut salary later.
 export const LEAVE_TYPES = [
   { key: 'casual', label: 'Casual', paid: true },

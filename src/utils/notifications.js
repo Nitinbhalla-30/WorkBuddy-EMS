@@ -16,6 +16,9 @@ import {
   getReadNotificationIds,
   getReimbursements,
   getReimbursementsForEmployee,
+  getShiftById,
+  getShiftChangeRequests,
+  getShiftChangeRequestsForEmployee,
   getTasks,
   getTasksForAssignee,
   getTeamConversations,
@@ -285,6 +288,34 @@ export function buildEmployeeNotifications(employeeId) {
     }
   }
 
+  // Shift change request updates for the employee.
+  for (const req of getShiftChangeRequestsForEmployee(employeeId)) {
+    if (req.status === 'approved' && req.decidedOn) {
+      const toShift = getShiftById(req.toShiftId)
+      push(items, {
+        id: `shift-change-approved-${req.id}`,
+        category: 'shift',
+        title: 'Shift change approved',
+        body: `Your request to move to ${toShift?.name || 'a new shift'} was approved.`,
+        on: req.decidedOn,
+        href: '/me'
+      })
+    }
+    if (req.status === 'rejected' && req.decidedOn) {
+      const toShift = getShiftById(req.toShiftId)
+      push(items, {
+        id: `shift-change-rejected-${req.id}`,
+        category: 'shift',
+        title: 'Shift change rejected',
+        body: req.rejectReason
+          ? `Your request to move to ${toShift?.name || 'a new shift'} was rejected: ${req.rejectReason}`
+          : `Your request to move to ${toShift?.name || 'a new shift'} was rejected.`,
+        on: req.decidedOn,
+        href: '/me'
+      })
+    }
+  }
+
   // Unread team messages from each teammate.
   const unreadByPeer = {}
   for (const m of getTeamConversations()) {
@@ -450,6 +481,20 @@ export function buildAdminNotifications() {
         href: '/it-help-desk'
       })
     }
+  }
+
+  // Pending shift change requests from employees.
+  for (const req of getShiftChangeRequests()) {
+    if (req.status !== 'pending') continue
+    const toShift = getShiftById(req.toShiftId)
+    push(items, {
+      id: `shift-change-pending-${req.id}`,
+      category: 'shift',
+      title: 'Shift change request',
+      body: `${nameOf(req.employeeId)} requested a change to ${toShift?.name || 'another shift'}.`,
+      on: req.requestedOn,
+      href: '/shift-management'
+    })
   }
 
   items.sort((a, b) => String(b.on || '').localeCompare(String(a.on || '')))

@@ -1058,6 +1058,7 @@ textarea::placeholder {
 .tag-ok { background: #e6f5ec; color: var(--good); }
 .tag-late { background: #fdf0e2; color: var(--warn); }
 .tag-absent { background: #f0f2f6; color: var(--muted); }
+.tag-pending { background: #e8f0fe; color: #1a73e8; }
 
 /* ---------- Tabs & row actions (leaves) ---------- */
 .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -2081,6 +2082,7 @@ button.task-status-stat-card {
 [data-theme="dark"] .tag-ok { background: #1a3d2a; }
 [data-theme="dark"] .tag-late { background: #3d2e1a; }
 [data-theme="dark"] .tag-absent { background: #252d3f; }
+[data-theme="dark"] .tag-pending { background: #1a2d4a; color: #8ab4f8; }
 [data-theme="dark"] .tag-high { background: #3d2428; }
 [data-theme="dark"] .tag-medium { background: #3d2e1a; }
 [data-theme="dark"] .tag-low { background: #123b37; }

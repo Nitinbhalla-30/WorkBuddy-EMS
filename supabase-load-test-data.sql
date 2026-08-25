@@ -1,15 +1,15 @@
--- WorkBuddy EMS — heavy load test data (3× volume, unique employee names)
+-- WorkBuddy EMS — heavy load test data (500 employees, unique names)
 -- Paste into Supabase SQL Editor and press Run. Safe to run again (idempotent).
 -- It REPLACES the current data with a large generated dataset covering every
 -- case the app handles. Logins still work: EMP001/1111, ADM001/0000,
 -- IT001/5555, DRV01/1234. New employees use PIN 1234.
--- 14 base + 123 generated = 137 people, every name unique.
+-- 14 base + 486 generated = 500 people, every name unique.
 
 begin;
 
--- ============ 1. EMPLOYEES (14 base + 123 generated = 137, unique names) ============
+-- ============ 1. EMPLOYEES (14 base + 486 generated = 500, unique names) ============
 -- Names are indexed pairs of 23 first × 23 last names: fi = i % 23, li = (i / 23) % 23,
--- so for i in 1..123 every (first, last) combination is distinct — no two
+-- so for i in 1..486 every (first, last) combination is distinct — no two
 -- employees (including the 14 base ones) can ever share a name.
 drop table if exists tmp_new_emps;
 create temp table tmp_new_emps as
@@ -21,13 +21,19 @@ select
   i,
   (array['Sales','Design','Support','Marketing','Operations','Quality'])[mod(i,6)+1] as dept,
   (array['Executive','Analyst','Associate','Specialist'])[mod(i,4)+1] as designation,
-  i in (11,21,31,41,51) as is_manager,
-  case when i in (11,21,31,41,51) then null
-       else (array['EMP001','EMP006','EMP021','EMP031','EMP041','EMP051'])[mod(i,6)+1] end as manager_id,
+  i in (11,21,31,41,51,61,71,81,91,101) as is_manager,
+  case when i in (11,21,31,41,51,61,71,81,91,101) then null
+       else (array['EMP001','EMP006','EMP021','EMP031','EMP041','EMP051','EMP061','EMP071','EMP081','EMP091'])[mod(i,10)+1] end as manager_id,
   to_char(current_date - (45 + mod(i*37, 900)), 'YYYY-MM-DD') as date_joined,
   12000 + mod(i*13, 30)*1000 as basic,
-  mod(i,5) <> 0 as wants_cab
-from generate_series(1, 123) i;
+  mod(i,5) <> 0 as wants_cab,
+  case mod(i, 4)
+    when 0 then 'SHIFT_MORNING'
+    when 1 then 'SHIFT_AFTERNOON'
+    when 2 then 'SHIFT_EVENING'
+    else 'SHIFT_NIGHT'
+  end as shift_id
+from generate_series(1, 486) i;
 
 insert into app_store (key, value)
 select 'hr_employees', (
@@ -52,6 +58,7 @@ select 'hr_employees', (
         'email', lower(replace(split_part(name,' ',1),' ','')) || '.' || lower(replace(split_part(name,' ',2),' ','')) || '@company.com',
         'designation', case when is_manager then dept || ' Manager' else designation end,
         'dateJoined', date_joined,
+        'shiftId', shift_id,
         'salary', jsonb_build_object(
           'basic', basic, 'hra', round(basic*0.45), 'other', 2000 + mod(i,5)*500,
           'tdsMonthly', case when basic > 30000 then 1500 else 0 end)
@@ -775,6 +782,98 @@ select 'hr_cab_messages', coalesce((select value from app_store where key = 'hr_
       (6, jsonb_build_object('id','CABMSGX06','employeeId','EMP002','byRole','employee','text','Can the cab come 10 minutes early tomorrow?','on','2026-08-23T18:00:00','readByAdmin',true))
     ) AS t(rn, rec)
   )
+on conflict (key) do update set value = excluded.value, updated_at = now();
+
+-- ============ 14. SHIFTS ============
+-- Define multiple shifts and assign employees to them.
+insert into app_store (key, value)
+values (
+  'hr_shifts',
+  '[
+    {"id":"SHIFT_MORNING","name":"Morning Shift","startTime":"06:00","endTime":"14:00"},
+    {"id":"SHIFT_AFTERNOON","name":"Afternoon Shift","startTime":"14:00","endTime":"22:00"},
+    {"id":"SHIFT_EVENING","name":"Evening Shift","startTime":"18:00","endTime":"02:00"},
+    {"id":"SHIFT_NIGHT","name":"Night Shift","startTime":"22:00","endTime":"06:00"}
+  ]'::jsonb
+)
+on conflict (key) do update set value = excluded.value, updated_at = now();
+
+-- Assign all employees to different shifts.
+-- Update the hr_employees JSON to add shiftId to all employees.
+-- Base employees EMP001-EMP010 get explicit assignments; generated employees
+-- are assigned based on their index modulo 4.
+update app_store
+set value = (
+  select jsonb_agg(
+    case
+      when elem->>'id' = 'EMP001' then elem || '{"shiftId":"SHIFT_MORNING"}'::jsonb
+      when elem->>'id' = 'EMP002' then elem || '{"shiftId":"SHIFT_MORNING"}'::jsonb
+      when elem->>'id' = 'EMP003' then elem || '{"shiftId":"SHIFT_MORNING"}'::jsonb
+      when elem->>'id' = 'EMP004' then elem || '{"shiftId":"SHIFT_AFTERNOON"}'::jsonb
+      when elem->>'id' = 'EMP005' then elem || '{"shiftId":"SHIFT_AFTERNOON"}'::jsonb
+      when elem->>'id' = 'EMP006' then elem || '{"shiftId":"SHIFT_AFTERNOON"}'::jsonb
+      when elem->>'id' = 'EMP007' then elem || '{"shiftId":"SHIFT_EVENING"}'::jsonb
+      when elem->>'id' = 'EMP008' then elem || '{"shiftId":"SHIFT_EVENING"}'::jsonb
+      when elem->>'id' = 'EMP009' then elem || '{"shiftId":"SHIFT_NIGHT"}'::jsonb
+      when elem->>'id' = 'EMP010' then elem || '{"shiftId":"SHIFT_NIGHT"}'::jsonb
+      when elem->>'id' like 'EMP%' and elem->>'id' > 'EMP010' then
+        elem || jsonb_build_object('shiftId',
+          case mod((substring(elem->>'id' from 4)::int - 10), 4)
+            when 0 then 'SHIFT_MORNING'
+            when 1 then 'SHIFT_AFTERNOON'
+            when 2 then 'SHIFT_EVENING'
+            else 'SHIFT_NIGHT'
+          end)
+      else elem
+    end
+    order by elem->>'id'
+  )
+  from jsonb_array_elements(value) elem
+),
+updated_at = now()
+where key = 'hr_employees';
+
+-- Shift change history (a few past changes).
+insert into app_store (key, value)
+values (
+  'hr_shift_history',
+  '[
+    {"id":"SH001","employeeId":"EMP003","fromShiftId":"SHIFT_GENERAL","toShiftId":"SHIFT_MORNING","changedBy":"admin","changedOn":"2026-07-15"},
+    {"id":"SH002","employeeId":"EMP007","fromShiftId":"SHIFT_GENERAL","toShiftId":"SHIFT_AFTERNOON","changedBy":"admin","changedOn":"2026-08-01"},
+    {"id":"SH003","employeeId":"EMP005","fromShiftId":"SHIFT_GENERAL","toShiftId":"SHIFT_NIGHT","changedBy":"admin","changedOn":"2026-08-10"}
+  ]'::jsonb
+)
+on conflict (key) do update set value = excluded.value, updated_at = now();
+
+-- Shift change requests (a mix of pending, approved, rejected).
+insert into app_store (key, value)
+values (
+  'hr_shift_change_requests',
+  '[
+    {"id":"SCR001","employeeId":"EMP002","fromShiftId":"SHIFT_MORNING","toShiftId":"SHIFT_AFTERNOON","reason":"I prefer afternoons for productivity.","status":"pending","requestedOn":"2026-08-23","decidedBy":null,"decidedOn":null,"rejectReason":""},
+    {"id":"SCR002","employeeId":"EMP008","fromShiftId":"SHIFT_EVENING","toShiftId":"SHIFT_MORNING","reason":"Personal commitment in the evenings.","status":"pending","requestedOn":"2026-08-24","decidedBy":null,"decidedOn":null,"rejectReason":""},
+    {"id":"SCR003","employeeId":"EMP010","fromShiftId":"SHIFT_NIGHT","toShiftId":"SHIFT_MORNING","reason":"Want to align shift with college classes.","status":"approved","requestedOn":"2026-08-01","decidedBy":"ADM001","decidedOn":"2026-08-03","rejectReason":""},
+    {"id":"SCR004","employeeId":"EMP004","fromShiftId":"SHIFT_AFTERNOON","toShiftId":"SHIFT_MORNING","reason":"Health reasons, doctor advised.","status":"rejected","requestedOn":"2026-08-05","decidedBy":"ADM001","decidedOn":"2026-08-07","rejectReason":"No replacement available for morning shift currently."},
+    {"id":"SCR005","employeeId":"EMP002","fromShiftId":"SHIFT_GENERAL","toShiftId":"SHIFT_MORNING","reason":"Requested morning shift when joining.","status":"approved","requestedOn":"2026-07-01","decidedBy":"ADM001","decidedOn":"2026-07-02","rejectReason":""},
+    {"id":"SCR006","employeeId":"EMP002","fromShiftId":"SHIFT_MORNING","toShiftId":"SHIFT_NIGHT","reason":"Want to try night shift for a change.","status":"rejected","requestedOn":"2026-07-15","decidedBy":"ADM001","decidedOn":"2026-07-16","rejectReason":"Night shift requires minimum 3 months experience."},
+    {"id":"SCR007","employeeId":"EMP002","fromShiftId":"SHIFT_MORNING","toShiftId":"SHIFT_EVENING","reason":"Evening shift suits my schedule better.","status":"withdrawn","requestedOn":"2026-08-01","decidedBy":null,"decidedOn":null,"rejectReason":""},
+    {"id":"SCR008","employeeId":"EMP003","fromShiftId":"SHIFT_MORNING","toShiftId":"SHIFT_AFTERNOON","reason":"Afternoon shift is more convenient.","status":"pending","requestedOn":"2026-08-24","decidedBy":null,"decidedOn":null,"rejectReason":""},
+    {"id":"SCR009","employeeId":"EMP005","fromShiftId":"SHIFT_AFTERNOON","toShiftId":"SHIFT_EVENING","reason":"Evening shift aligns with my studies.","status":"approved","requestedOn":"2026-08-10","decidedBy":"ADM001","decidedOn":"2026-08-12","rejectReason":""},
+    {"id":"SCR010","employeeId":"EMP007","fromShiftId":"SHIFT_EVENING","toShiftId":"SHIFT_NIGHT","reason":"Night shift pays extra allowance.","status":"pending","requestedOn":"2026-08-25","decidedBy":null,"decidedOn":null,"rejectReason":""}
+  ]'::jsonb
+)
+on conflict (key) do update set value = excluded.value, updated_at = now();
+
+-- ---- 13i. SHIFT DATA FOR EMP002: comprehensive coverage ----
+-- EMP002 shift history showing multiple changes over time
+insert into app_store (key, value)
+select 'hr_shift_history', coalesce((select value from app_store where key = 'hr_shift_history'), '[]'::jsonb)
+  || (select coalesce(jsonb_agg(rec), '[]'::jsonb) from (values
+    (1, jsonb_build_object('id','SHX001','employeeId','EMP002','fromShiftId',null,'toShiftId','SHIFT_GENERAL','changedBy','admin','changedOn','2025-03-15')),
+    (2, jsonb_build_object('id','SHX002','employeeId','EMP002','fromShiftId','SHIFT_GENERAL','toShiftId','SHIFT_MORNING','changedBy','ADM001','changedOn','2025-07-02')),
+    (3, jsonb_build_object('id','SHX003','employeeId','EMP002','fromShiftId','SHIFT_MORNING','toShiftId','SHIFT_AFTERNOON','changedBy','EMP001','changedOn','2026-01-10')),
+    (4, jsonb_build_object('id','SHX004','employeeId','EMP002','fromShiftId','SHIFT_AFTERNOON','toShiftId','SHIFT_MORNING','changedBy','ADM001','changedOn','2026-04-05'))
+  ) AS t(rn, rec))
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
 commit;

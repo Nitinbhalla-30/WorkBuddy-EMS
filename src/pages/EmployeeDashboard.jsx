@@ -26,6 +26,7 @@ import {
   monthKey,
   monthLabel,
   resolveJoinDate,
+  resolveStartTime,
   statsPeriodLabel,
   statusOf,
   totalBreakMinutes,
@@ -51,6 +52,7 @@ const TABS = ['Today', 'Attendance History', 'Correction Request']
 export default function EmployeeDashboard() {
   const { user } = useAuth()
   const settings = getSettings()
+  const shiftStartTime = resolveStartTime(user.id)
 
   const [today, setToday] = useState(() => getTodayRecord(user.id))
   const [message, setMessage] = useState('')
@@ -117,13 +119,13 @@ export default function EmployeeDashboard() {
     getSortValue: (r, key) => {
       if (key === 'worked') return workedMinutes(r)
       if (key === 'break') return totalBreakMinutes(r)
-      if (key === 'status') return statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)
+      if (key === 'status') return statusOf(r, shiftStartTime, settings.lateGraceMinutes)
       return r[key]
     },
     initialSortKey: 'date',
     initialSortDir: 'desc',
     filterFns: {
-      status: (r, val) => statusOf(r, settings.officeStartTime, settings.lateGraceMinutes).toLowerCase() === val.toLowerCase()
+      status: (r, val) => statusOf(r, shiftStartTime, settings.lateGraceMinutes).toLowerCase() === val.toLowerCase()
     }
   })
 
@@ -510,7 +512,7 @@ export default function EmployeeDashboard() {
                   formatClock(r.timeOut),
                   formatMinutes(workedMinutes(r)),
                   formatMinutes(totalBreakMinutes(r)),
-                  statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)
+                  statusOf(r, shiftStartTime, settings.lateGraceMinutes)
                 ])
                 downloadExcelXlsx(`attendance-history-${selectedHistoryMonth}`, headers, rows)
               }}
@@ -551,8 +553,8 @@ export default function EmployeeDashboard() {
                 <td>{formatMinutes(workedMinutes(r))}</td>
                 <td>{formatMinutes(totalBreakMinutes(r))}</td>
                 <td>
-                  <span className={`tag ${isLate(r, settings.officeStartTime, settings.lateGraceMinutes) ? 'tag-late' : 'tag-ok'}`}>
-                    {statusOf(r, settings.officeStartTime, settings.lateGraceMinutes)}
+                  <span className={`tag ${isLate(r, shiftStartTime, settings.lateGraceMinutes) ? 'tag-late' : 'tag-ok'}`}>
+                    {statusOf(r, shiftStartTime, settings.lateGraceMinutes)}
                   </span>
                 </td>
               </tr>
