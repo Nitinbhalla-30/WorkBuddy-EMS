@@ -24,6 +24,8 @@ import AdminITHelpDesk from './pages/AdminITHelpDesk.jsx'
 import AdminAnnouncements from './pages/AdminAnnouncements.jsx'
 import AdminShifts from './pages/AdminShifts.jsx'
 import EmployeeShifts from './pages/EmployeeShifts.jsx'
+import AdminOvertime from './pages/AdminOvertime.jsx'
+import EmployeeOvertime from './pages/EmployeeOvertime.jsx'
 import CabManagement from './pages/CabManagement.jsx'
 import AttendanceRecords from './pages/AttendanceRecords.jsx'
 import Settings from './pages/Settings.jsx'
@@ -90,6 +92,7 @@ export default function App() {
         />
         <Route path="/my-cab" element={<MyCab />} />
         <Route path="/my-shifts" element={<EmployeeShifts />} />
+        <Route path="/my-overtime" element={<EmployeeOvertime />} />
         <Route
           path="/admin"
           element={
@@ -167,6 +170,14 @@ export default function App() {
           element={
             <Protected adminOnly>
               <AdminShifts />
+            </Protected>
+          }
+        />
+        <Route
+          path="/overtime"
+          element={
+            <Protected adminOnly>
+              <AdminOvertime />
             </Protected>
           }
         />

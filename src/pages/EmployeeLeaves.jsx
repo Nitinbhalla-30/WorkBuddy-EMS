@@ -281,16 +281,13 @@ export default function EmployeeLeaves() {
                   onClick={() => setShowForm(false)}
                  aria-label="Close"><X size={15} /></button>
               </div>
-              <p className="hint first">
-                Select your leave type and dates below. Weekends are automatically excluded from the count.
-                For <strong>sick leave</strong>, please upload a medical certificate or similar document.
-                Paid leave requires a remaining balance and completed probation; requests go to your
-                manager first, then to HR for final approval.
-              </p>
               <LeaveForm
                 onApply={handleApply}
                 onCancel={() => setShowForm(false)}
               />
+              <p className="hint">
+                Weekends are excluded. Sick leave requires a medical certificate. Paid leave requires balance and completed probation; manager and HR approval required.
+              </p>
             </div>
         </Modal>
       )}

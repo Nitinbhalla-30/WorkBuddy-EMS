@@ -90,17 +90,16 @@ export default function ReimbursementForm({ onSubmit, onCancel, initial = null, 
         />
       </label>
 
-      <p className="hint first">
-        Submit claims for work-related expenses such as travel, conveyance, or meals.
-        HR will review your claim and arrange payment once approved.
-      </p>
-
       <div className="button-row">
         <button type="submit" className="btn btn-primary">{submitLabel}</button>
         {onCancel && (
           <button type="button" className="btn btn-light" onClick={onCancel}>Cancel</button>
         )}
       </div>
+
+      <p className="hint">
+        Submit work-related expenses for HR review and approval.
+      </p>
     </form>
   )
 }

@@ -8,7 +8,7 @@ import NotificationBell from './NotificationBell.jsx'
 import CinematicThemeSwitcher from './ui/cinematic-theme-switcher.tsx'
 import { OriginButton } from './ui/origin-button.tsx'
 import { useState, useEffect } from 'react'
-import { Banknote, Briefcase, CalendarDays, CarFront, CircleUser, Clock, Contact, LayoutDashboard, ListTodo, LogOut, Megaphone, MessageSquareText, ReceiptText, Settings, Shuffle, Users, Wrench, X } from 'lucide-react'
+import { Banknote, Briefcase, CalendarDays, CarFront, CircleUser, Clock, Contact, LayoutDashboard, ListTodo, LogOut, Megaphone, MessageSquareText, ReceiptText, Settings, Shuffle, Users, Wrench, X, Timer } from 'lucide-react'
 
 // The shared frame: top bar with the company name, side menu, and content.
 export default function Layout() {
@@ -80,14 +80,15 @@ export default function Layout() {
 
   const employeeNav = [
     { to: '/my-profile', label: 'My Details', icon: CircleUser },
+    { to: '/my-shifts', label: 'My Shifts', icon: Shuffle },
     { to: '/me', label: 'My Attendance', icon: Clock },
     { to: '/my-leaves', label: 'My Leaves', icon: CalendarDays },
     { to: '/my-salary', label: 'My Salary', icon: Banknote },
     { to: '/my-reimbursements', label: 'My Reimbursements', icon: ReceiptText },
+    { to: '/my-overtime', label: 'My Overtime', icon: Timer },
     { to: '/my-tasks', label: 'My Tasks', icon: ListTodo },
     { to: '/my-team', label: 'My Team', icon: Users, badge: true },
     { to: '/my-cab', label: 'My Cab', icon: CarFront },
-    { to: '/my-shifts', label: 'My Shifts', icon: Shuffle },
     { to: '/it-help', label: 'My IT Issues', icon: Wrench },
     { to: '/help', label: 'My Queries & Grievances', icon: MessageSquareText },
     { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: true }
@@ -97,6 +98,7 @@ export default function Layout() {
     { to: '/records-profiles', label: 'Employee Records', icon: Contact },
     { to: '/records', label: 'Attendance Records', icon: Clock },
     { to: '/shift-management', label: 'Shift Management', icon: Shuffle },
+    { to: '/overtime', label: 'Overtime', icon: Timer },
     { to: '/leave-requests', label: 'Leave Requests', icon: CalendarDays },
     { to: '/reimbursements', label: 'Reimbursements', icon: ReceiptText },
     { to: '/salary', label: 'Salaries', icon: Banknote },

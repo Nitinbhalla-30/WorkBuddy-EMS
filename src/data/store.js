@@ -61,7 +61,8 @@ const KEYS = {
   teamClearedChats: 'hr_team_cleared_chats',
   shifts: 'hr_shifts',
   shiftChangeRequests: 'hr_shift_change_requests',
-  shiftHistory: 'hr_shift_history'
+  shiftHistory: 'hr_shift_history',
+  overtimeRequests: 'hr_overtime_requests'
 }
 
 // In-memory cache of every collection; reads hit this first.
@@ -95,20 +96,89 @@ function read(key, fallback) {
   return readLocal(key, fallback)
 }
 
+// True once this browser has successfully exchanged data with Supabase at
+// least once. It lets a later session push local changes back even when the
+// very first load hit a transient Supabase hiccup (which would otherwise
+// strand writes in localStorage forever and hide them from other users).
+const SUPABASE_SEEN_KEY = 'hr_supabase_seen'
+function markSupabaseSeen() {
+  try {
+    localStorage.setItem(SUPABASE_SEEN_KEY, '1')
+  } catch {
+    // Ignore storage errors; the flag is an optimisation only.
+  }
+}
+function supabaseSeen() {
+  try {
+    return localStorage.getItem(SUPABASE_SEEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+// Push one collection to Supabase, retrying a few times with backoff so a
+// temporary outage never silently drops the change.
+function pushKeyToSupabase(key, attempt) {
+  supabase
+    .from('app_store')
+    .upsert({ key, value: mem[key], updated_at: new Date().toISOString() })
+    .then(({ error }) => {
+      if (error) {
+        scheduleRetryPush(key, attempt, error.message)
+      } else {
+        remoteReady = true
+        markSupabaseSeen()
+      }
+    })
+    .catch(() => scheduleRetryPush(key, attempt, 'network error'))
+}
+
+function scheduleRetryPush(key, attempt, message) {
+  if (attempt < 5) {
+    setTimeout(() => pushKeyToSupabase(key, attempt + 1), 1000 * 2 ** attempt)
+  } else {
+    console.warn(`Supabase write failed for ${key}:`, message)
+  }
+}
+
 // Save a collection locally and sync it to Supabase (debounced per key so a
 // burst of changes becomes one upsert).
 function write(key, value) {
   writeLocal(key, value)
-  if (!supabase || !remoteReady) return
+  if (!supabase) return
+  // Only push once this browser is known to hold real Supabase data, so a
+  // brand-new offline browser can't seed-and-clobber the shared store. A
+  // transient init failure on an established browser must not block pushes.
+  if (!remoteReady && !supabaseSeen()) return
   clearTimeout(pendingPush[key])
-  pendingPush[key] = setTimeout(() => {
-    supabase
-      .from('app_store')
-      .upsert({ key, value: mem[key], updated_at: new Date().toISOString() })
-      .then(({ error }) => {
-        if (error) console.warn(`Supabase write failed for ${key}:`, error.message)
-      })
-  }, 250)
+  pendingPush[key] = setTimeout(() => pushKeyToSupabase(key, 0), 250)
+}
+
+// Re-pull every collection from Supabase into memory and localStorage. Used
+// before showing data that must reflect the latest shared state (e.g. a
+// manager's approval queue) even if the initial load fell back to local.
+export async function refreshStoreFromSupabase() {
+  if (!supabase) return false
+  try {
+    const { data, error } = await supabase.from('app_store').select('key,value')
+    if (error) return false
+    if (data && data.some((row) => row.key === KEYS.employees)) {
+      for (const row of data) {
+        mem[row.key] = row.value
+        try {
+          localStorage.setItem(row.key, JSON.stringify(row.value))
+        } catch {
+          // Keep the in-memory copy if storage is full.
+        }
+      }
+      remoteReady = true
+      markSupabaseSeen()
+      return true
+    }
+    return false
+  } catch {
+    return false
+  }
 }
 
 // Defaults used to seed a brand-new store (sample data for development; data comes from Supabase in production).
@@ -141,7 +211,20 @@ const DEFAULTS = {
   [KEYS.teamClearedChats]: {},
   [KEYS.shifts]: DEFAULT_SHIFTS,
   [KEYS.shiftChangeRequests]: [],
-  [KEYS.shiftHistory]: []
+  [KEYS.shiftHistory]: [],
+  [KEYS.overtimeRequests]: []
+}
+
+// Read app_store, retrying a few times so a brief Supabase hiccup (a 500
+// while the project warms up, a flaky network) does not force the whole
+// session into local-only mode and silently strand later writes.
+async function selectAppStoreWithRetry(attempt = 0) {
+  const res = await supabase.from('app_store').select('key,value')
+  if (res.error && attempt < 3) {
+    await new Promise((r) => setTimeout(r, 800 * 2 ** attempt))
+    return selectAppStoreWithRetry(attempt + 1)
+  }
+  return res
 }
 
 // Bootstrap the store before the app renders. With Supabase: load every
@@ -155,9 +238,10 @@ export function initStore() {
       return
     }
     try {
-      const { data, error } = await supabase.from('app_store').select('key,value')
+      const { data, error } = await selectAppStoreWithRetry()
       if (error) throw error
       remoteReady = true
+      markSupabaseSeen()
       if (data && data.some((row) => row.key === KEYS.employees)) {
         // A real dataset is present — trust it fully. Overwrite every local
         // copy (including stale sample data seeded after a failed load) so
@@ -194,6 +278,9 @@ export function initStore() {
       console.warn('Supabase is not reachable; continuing with local storage.', err)
       remoteReady = false
       seedIfEmpty()
+      // Try to reconnect shortly in case the outage was transient, so this
+      // session does not stay stuck on stale local data.
+      setTimeout(() => refreshStoreFromSupabase(), 5000)
     }
   })()
   return initPromise
@@ -2129,4 +2216,149 @@ export function getShiftHistoryForEmployee(employeeId) {
   return getShiftHistory()
     .filter((h) => h.employeeId === employeeId)
     .sort((a, b) => (a.changedOn < b.changedOn ? 1 : -1))
+}
+
+// ---- overtime requests ----
+// An employee can log extra hours worked beyond their shift. Admin approves/rejects.
+
+export function getOvertimeRequests() {
+  return read(KEYS.overtimeRequests, [])
+}
+
+export function getOvertimeRequestsForEmployee(employeeId) {
+  return getOvertimeRequests()
+    .filter((r) => r.employeeId === employeeId)
+    .sort((a, b) => (a.requestedOn < b.requestedOn ? 1 : -1))
+}
+
+export function getOvertimeRequestsByMonth(monthKey) {
+  return getOvertimeRequests()
+    .filter((r) => r.monthKey === monthKey)
+    .sort((a, b) => (a.requestedOn < b.requestedOn ? 1 : -1))
+}
+
+// Normalize the approval stage. Requests created before the two-stage flow
+// have no `stage` field; treat those as manager-stage so the manager can act.
+function otStage(req) {
+  return req.stage || 'manager'
+}
+
+export function requestOvertime(employeeId, monthKey, hours, reason) {
+  const all = getOvertimeRequests()
+  const req = {
+    id: `OT${Date.now()}`,
+    employeeId,
+    monthKey,
+    hours: Number(hours) || 0,
+    reason: reason || '',
+    status: 'pending',
+    stage: 'manager',
+    managerStatus: null,
+    managerDecidedBy: null,
+    managerDecidedOn: null,
+    requestedOn: todayKey(),
+    decidedBy: null,
+    decidedOn: null,
+    rejectReason: ''
+  }
+  all.push(req)
+  write(KEYS.overtimeRequests, all)
+  return req
+}
+
+// The employee's manager approves or rejects a manager-stage overtime request.
+// Approval moves it to HR for final approval; rejection ends it.
+export function managerDecideOvertime(requestId, managerId, approve, rejectionReason = '') {
+  const all = getOvertimeRequests()
+  const idx = all.findIndex((r) => r.id === requestId)
+  if (idx < 0) return null
+  const req = all[idx]
+  if (req.status !== 'pending' || otStage(req) !== 'manager') return null
+  const employee = getEmployeeById(req.employeeId)
+  if (!employee || employee.managerId !== managerId) return null
+
+  if (approve) {
+    all[idx] = {
+      ...req,
+      stage: 'hr',
+      managerStatus: 'approved',
+      managerDecidedBy: managerId,
+      managerDecidedOn: todayKey()
+    }
+  } else {
+    all[idx] = {
+      ...req,
+      status: 'rejected',
+      managerStatus: 'rejected',
+      managerDecidedBy: managerId,
+      managerDecidedOn: todayKey(),
+      rejectReason: rejectionReason,
+      decidedBy: managerId,
+      decidedOn: todayKey()
+    }
+  }
+  write(KEYS.overtimeRequests, all)
+  return all[idx]
+}
+
+// HR/Admin approves or rejects an HR-stage overtime request.
+export function approveOvertime(requestId, decidedBy) {
+  const all = getOvertimeRequests()
+  const idx = all.findIndex((r) => r.id === requestId)
+  if (idx < 0) return null
+  const req = all[idx]
+  if (req.status !== 'pending' || otStage(req) !== 'hr') return null
+  all[idx] = {
+    ...req,
+    status: 'approved',
+    decidedBy,
+    decidedOn: todayKey()
+  }
+  write(KEYS.overtimeRequests, all)
+  return all[idx]
+}
+
+// HR/Admin rejects an HR-stage overtime request.
+export function rejectOvertime(requestId, decidedBy, rejectReason) {
+  const all = getOvertimeRequests()
+  const idx = all.findIndex((r) => r.id === requestId)
+  if (idx < 0) return null
+  const req = all[idx]
+  if (req.status !== 'pending' || otStage(req) !== 'hr') return null
+  all[idx] = {
+    ...req,
+    status: 'rejected',
+    decidedBy,
+    decidedOn: todayKey(),
+    rejectReason: rejectReason || ''
+  }
+  write(KEYS.overtimeRequests, all)
+  return all[idx]
+}
+
+export function withdrawOvertimeRequest(requestId, employeeId) {
+  const all = getOvertimeRequests()
+  const idx = all.findIndex((r) => r.id === requestId && r.employeeId === employeeId)
+  if (idx < 0) return null
+  // Can only withdraw if still pending and at manager stage (not yet forwarded to HR)
+  if (all[idx].status !== 'pending' || otStage(all[idx]) !== 'manager') return null
+  all[idx] = { ...all[idx], status: 'withdrawn' }
+  write(KEYS.overtimeRequests, all)
+  return all[idx]
+}
+
+export function updateOvertimeRequest(requestId, employeeId, updates) {
+  const all = getOvertimeRequests()
+  const idx = all.findIndex((r) => r.id === requestId && r.employeeId === employeeId)
+  if (idx < 0) return null
+  // Can only update if still pending and at manager stage
+  if (all[idx].status !== 'pending' || otStage(all[idx]) !== 'manager') return null
+  all[idx] = { ...all[idx], ...updates }
+  write(KEYS.overtimeRequests, all)
+  return all[idx]
+}
+
+export function getApprovedOvertimeForMonth(employeeId, monthKey) {
+  return getOvertimeRequests()
+    .filter((r) => r.employeeId === employeeId && r.monthKey === monthKey && r.status === 'approved')
 }

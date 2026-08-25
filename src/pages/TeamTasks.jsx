@@ -28,6 +28,7 @@ import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import Avatar from '../components/Avatar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { CircleCheck, Eye, MessageCircleQuestionMark, MoreHorizontal, Trash2, X } from 'lucide-react'
@@ -207,16 +208,6 @@ export default function TeamTasksPanel() {
 
   return (
     <div>
-      <div className="section-head-row first">
-        <h3 className="section-title">Team tasks</h3>
-        <button
-          className="btn btn-primary btn-tiny"
-          onClick={() => setShowForm(true)}
-        >
-          Assign a task
-        </button>
-      </div>
-
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Assign a new task">
           <div className="modal-form">
@@ -301,12 +292,20 @@ export default function TeamTasksPanel() {
             }
           ]}
           onFilterChange={table.setFilter}
+          actions={
+            <button
+              className="btn btn-primary btn-tiny"
+              onClick={() => setShowForm(true)}
+            >
+              Assign a task
+            </button>
+          }
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
+            <col style={{ width: '12%' }} />
             <col style={{ width: '16%' }} />
             <col style={{ width: '26%' }} />
-            <col style={{ width: '12%' }} />
             <col style={{ width: '8%' }} />
             <col style={{ width: '16%' }} />
             <col style={{ width: '13%' }} />
@@ -314,9 +313,9 @@ export default function TeamTasksPanel() {
           </colgroup>
           <thead>
             <tr>
+              <SortableTh label="Assigned To" keyName="assignee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Description" keyName="description" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Assigned To" keyName="assignee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Due Date" keyName="dueDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -329,9 +328,14 @@ export default function TeamTasksPanel() {
             )}
             {tasksPage.map((task) => (
               <tr key={task.id}>
+                <td>
+                  <div className="person-cell">
+                    <Avatar name={nameOf(task.assigneeId)} size={34} />
+                    <span>{nameOf(task.assigneeId)}</span>
+                  </div>
+                </td>
                 <td><strong>{task.title}</strong></td>
                 <td className="cell-ellipsis" title={task.description || undefined}>{task.description || <span className="muted">--</span>}</td>
-                <td>{nameOf(task.assigneeId)}</td>
                 <td>
                   <span className={`tag ${getPriorityClass(task.priority)}`}>
                     {getPriorityLabel(task.priority)}
@@ -340,7 +344,7 @@ export default function TeamTasksPanel() {
                 <td>{statusCell(task)}</td>
                 <td className={isOverdue(task) ? 'text-bad' : ''}>
                   {task.dueDate ? formatDate(task.dueDate) : <span className="muted">--</span>}
-                  {isOverdue(task) && <span className="muted small"> (Overdue)</span>}
+                  {isOverdue(task) && <div className="muted small">(Overdue)</div>}
                 </td>
                 <td>
                   <div className="task-menu-container">

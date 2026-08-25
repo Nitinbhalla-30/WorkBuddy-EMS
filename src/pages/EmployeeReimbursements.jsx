@@ -203,10 +203,6 @@ export default function EmployeeReimbursements() {
                 onClick={() => setShowForm(false)}
                aria-label="Close"><X size={15} /></button>
             </div>
-            <p className="hint first">
-              Submit expenses that the company should reimburse — such as travel, conveyance, or meals.
-              Please include what the expense was for and the amount.
-            </p>
             <ReimbursementForm
               onSubmit={handleSubmit}
               onCancel={() => setShowForm(false)}

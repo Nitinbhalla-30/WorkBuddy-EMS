@@ -314,14 +314,14 @@ export default function Settings() {
 
         <h3 className="section-title">
           <Shield size={15} style={{ marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} aria-hidden="true" />
-          Leave approval rules
+          Approval rules
         </h3>
         <p className="hint first">
           Employees can apply for paid leave only after their probation period
-          ends and while they have remaining balance. New paid-leave requests go
-          to the employee&rsquo;s manager first; if the manager does not respond
-          within the number of days set below, the request is forwarded to HR
-          automatically for final approval.
+          ends and while they have remaining balance. New paid-leave requests and
+          overtime requests go to the employee&rsquo;s manager first; if the manager
+          does not respond within the number of days set below, the request is
+          forwarded to HR automatically for final approval.
         </p>
         <div className="two-col">
           <label className="field">
@@ -334,12 +334,21 @@ export default function Settings() {
             />
           </label>
           <label className="field">
-            <span>Days for manager to respond</span>
+            <span>Days for manager to respond to leaves</span>
             <input
               type="number"
               min="0"
               value={form.leaveManagerDays}
               onChange={(e) => update('leaveManagerDays', Number(e.target.value))}
+            />
+          </label>
+          <label className="field">
+            <span>Days for manager to respond to overtime</span>
+            <input
+              type="number"
+              min="0"
+              value={form.overtimeManagerDays ?? 2}
+              onChange={(e) => update('overtimeManagerDays', Number(e.target.value))}
             />
           </label>
         </div>

@@ -1144,10 +1144,24 @@ function AssignTab({ employees, trips, assignments, bump }) {
 // ---- Temporary requests ----
 function RequestsTab({ requests, nameOf, bump }) {
   const [notes, setNotes] = useState({})
+  const [approveId, setApproveId] = useState(null)
+  const [rejectId, setRejectId] = useState(null)
 
   function decide(id, status) {
     setCabRequestStatus(id, status, notes[id] || '')
     bump()
+  }
+
+  function handleApprove() {
+    if (!approveId) return
+    decide(approveId, 'approved')
+    setApproveId(null)
+  }
+
+  function handleReject() {
+    if (!rejectId) return
+    decide(rejectId, 'rejected')
+    setRejectId(null)
   }
 
   const sorted = [...requests].sort((a, b) => {
@@ -1198,8 +1212,8 @@ function RequestsTab({ requests, nameOf, bump }) {
                 value={notes[r.id] || ''}
                 onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })}
               />
-              <button className="btn btn-primary btn-tiny" onClick={() => decide(r.id, 'approved')}>Approve</button>
-              <button className="btn btn-danger btn-tiny" onClick={() => decide(r.id, 'rejected')}>Reject</button>
+              <button className="btn btn-primary btn-tiny" onClick={() => setApproveId(r.id)}>Approve</button>
+              <button className="btn btn-danger btn-tiny" onClick={() => setRejectId(r.id)}>Reject</button>
             </div>
           ) : (
             r.adminNote && <div className="info-box">Note: {r.adminNote}</div>
@@ -1215,6 +1229,42 @@ function RequestsTab({ requests, nameOf, bump }) {
         endIndex={requestsEnd}
         onPageChange={setRequestsPage}
       />
+
+      {approveId && (
+        <Modal onClose={() => setApproveId(null)} title="Confirm approval">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm approval</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setApproveId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to approve this cab request for <strong>{nameOf(approveId)}</strong>?
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-primary" onClick={handleApprove}>Approve</button>
+              <button type="button" className="btn btn-light" onClick={() => setApproveId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {rejectId && (
+        <Modal onClose={() => setRejectId(null)} title="Confirm rejection">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm rejection</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setRejectId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              Are you sure you want to reject this cab request for <strong>{nameOf(rejectId)}</strong>?
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={handleReject}>Reject</button>
+              <button type="button" className="btn btn-light" onClick={() => setRejectId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

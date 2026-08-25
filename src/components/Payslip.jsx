@@ -12,6 +12,13 @@ export default function Payslip({ employee, monthKey, calc }) {
     { label: 'Other allowances', value: calc.other }
   ]
 
+  if (calc.overtimePay > 0) {
+    earnings.push({
+      label: `Overtime (${calc.overtimeHours}h @ 2x rate)`,
+      value: calc.overtimePay
+    })
+  }
+
   const deductions = [
     { label: `Provident Fund (${settings.salary.pfPercent}% of Basic)`, value: calc.pf },
     {

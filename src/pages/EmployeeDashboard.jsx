@@ -575,12 +575,6 @@ export default function EmployeeDashboard() {
 
       {tab === 2 && (
         <>
-          {pendingCorrections.length > 0 && (
-            <div className="info-box">
-              <strong>{pendingCorrections.length} correction request(s) awaiting HR review.</strong>
-            </div>
-          )}
-
           <div className="card">
             <TableToolbar
               search={correctionsTable.search}

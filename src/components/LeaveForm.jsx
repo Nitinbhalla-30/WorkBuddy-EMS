@@ -94,11 +94,12 @@ export default function LeaveForm({ onApply, onCancel, initial = null, submitLab
           </select>
         </label>
         <label className="field">
-          <span>Reason (optional)</span>
+          <span>Reason</span>
           <input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="e.g. Family function"
+            required
           />
         </label>
       </div>

@@ -423,7 +423,7 @@ export default function EmployeeTasks() {
                 <td>{statusCell(task)}</td>
                 <td className={isOverdue(task) ? 'text-bad' : ''}>
                   {task.dueDate ? formatDate(task.dueDate) : <span className="muted">--</span>}
-                  {isOverdue(task) && <span className="muted small"> (Overdue)</span>}
+                  {isOverdue(task) && <div className="muted small">(Overdue)</div>}
                 </td>
                 <td>
                   <div className="task-menu-container">

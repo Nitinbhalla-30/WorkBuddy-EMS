@@ -36,6 +36,8 @@ export const DEFAULT_SETTINGS = {
   probationMonths: 6,
   // Days a manager has to approve/reject a leave before it auto-escalates to HR.
   leaveManagerDays: 2,
+  // Days a manager has to approve/reject an overtime request before it auto-escalates to HR.
+  overtimeManagerDays: 2,
   // Salary rules (India). Delhi has no Professional Tax, so PT is not here.
   salary: {
     pfPercent: 12,        // Provident Fund: % of Basic (employee side)

@@ -876,6 +876,26 @@ select 'hr_shift_history', coalesce((select value from app_store where key = 'hr
   ) AS t(rn, rec))
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
+-- ---- 13j. OVERTIME DATA ----
+-- Overtime requests (a mix of pending, approved, rejected, withdrawn)
+insert into app_store (key, value)
+values (
+  'hr_overtime_requests',
+  '[
+    {"id":"OT001","employeeId":"EMP002","monthKey":"2026-07","hours":8,"reason":"Stayed late to finish the monthly design review and client presentation.","status":"approved","stage":"hr","managerStatus":"approved","managerDecidedBy":"EMP001","managerDecidedOn":"2026-07-29","requestedOn":"2026-07-28","decidedBy":"ADM001","decidedOn":"2026-07-30","rejectReason":""},
+    {"id":"OT002","employeeId":"EMP002","monthKey":"2026-08","hours":4,"reason":"Extra hours for the new product launch campaign.","status":"pending","stage":"manager","managerStatus":null,"managerDecidedBy":null,"managerDecidedOn":null,"requestedOn":"2026-08-23","decidedBy":null,"decidedOn":null,"rejectReason":""},
+    {"id":"OT003","employeeId":"EMP003","monthKey":"2026-07","hours":6,"reason":"Handled extra support tickets during team member absence.","status":"approved","stage":"hr","managerStatus":"approved","managerDecidedBy":"EMP001","managerDecidedOn":"2026-07-26","requestedOn":"2026-07-25","decidedBy":"ADM001","decidedOn":"2026-07-27","rejectReason":""},
+    {"id":"OT004","employeeId":"EMP003","monthKey":"2026-08","hours":3,"reason":"Weekend work for system migration.","status":"pending","stage":"manager","managerStatus":null,"managerDecidedBy":null,"managerDecidedOn":null,"requestedOn":"2026-08-24","decidedBy":null,"decidedOn":null,"rejectReason":""},
+    {"id":"OT005","employeeId":"EMP005","monthKey":"2026-07","hours":10,"reason":"Created marketing materials for trade show.","status":"approved","stage":"hr","managerStatus":"approved","managerDecidedBy":"EMP001","managerDecidedOn":"2026-07-21","requestedOn":"2026-07-20","decidedBy":"ADM001","decidedOn":"2026-07-22","rejectReason":""},
+    {"id":"OT006","employeeId":"EMP005","monthKey":"2026-08","hours":5,"reason":"Extra social media campaign work.","status":"rejected","stage":"hr","managerStatus":"approved","managerDecidedBy":"EMP001","managerDecidedOn":"2026-08-16","requestedOn":"2026-08-15","decidedBy":"ADM001","decidedOn":"2026-08-17","rejectReason":"No prior approval was obtained for these extra hours."},
+    {"id":"OT007","employeeId":"EMP007","monthKey":"2026-08","hours":7,"reason":"Inventory audit required weekend work.","status":"pending","stage":"manager","managerStatus":null,"managerDecidedBy":null,"managerDecidedOn":null,"requestedOn":"2026-08-25","decidedBy":null,"decidedOn":null,"rejectReason":""},
+    {"id":"OT008","employeeId":"EMP008","monthKey":"2026-07","hours":4,"reason":"Article deadline required extra evening hours.","status":"approved","stage":"hr","managerStatus":"approved","managerDecidedBy":"EMP001","managerDecidedOn":"2026-07-30","requestedOn":"2026-07-29","decidedBy":"ADM001","decidedOn":"2026-07-31","rejectReason":""},
+    {"id":"OT009","employeeId":"EMP009","monthKey":"2026-08","hours":6,"reason":"Bug fixing sprint required extra hours.","status":"approved","stage":"hr","managerStatus":"approved","managerDecidedBy":"EMP006","managerDecidedOn":"2026-08-11","requestedOn":"2026-08-10","decidedBy":"ADM001","decidedOn":"2026-08-12","rejectReason":""},
+    {"id":"OT010","employeeId":"EMP002","monthKey":"2026-06","hours":5,"reason":"Client presentation preparation.","status":"withdrawn","stage":"manager","managerStatus":null,"managerDecidedBy":null,"managerDecidedOn":null,"requestedOn":"2026-06-20","decidedBy":null,"decidedOn":null,"rejectReason":""}
+  ]'::jsonb
+)
+on conflict (key) do update set value = excluded.value, updated_at = now();
+
 commit;
 
 -- Done. Refresh the web app; it will load this data from Supabase.

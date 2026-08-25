@@ -11,6 +11,8 @@ import {
   getITIssuesForEmployee,
   getLeaves,
   getLeavesForEmployee,
+  getOvertimeRequests,
+  getOvertimeRequestsForEmployee,
   getProfileForEmployee,
   getProfiles,
   getReadNotificationIds,
@@ -28,6 +30,7 @@ import {
 } from '../data/store.js'
 import { correctionIssueLabel } from './attendance.js'
 import { leaveTypeLabel } from './leaves.js'
+import { monthLabel } from './salary.js'
 import { isSelfAssigned } from './tasks.js'
 
 function push(list, item) {
@@ -119,6 +122,36 @@ export function buildEmployeeNotifications(employeeId) {
         body: `Your ${leaveTypeLabel(lv.type)} leave moved to HR for final approval.`,
         on: lv.escalatedOn || lv.appliedOn,
         href: '/my-leaves'
+      })
+    }
+  }
+
+  // Two-stage overtime flow: requests waiting on this person's manager
+  // approval, and updates about where the employee's own requests sit.
+  for (const req of getOvertimeRequests()) {
+    if (
+      req.status === 'pending' &&
+      (req.stage === 'manager' || !req.stage) &&
+      getEmployeeById(req.employeeId)?.managerId === employeeId
+    ) {
+      push(items, {
+        id: `overtime-manager-pending-${req.id}`,
+        category: 'overtime',
+        title: 'Overtime awaiting your approval',
+        body: `${getEmployeeById(req.employeeId)?.name || 'An employee'} logged ${req.hours}h overtime for ${monthLabel(req.monthKey)}.`,
+        on: req.requestedOn,
+        href: '/my-team'
+      })
+    }
+    if (req.employeeId !== employeeId) continue
+    if (req.status === 'pending' && req.stage === 'hr' && req.managerStatus === 'approved') {
+      push(items, {
+        id: `overtime-manager-approved-${req.id}`,
+        category: 'overtime',
+        title: 'Manager approved your overtime',
+        body: `Your ${req.hours}h overtime request was approved by your manager and sent to HR for final approval.`,
+        on: req.managerDecidedOn || req.requestedOn,
+        href: '/my-overtime'
       })
     }
   }
@@ -316,6 +349,32 @@ export function buildEmployeeNotifications(employeeId) {
     }
   }
 
+  // Overtime request updates for the employee.
+  for (const req of getOvertimeRequestsForEmployee(employeeId)) {
+    if (req.status === 'approved' && req.decidedOn) {
+      push(items, {
+        id: `overtime-approved-${req.id}`,
+        category: 'overtime',
+        title: 'Overtime approved',
+        body: `Your ${req.hours}h overtime request for ${req.monthKey} was approved. It will be added to your salary.`,
+        on: req.decidedOn,
+        href: '/my-overtime'
+      })
+    }
+    if (req.status === 'rejected' && req.decidedOn) {
+      push(items, {
+        id: `overtime-rejected-${req.id}`,
+        category: 'overtime',
+        title: 'Overtime rejected',
+        body: req.rejectReason
+          ? `Your ${req.hours}h overtime request was rejected: ${req.rejectReason}`
+          : `Your ${req.hours}h overtime request was rejected.`,
+        on: req.decidedOn,
+        href: '/my-overtime'
+      })
+    }
+  }
+
   // Unread team messages from each teammate.
   const unreadByPeer = {}
   for (const m of getTeamConversations()) {
@@ -494,6 +553,20 @@ export function buildAdminNotifications() {
       body: `${nameOf(req.employeeId)} requested a change to ${toShift?.name || 'another shift'}.`,
       on: req.requestedOn,
       href: '/shift-management'
+    })
+  }
+
+  // Pending overtime requests from employees.
+  for (const req of getOvertimeRequests()) {
+    if (req.status !== 'pending') continue
+    const withManager = req.stage === 'manager' || !req.stage
+    push(items, {
+      id: `overtime-pending-${req.id}`,
+      category: 'overtime',
+      title: withManager ? 'Overtime with manager' : 'Overtime request pending',
+      body: `${nameOf(req.employeeId)} logged ${req.hours}h overtime for ${monthLabel(req.monthKey)}${withManager ? ' — awaiting manager approval' : ' — manager approved, final approval needed'}.`,
+      on: req.requestedOn,
+      href: '/overtime'
     })
   }
 
