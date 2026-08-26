@@ -70,6 +70,41 @@ const mem = {}
 let remoteReady = false
 let initPromise = null
 const pendingPush = {}
+// Keys with an in-flight Supabase write. refreshStoreFromSupabase skips
+// these so a concurrent refresh never overwrites local data with stale
+// remote data before the push completes.
+const pendingWrites = new Set()
+const PENDING_WRITES_KEY = 'hr_pending_writes'
+
+// Persist pending writes to localStorage so they survive logout/login cycles.
+// This ensures that when an employee applies for leave and logs out before the
+// push completes, the manager will see the request after logging in.
+function savePendingWrites() {
+  try {
+    localStorage.setItem(PENDING_WRITES_KEY, JSON.stringify([...pendingWrites]))
+  } catch {
+    // Ignore storage errors; pending writes are an optimization.
+  }
+}
+function loadPendingWrites() {
+  try {
+    const raw = localStorage.getItem(PENDING_WRITES_KEY)
+    if (raw) {
+      const arr = JSON.parse(raw)
+      arr.forEach((key) => pendingWrites.add(key))
+    }
+  } catch {
+    // Ignore parse errors.
+  }
+}
+function clearPendingWrites() {
+  pendingWrites.clear()
+  try {
+    localStorage.removeItem(PENDING_WRITES_KEY)
+  } catch {
+    // Ignore.
+  }
+}
 
 function readLocal(key, fallback) {
   try {
@@ -119,18 +154,59 @@ function supabaseSeen() {
 // Push one collection to Supabase, retrying a few times with backoff so a
 // temporary outage never silently drops the change.
 function pushKeyToSupabase(key, attempt) {
-  supabase
-    .from('app_store')
-    .upsert({ key, value: mem[key], updated_at: new Date().toISOString() })
-    .then(({ error }) => {
-      if (error) {
-        scheduleRetryPush(key, attempt, error.message)
-      } else {
-        remoteReady = true
-        markSupabaseSeen()
-      }
-    })
-    .catch(() => scheduleRetryPush(key, attempt, 'network error'))
+  pendingWrites.add(key)
+  savePendingWrites()
+  const tableName = OPTIMIZED_TABLES[key]
+  
+  if (tableName) {
+    // Write to optimized table.
+    // Read the latest data inside the async chain so concurrent writes
+    // don't cause stale data to be pushed.
+    supabase
+      .from(tableName)
+      .delete()
+      .neq('id', '')
+      .then(async ({ error: deleteError }) => {
+        if (deleteError) throw deleteError
+        // Re-read the latest data from memory at push time
+        const records = mem[key]
+        if (!Array.isArray(records) || records.length === 0) return { data: null, error: null }
+        const dbRecords = transformRowsToDb(records)
+        // Insert in batches to avoid hitting the server's max-rows limit
+        await batchedInsert(tableName, dbRecords)
+        return { data: null, error: null }
+      })
+      .then(({ error }) => {
+        if (error) {
+          scheduleRetryPush(key, attempt, error.message)
+        } else {
+          pendingWrites.delete(key)
+          savePendingWrites()
+          remoteReady = true
+          markSupabaseSeen()
+        }
+      })
+      .catch((err) => scheduleRetryPush(key, attempt, err.message || 'network error'))
+  } else {
+    // Write to app_store for non-optimized collections
+    supabase
+      .from('app_store')
+      .upsert(
+        { key, value: mem[key], updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      )
+      .then(({ error }) => {
+        if (error) {
+          scheduleRetryPush(key, attempt, error.message)
+        } else {
+          pendingWrites.delete(key)
+          savePendingWrites()
+          remoteReady = true
+          markSupabaseSeen()
+        }
+      })
+      .catch(() => scheduleRetryPush(key, attempt, 'network error'))
+  }
 }
 
 function scheduleRetryPush(key, attempt, message) {
@@ -138,6 +214,8 @@ function scheduleRetryPush(key, attempt, message) {
     setTimeout(() => pushKeyToSupabase(key, attempt + 1), 1000 * 2 ** attempt)
   } else {
     console.warn(`Supabase write failed for ${key}:`, message)
+    // Don't clear pendingWrites - keep trying on next page load
+    // The data is still in localStorage and will be pushed on next init
   }
 }
 
@@ -150,8 +228,133 @@ function write(key, value) {
   // brand-new offline browser can't seed-and-clobber the shared store. A
   // transient init failure on an established browser must not block pushes.
   if (!remoteReady && !supabaseSeen()) return
+  pendingWrites.add(key)
+  savePendingWrites()
   clearTimeout(pendingPush[key])
   pendingPush[key] = setTimeout(() => pushKeyToSupabase(key, 0), 250)
+}
+
+// Save a collection locally and immediately push to Supabase (no debounce).
+// Used for time-sensitive state like notification dismissals that must persist
+// across logout/login cycles.
+function writeImmediate(key, value) {
+  writeLocal(key, value)
+  if (!supabase) return
+  if (!remoteReady && !supabaseSeen()) return
+  pendingWrites.add(key)
+  savePendingWrites()
+  clearTimeout(pendingPush[key])
+  pushKeyToSupabase(key, 0)
+}
+
+// Mapping of app_store keys to their optimized table names
+const OPTIMIZED_TABLES = {
+  [KEYS.attendance]: 'attendance_records',
+  [KEYS.tasks]: 'tasks',
+  [KEYS.leaves]: 'leaves',
+  [KEYS.overtimeRequests]: 'overtime_requests',
+  [KEYS.shiftChangeRequests]: 'shift_change_requests',
+  [KEYS.reimbursements]: 'reimbursements',
+  [KEYS.tickets]: 'tickets',
+  [KEYS.itIssues]: 'it_issues',
+  [KEYS.attendanceCorrections]: 'attendance_corrections'
+}
+
+// Convert snake_case to camelCase
+function snakeToCamel(str) {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+}
+
+// Convert camelCase to snake_case
+function camelToSnake(str) {
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+}
+
+// Known field-name mismatches between app (camelCase) and database (snake_case).
+// camelToSnake produces the wrong name for these, so we map them explicitly.
+const APP_TO_DB_FIELD = {
+  rejectReason: 'rejection_reason'
+}
+const DB_TO_APP_FIELD = {
+  rejection_reason: 'rejectReason'
+}
+
+// Transform database row (snake_case) to app format (camelCase)
+function transformRow(row) {
+  if (!row || typeof row !== 'object') return row
+  const transformed = {}
+  for (const [key, value] of Object.entries(row)) {
+    const appKey = DB_TO_APP_FIELD[key] || snakeToCamel(key)
+    transformed[appKey] = value
+  }
+  return transformed
+}
+
+// Transform array of database rows
+function transformRows(rows) {
+  if (!Array.isArray(rows)) return rows
+  return rows.map(transformRow)
+}
+
+// Transform app row (camelCase) to database format (snake_case)
+function transformRowToDb(row) {
+  if (!row || typeof row !== 'object') return row
+  const transformed = {}
+  for (const [key, value] of Object.entries(row)) {
+    // Skip created_at and other DB-only fields
+    if (key === 'createdAt' || key === 'created_at') continue
+    const dbKey = APP_TO_DB_FIELD[key] || camelToSnake(key)
+    transformed[dbKey] = value
+  }
+  return transformed
+}
+
+// Transform array of app rows to database format
+function transformRowsToDb(rows) {
+  if (!Array.isArray(rows)) return rows
+  return rows.map(transformRowToDb)
+}
+
+// Supabase PostgREST has a server-side max-rows setting (default 1000) that
+// caps the number of rows returned per request, regardless of the client-side
+// .limit() value. When the table exceeds that limit, responses come back as
+// 206 Partial Content with only the first N rows. This helper fetches ALL
+// rows by paginating with Range headers in chunks.
+async function fetchAllFromTable(tableName) {
+  const CHUNK = 999 // PostgREST range is inclusive: 0-999 = 1000 rows
+  let allData = []
+  let from = 0
+
+  while (true) {
+    const to = from + CHUNK - 1
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('*', { count: 'exact' })
+      .range(from, to)
+
+    if (error) throw error
+    if (!data || data.length === 0) break
+
+    allData = allData.concat(data)
+
+    // If we received fewer rows than requested, we've reached the end
+    if (data.length < CHUNK) break
+
+    from = to + 1
+  }
+
+  return allData
+}
+
+// Insert records in batches to avoid hitting the server's max-rows limit on
+// a single INSERT statement.
+async function batchedInsert(tableName, records) {
+  const BATCH = 1000
+  for (let i = 0; i < records.length; i += BATCH) {
+    const batch = records.slice(i, i + BATCH)
+    const { error } = await supabase.from(tableName).insert(batch)
+    if (error) throw error
+  }
 }
 
 // Re-pull every collection from Supabase into memory and localStorage. Used
@@ -160,10 +363,48 @@ function write(key, value) {
 export async function refreshStoreFromSupabase() {
   if (!supabase) return false
   try {
-    const { data, error } = await supabase.from('app_store').select('key,value')
-    if (error) return false
-    if (data && data.some((row) => row.key === KEYS.employees)) {
-      for (const row of data) {
+    // Keys that remain in app_store (not migrated to optimized tables)
+    const appStoreKeys = [
+      KEYS.employees,
+      KEYS.settings,
+      KEYS.profiles,
+      KEYS.vehicles,
+      KEYS.drivers,
+      KEYS.trips,
+      KEYS.cabAssignments,
+      KEYS.cabRequests,
+      KEYS.cabMessages,
+      KEYS.cabCancellations,
+      KEYS.cabClearedChats,
+      KEYS.cabClearedChatsAdmin,
+      KEYS.itStaff,
+      KEYS.announcements,
+      KEYS.readAnnouncements,
+      KEYS.notificationReads,
+      KEYS.notificationDismissed,
+      KEYS.teamConversations,
+      KEYS.teamClearedChats,
+      KEYS.shifts,
+      KEYS.shiftHistory
+    ]
+    
+    // Fetch small reference data from app_store using specific keys
+    // Skip keys that have pending local writes to avoid overwriting
+    // unpushed data with stale remote data.
+    const fetchKeys = appStoreKeys.filter((k) => !pendingWrites.has(k))
+    let appStoreData = []
+    if (fetchKeys.length > 0) {
+      const res = await supabase
+        .from('app_store')
+        .select('key,value')
+        .in('key', fetchKeys)
+      if (res.error) return false
+      appStoreData = res.data || []
+    }
+    
+    // Load small collections from app_store
+    if (appStoreData && appStoreData.some((row) => row.key === KEYS.employees)) {
+      for (const row of appStoreData) {
         mem[row.key] = row.value
         try {
           localStorage.setItem(row.key, JSON.stringify(row.value))
@@ -171,6 +412,41 @@ export async function refreshStoreFromSupabase() {
           // Keep the in-memory copy if storage is full.
         }
       }
+    }
+    
+    // Fetch large collections from optimized tables
+    // Skip keys with pending local writes to avoid overwriting unpushed data.
+    const fetchPromises = Object.entries(OPTIMIZED_TABLES)
+      .filter(([key]) => !pendingWrites.has(key))
+      .map(async ([key, tableName]) => {
+      try {
+        const data = await fetchAllFromTable(tableName)
+        if (data) {
+          // Transform snake_case to camelCase
+          const transformedData = transformRows(data)
+          mem[key] = transformedData
+          try {
+            localStorage.setItem(key, JSON.stringify(transformedData))
+          } catch {
+            // Keep the in-memory copy if storage is full.
+          }
+        }
+      } catch {
+        // Table might not exist yet, fall back to app_store
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('app_store')
+          .select('value')
+          .eq('key', key)
+          .single()
+        if (!fallbackError && fallbackData) {
+          mem[key] = fallbackData.value
+        }
+      }
+    })
+    
+    await Promise.all(fetchPromises)
+    
+    if (mem[KEYS.employees]) {
       remoteReady = true
       markSupabaseSeen()
       return true
@@ -219,7 +495,32 @@ const DEFAULTS = {
 // while the project warms up, a flaky network) does not force the whole
 // session into local-only mode and silently strand later writes.
 async function selectAppStoreWithRetry(attempt = 0) {
-  const res = await supabase.from('app_store').select('key,value')
+  // Keys that remain in app_store (not migrated to optimized tables)
+  const appStoreKeys = [
+    KEYS.employees,
+    KEYS.settings,
+    KEYS.profiles,
+    KEYS.vehicles,
+    KEYS.drivers,
+    KEYS.trips,
+    KEYS.cabAssignments,
+    KEYS.cabRequests,
+    KEYS.cabMessages,
+    KEYS.cabCancellations,
+    KEYS.cabClearedChats,
+    KEYS.cabClearedChatsAdmin,
+    KEYS.itStaff,
+    KEYS.announcements,
+    KEYS.readAnnouncements,
+    KEYS.notificationReads,
+    KEYS.notificationDismissed,
+    KEYS.teamConversations,
+    KEYS.teamClearedChats,
+    KEYS.shifts,
+    KEYS.shiftHistory
+  ]
+  
+  const res = await supabase.from('app_store').select('key,value').in('key', appStoreKeys)
   if (res.error && attempt < 3) {
     await new Promise((r) => setTimeout(r, 800 * 2 ** attempt))
     return selectAppStoreWithRetry(attempt + 1)
@@ -228,7 +529,7 @@ async function selectAppStoreWithRetry(attempt = 0) {
 }
 
 // Bootstrap the store before the app renders. With Supabase: load every
-// collection from app_store, or upload the local data the first time.
+// collection from app_store and optimized tables, or upload the local data the first time.
 // Always resolves; on any failure the app keeps working from localStorage.
 export function initStore() {
   if (initPromise) return initPromise
@@ -238,40 +539,90 @@ export function initStore() {
       return
     }
     try {
-      const { data, error } = await selectAppStoreWithRetry()
-      if (error) throw error
-      remoteReady = true
-      markSupabaseSeen()
-      if (data && data.some((row) => row.key === KEYS.employees)) {
-        // A real dataset is present — trust it fully. Overwrite every local
-        // copy (including stale sample data seeded after a failed load) so
-        // the browser can never drift away from what Supabase holds.
-        for (const row of data) {
+      // Load any pending writes from the previous session (e.g., employee applied
+      // for leave and logged out before the push completed). Push them to Supabase
+      // before loading fresh data so the manager sees the latest requests.
+      loadPendingWrites()
+      if (pendingWrites.size > 0 && supabaseSeen()) {
+        const keysToFlush = [...pendingWrites]
+        // Wait for all pushes to complete before loading data
+        await Promise.all(keysToFlush.map((key) =>
+          new Promise((resolve) => {
+            // Poll until the key is removed from pendingWrites (push succeeded)
+            // or until timeout (push failed or taking too long)
+            const startTime = Date.now()
+            const checkInterval = setInterval(() => {
+              if (!pendingWrites.has(key)) {
+                clearInterval(checkInterval)
+                resolve()
+              } else if (Date.now() - startTime > 10000) {
+                // Timeout after 10 seconds - continue anyway
+                clearInterval(checkInterval)
+                resolve()
+              }
+            }, 100)
+            // Trigger the push
+            pushKeyToSupabase(key, 0)
+          })
+        ))
+      }
+      
+      // Fetch small collections from app_store
+      const { data: appStoreData, error: appStoreError } = await selectAppStoreWithRetry()
+      if (appStoreError) throw appStoreError
+      
+      // Load small collections into memory
+      if (appStoreData && appStoreData.some((row) => row.key === KEYS.employees)) {
+        for (const row of appStoreData) {
           mem[row.key] = row.value
           try {
             localStorage.setItem(row.key, JSON.stringify(row.value))
           } catch {
-            // Storage quota exceeded: keep the value in memory only so the
-            // app still runs on the full dataset for this session.
+            // Storage quota exceeded: keep the value in memory only
           }
         }
-        for (const key of Object.values(KEYS)) {
-          if (!(key in mem)) localStorage.removeItem(key)
-        }
-      } else if (data && data.length > 0) {
-        // First run on this project: migrate whatever this browser already
-        // has (or the sample data when there is nothing) up to Supabase.
-        seedIfEmpty()
-        const rows = Object.values(KEYS)
-          .map((key) => ({
-            key,
-            value: key in mem ? mem[key] : readLocal(key, null),
-            updated_at: new Date().toISOString()
-          }))
-          .filter((r) => r.value !== null && r.value !== undefined)
-        const { error: upErr } = await supabase.from('app_store').upsert(rows)
-        if (upErr) throw upErr
       }
+      
+      // Fetch large collections from optimized tables in parallel
+      // Skip keys with pending local writes to avoid overwriting unpushed data
+      const fetchPromises = Object.entries(OPTIMIZED_TABLES)
+        .filter(([key]) => !pendingWrites.has(key))
+        .map(async ([key, tableName]) => {
+        try {
+          const data = await fetchAllFromTable(tableName)
+          if (data) {
+            // Transform snake_case to camelCase
+            const transformedData = transformRows(data)
+            mem[key] = transformedData
+            try {
+              localStorage.setItem(key, JSON.stringify(transformedData))
+            } catch {
+              // Keep in memory only if storage is full
+            }
+          }
+        } catch {
+          // Table might not exist yet, try to load from app_store as fallback
+          const { data: fallbackData } = await supabase
+            .from('app_store')
+            .select('value')
+            .eq('key', key)
+            .single()
+          if (fallbackData) {
+            mem[key] = fallbackData.value
+          }
+        }
+      })
+      
+      await Promise.all(fetchPromises)
+      
+      remoteReady = true
+      markSupabaseSeen()
+      
+      // If no employees data found anywhere, this is a fresh install
+      if (!mem[KEYS.employees]) {
+        seedIfEmpty()
+      }
+      
       // Cover keys introduced by newer versions of the app.
       seedIfEmpty()
     } catch (err) {
@@ -633,7 +984,7 @@ export function getLeaves() {
     if (lv.status === 'pending' && lv.stage === 'manager' && isManagerLeaveExpired(lv, settings)) {
       lv.stage = 'hr'
       lv.managerStatus = 'escalated'
-      lv.escalatedOn = today
+      lv.escalatedOn = new Date().toISOString()
       changed = true
     }
   }
@@ -678,6 +1029,7 @@ export function applyLeave({
     managerDecidedOn: null,
     escalatedOn: null,
     appliedOn: todayKey(),
+    createdAt: new Date().toISOString(),
     decidedBy: null,
     decidedOn: null
   }
@@ -714,6 +1066,8 @@ export function updateLeave(leaveId, employeeId, {
   const leave = all[idx]
   if (leave.employeeId !== employeeId) return null
   if (leave.status !== 'pending') return null
+  // Block edits after manager approval (request is with HR).
+  if (leave.managerStatus === 'approved') return null
   all[idx] = {
     ...leave,
     type,
@@ -747,7 +1101,7 @@ export function managerDecideLeave(leaveId, managerId, approve, rejectionReason 
       stage: 'hr',
       managerStatus: 'approved',
       managerDecidedBy: managerId,
-      managerDecidedOn: todayKey()
+      managerDecidedOn: new Date().toISOString()
     }
   } else {
     all[idx] = {
@@ -755,10 +1109,10 @@ export function managerDecideLeave(leaveId, managerId, approve, rejectionReason 
       status: 'rejected',
       managerStatus: 'rejected',
       managerDecidedBy: managerId,
-      managerDecidedOn: todayKey(),
+      managerDecidedOn: new Date().toISOString(),
       rejectionReason,
       decidedBy: managerId,
-      decidedOn: todayKey()
+      decidedOn: new Date().toISOString()
     }
   }
   write(KEYS.leaves, all)
@@ -774,7 +1128,7 @@ export function setLeaveStatus(leaveId, status, decidedBy, rejectionReason = '')
     ...all[idx],
     status,
     decidedBy: decidedBy || null,
-    decidedOn: todayKey(),
+    decidedOn: new Date().toISOString(),
     rejectionReason: status === 'rejected' ? (rejectionReason || '').trim() : ''
   }
   write(KEYS.leaves, all)
@@ -2009,7 +2363,7 @@ export function markNotificationRead(employeeId, notificationId) {
   const list = all[employeeId] || []
   if (list.includes(notificationId)) return
   all[employeeId] = [...list, notificationId]
-  write(KEYS.notificationReads, all)
+  writeImmediate(KEYS.notificationReads, all)
 }
 
 export function markAllNotificationsRead(employeeId, notificationIds) {
@@ -2017,7 +2371,7 @@ export function markAllNotificationsRead(employeeId, notificationIds) {
   const existing = new Set(all[employeeId] || [])
   for (const id of notificationIds) existing.add(id)
   all[employeeId] = [...existing]
-  write(KEYS.notificationReads, all)
+  writeImmediate(KEYS.notificationReads, all)
 }
 
 // ---- employee notification dismissals ("clear all") ----
@@ -2030,7 +2384,7 @@ export function dismissAllNotifications(employeeId, notificationIds) {
   const existing = new Set(all[employeeId] || [])
   for (const id of notificationIds) existing.add(id)
   all[employeeId] = [...existing]
-  write(KEYS.notificationDismissed, all)
+  writeImmediate(KEYS.notificationDismissed, all)
 }
 
 // ---- shifts ----
@@ -2142,7 +2496,7 @@ export function requestShiftChange(employeeId, toShiftId, reason) {
     toShiftId,
     reason: reason || '',
     status: 'pending',
-    requestedOn: todayKey(),
+    requestedOn: new Date().toISOString(),
     decidedBy: null,
     decidedOn: null,
     rejectReason: ''
@@ -2162,7 +2516,7 @@ export function approveShiftChange(requestId, decidedBy) {
     ...req,
     status: 'approved',
     decidedBy,
-    decidedOn: todayKey()
+    decidedOn: new Date().toISOString()
   }
   write(KEYS.shiftChangeRequests, all)
   // Actually apply the shift change.
@@ -2180,7 +2534,7 @@ export function rejectShiftChange(requestId, decidedBy, rejectReason) {
     ...req,
     status: 'rejected',
     decidedBy,
-    decidedOn: todayKey(),
+    decidedOn: new Date().toISOString(),
     rejectReason: rejectReason || ''
   }
   write(KEYS.shiftChangeRequests, all)
@@ -2256,7 +2610,7 @@ export function requestOvertime(employeeId, monthKey, hours, reason) {
     managerStatus: null,
     managerDecidedBy: null,
     managerDecidedOn: null,
-    requestedOn: todayKey(),
+    requestedOn: new Date().toISOString(),
     decidedBy: null,
     decidedOn: null,
     rejectReason: ''
@@ -2283,7 +2637,7 @@ export function managerDecideOvertime(requestId, managerId, approve, rejectionRe
       stage: 'hr',
       managerStatus: 'approved',
       managerDecidedBy: managerId,
-      managerDecidedOn: todayKey()
+      managerDecidedOn: new Date().toISOString()
     }
   } else {
     all[idx] = {
@@ -2291,10 +2645,10 @@ export function managerDecideOvertime(requestId, managerId, approve, rejectionRe
       status: 'rejected',
       managerStatus: 'rejected',
       managerDecidedBy: managerId,
-      managerDecidedOn: todayKey(),
+      managerDecidedOn: new Date().toISOString(),
       rejectReason: rejectionReason,
       decidedBy: managerId,
-      decidedOn: todayKey()
+      decidedOn: new Date().toISOString()
     }
   }
   write(KEYS.overtimeRequests, all)
@@ -2312,7 +2666,7 @@ export function approveOvertime(requestId, decidedBy) {
     ...req,
     status: 'approved',
     decidedBy,
-    decidedOn: todayKey()
+    decidedOn: new Date().toISOString()
   }
   write(KEYS.overtimeRequests, all)
   return all[idx]
@@ -2329,7 +2683,7 @@ export function rejectOvertime(requestId, decidedBy, rejectReason) {
     ...req,
     status: 'rejected',
     decidedBy,
-    decidedOn: todayKey(),
+    decidedOn: new Date().toISOString(),
     rejectReason: rejectReason || ''
   }
   write(KEYS.overtimeRequests, all)
@@ -2340,8 +2694,8 @@ export function withdrawOvertimeRequest(requestId, employeeId) {
   const all = getOvertimeRequests()
   const idx = all.findIndex((r) => r.id === requestId && r.employeeId === employeeId)
   if (idx < 0) return null
-  // Can only withdraw if still pending and at manager stage (not yet forwarded to HR)
-  if (all[idx].status !== 'pending' || otStage(all[idx]) !== 'manager') return null
+  // Can withdraw as long as the request hasn't been finally approved or rejected
+  if (all[idx].status !== 'pending') return null
   all[idx] = { ...all[idx], status: 'withdrawn' }
   write(KEYS.overtimeRequests, all)
   return all[idx]

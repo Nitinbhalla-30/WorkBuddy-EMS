@@ -54,7 +54,8 @@ export function formatClock(iso) {
 // Show a date like "Mon, 20 Jul".
 export function formatDate(dateKey) {
   if (!dateKey) return '--'
-  const d = new Date(`${dateKey}T00:00:00`)
+  // Handle both date-only ("YYYY-MM-DD") and full ISO datetime strings
+  const d = dateKey.includes('T') ? new Date(dateKey) : new Date(`${dateKey}T00:00:00`)
   return d.toLocaleDateString('en-GB', {
     weekday: 'short',
     day: '2-digit',

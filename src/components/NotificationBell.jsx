@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, X } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import {
   dismissAllNotifications,
   markAllNotificationsRead,
@@ -8,13 +8,11 @@ import {
 } from '../data/store.js'
 import { formatDateTime } from '../utils/cab.js'
 import { getNotificationFeed } from '../utils/notifications.js'
-import Modal from './Modal.jsx'
 
 // Top-bar notification bell for employees and HR/Admin.
 export default function NotificationBell({ employeeId, viewerRole = 'employee' }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
-  const [confirmClear, setConfirmClear] = useState(false)
   const [tick, setTick] = useState(0)
 
   const feed = useMemo(
@@ -65,7 +63,6 @@ export default function NotificationBell({ employeeId, viewerRole = 'employee' }
 
   function handleClearAll() {
     dismissAllNotifications(employeeId, feed.all.map((n) => n.id))
-    setConfirmClear(false)
     refresh()
   }
 
@@ -97,7 +94,7 @@ export default function NotificationBell({ employeeId, viewerRole = 'employee' }
                 </button>
               )}
               {feed.all.length > 0 && (
-                <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmClear(true)}>
+                <button type="button" className="btn btn-tiny btn-light" onClick={handleClearAll}>
                   Clear all
                 </button>
               )}
@@ -126,26 +123,6 @@ export default function NotificationBell({ employeeId, viewerRole = 'employee' }
             </ul>
           )}
         </div>
-      )}
-
-      {confirmClear && (
-        <Modal onClose={() => setConfirmClear(false)} title="Clear notifications">
-          <div className="modal-form">
-            <div className="modal-header">
-              <h3 className="section-title first">Clear all notifications</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmClear(false)} aria-label="Close"><X size={15} /></button>
-            </div>
-            <p className="hint first">This will clear all your notifications. New activity will still appear as it happens.</p>
-            <div className="button-row">
-              <button type="button" className="btn btn-danger" onClick={handleClearAll}>
-                Clear all
-              </button>
-              <button type="button" className="btn btn-light" onClick={() => setConfirmClear(false)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </Modal>
       )}
     </div>
   )

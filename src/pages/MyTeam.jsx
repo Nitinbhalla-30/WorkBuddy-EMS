@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -22,6 +22,7 @@ import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
+import TableEmpty from '../components/TableEmpty.jsx'
 import TeamChat from '../components/TeamChat.jsx'
 import TeamTasksPanel from './TeamTasks.jsx'
 import { usePagination } from '../hooks/usePagination.js'
@@ -31,10 +32,26 @@ import { CircleCheck, CircleX, MessageCircle, MoreHorizontal, Users, X } from 'l
 // Merged team module. Managers get three tabs: the team directory, the
 // team's tasks, and the team's paid-leave requests waiting for approval.
 // Non-manager employees see only the directory (no tab bar).
+
+const VALID_TABS = ['team', 'tasks', 'leaves', 'overtime']
 export default function MyTeam() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [tab, setTab] = useState('team')
+  const initialTab = VALID_TABS.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'team'
+  const [tab, setTab] = useState(initialTab)
+
+  // React to URL tab parameter changes (e.g., clicking a notification while
+  // already on the MyTeam module but on a different tab).
+  const prevTabParam = useRef(searchParams.get('tab'))
+  const tabParam = searchParams.get('tab')
+  useEffect(() => {
+    // Only switch tabs when the URL parameter itself changes, not when the
+    // user clicks a different tab manually.
+    if (tabParam !== prevTabParam.current && VALID_TABS.includes(tabParam)) {
+      setTab(tabParam)
+    }
+    prevTabParam.current = tabParam
+  }, [tabParam])
 
   const teammates = useMemo(() => getMyTeamDirectory(user.id), [user.id])
 
@@ -194,8 +211,19 @@ export default function MyTeam() {
       }
     },
     initialSortKey: 'name',
-    initialSortDir: 'asc'
+    initialSortDir: 'asc',
+    filterFns: {
+      designation: (m, val) => m.designation === val
+    }
   })
+
+  const designationOptions = useMemo(() => {
+    const set = new Set(teammates.map((m) => m.designation).filter(Boolean))
+    return [
+      { value: 'all', label: 'All designations' },
+      ...[...set].sort().map((d) => ({ value: d, label: d }))
+    ]
+  }, [teammates])
 
   const {
     items: pageRows,
@@ -251,14 +279,14 @@ export default function MyTeam() {
             className={`tab ${tab === 'leaves' ? 'tab-active' : ''}`}
             onClick={() => setTab('leaves')}
           >
-            My Team Leave Request
+            My Team Leave Request{teamLeaves.length > 0 ? ` (${teamLeaves.length})` : ''}
           </button>
           <button
             type="button"
             className={`tab ${tab === 'overtime' ? 'tab-active' : ''}`}
             onClick={() => setTab('overtime')}
           >
-            My Team Overtime
+            My Team Overtime{teamOvertime.length > 0 ? ` (${teamOvertime.length})` : ''}
           </button>
         </div>
       )}
@@ -287,6 +315,13 @@ export default function MyTeam() {
               startIndex={startIndex}
               endIndex={endIndex}
               placeholder="Search team members..."
+              filters={[{
+                key: 'designation',
+                label: 'Designation',
+                value: table.filters.designation || 'all',
+                options: designationOptions
+              }]}
+              onFilterChange={table.setFilter}
             />
             <div style={{ overflowX: 'auto' }}>
             <table className="table" style={{ tableLayout: 'fixed', minWidth: 1500 }}>
@@ -691,15 +726,13 @@ function TeamLeavesTab({ teamLeaves, openApproveLeave, openReject }) {
             <SortableTh label="Type" keyName="type" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
             <SortableTh label="Dates" keyName="fromDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
             <SortableTh label="Days" keyName="days" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-            <th>Reason</th>
+            <SortableTh label="Reason" keyName="reason" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
           {table.count === 0 && (
-            <tr>
-              <td colSpan={6} className="muted">No leave requests waiting for your approval.</td>
-            </tr>
+            <TableEmpty colSpan={6} message="No leave requests waiting for your approval." />
           )}
           {pageRows.map((lv) => (
             <tr key={lv.id}>
@@ -839,15 +872,13 @@ function TeamOvertimeTab({ teamOvertime, openApproveOvertime, openRejectOvertime
               <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Month" keyName="month" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Hours" keyName="hours" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <th>Reason</th>
+              <SortableTh label="Reason" keyName="reason" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {table.count === 0 && (
-              <tr>
-                <td colSpan={5} className="muted">No overtime requests waiting for your approval.</td>
-              </tr>
+              <TableEmpty colSpan={5} message="No overtime requests waiting for your approval." />
             )}
             {pageRows.map((r) => {
               const emp = getEmployeeById(r.employeeId)

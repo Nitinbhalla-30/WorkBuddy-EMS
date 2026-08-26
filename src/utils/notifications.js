@@ -33,6 +33,34 @@ import { leaveTypeLabel } from './leaves.js'
 import { monthLabel } from './salary.js'
 import { isSelfAssigned } from './tasks.js'
 
+function toTimestamp(val) {
+  if (!val) return 0
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    const [y, m, d] = val.split('-').map(Number)
+    return new Date(y, m - 1, d).getTime()
+  }
+  return new Date(val).getTime() || 0
+}
+
+// Returns true if the value is a date-only string (e.g., "2026-08-26")
+// without a time component. These show as 12:00 AM in the UI.
+function isDateOnly(val) {
+  return typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)
+}
+
+// Pick the best timestamp for display, preferring full ISO datetimes
+// over date-only strings (which show as 12:00 AM).
+function bestTime(...candidates) {
+  for (const val of candidates) {
+    if (val && !isDateOnly(val)) return val
+  }
+  // Fall back to the first truthy value (even if date-only)
+  for (const val of candidates) {
+    if (val) return val
+  }
+  return null
+}
+
 function push(list, item) {
   if (!item?.id) return
   list.push(item)
@@ -47,6 +75,13 @@ function nameOf(id) {
   return getEmployeeById(id)?.name || 'HR'
 }
 
+// Returns leave type label with "leave" suffix, avoiding duplication
+// (e.g., "Short leave" stays as-is, "Casual" becomes "Casual leave").
+function leavePhrase(type) {
+  const label = leaveTypeLabel(type)
+  return label.toLowerCase().endsWith('leave') ? label : `${label} leave`
+}
+
 // All notifications for one employee (read + unread), newest first.
 export function buildEmployeeNotifications(employeeId) {
   const items = []
@@ -57,8 +92,8 @@ export function buildEmployeeNotifications(employeeId) {
         id: `leave-approved-${lv.id}`,
         category: 'leave',
         title: 'Leave approved',
-        body: `Your ${leaveTypeLabel(lv.type)} leave was approved.`,
-        on: lv.decidedOn,
+        body: `Your ${leavePhrase(lv.type)} was approved.`,
+        on: bestTime(lv.decidedOn, lv.createdAt, lv.appliedOn),
         href: '/my-leaves'
       })
     }
@@ -68,9 +103,9 @@ export function buildEmployeeNotifications(employeeId) {
         category: 'leave',
         title: 'Leave rejected',
         body: lv.rejectionReason
-          ? `Your ${leaveTypeLabel(lv.type)} leave was rejected: ${lv.rejectionReason}`
-          : `Your ${leaveTypeLabel(lv.type)} leave was rejected.`,
-        on: lv.decidedOn,
+          ? `Your ${leavePhrase(lv.type)} was rejected: ${lv.rejectionReason}`
+          : `Your ${leavePhrase(lv.type)} was rejected.`,
+        on: bestTime(lv.decidedOn, lv.createdAt, lv.appliedOn),
         href: '/my-leaves'
       })
     }
@@ -98,9 +133,9 @@ export function buildEmployeeNotifications(employeeId) {
         id: `leave-manager-pending-${lv.id}`,
         category: 'leave',
         title: 'Leave awaiting your approval',
-        body: `${getEmployeeById(lv.employeeId)?.name || 'An employee'} applied for ${leaveTypeLabel(lv.type)} leave.`,
-        on: lv.appliedOn,
-        href: '/my-team'
+        body: `${getEmployeeById(lv.employeeId)?.name || 'An employee'} applied for ${leavePhrase(lv.type)}.`,
+        on: lv.createdAt || lv.appliedOn,
+        href: '/my-team?tab=leaves'
       })
     }
     if (lv.employeeId !== employeeId) continue
@@ -109,8 +144,8 @@ export function buildEmployeeNotifications(employeeId) {
         id: `leave-manager-approved-${lv.id}`,
         category: 'leave',
         title: 'Manager approved your leave',
-        body: `Your ${leaveTypeLabel(lv.type)} leave was approved by your manager and sent to HR for final approval.`,
-        on: lv.managerDecidedOn || lv.appliedOn,
+        body: `Your ${leavePhrase(lv.type)} was approved by your manager and sent to HR for final approval.`,
+        on: bestTime(lv.managerDecidedOn, lv.createdAt, lv.appliedOn),
         href: '/my-leaves'
       })
     }
@@ -119,8 +154,8 @@ export function buildEmployeeNotifications(employeeId) {
         id: `leave-escalated-${lv.id}`,
         category: 'leave',
         title: 'Leave sent to HR',
-        body: `Your ${leaveTypeLabel(lv.type)} leave moved to HR for final approval.`,
-        on: lv.escalatedOn || lv.appliedOn,
+        body: `Your ${leavePhrase(lv.type)} moved to HR for final approval.`,
+        on: bestTime(lv.escalatedOn, lv.createdAt, lv.appliedOn),
         href: '/my-leaves'
       })
     }
@@ -140,7 +175,7 @@ export function buildEmployeeNotifications(employeeId) {
         title: 'Overtime awaiting your approval',
         body: `${getEmployeeById(req.employeeId)?.name || 'An employee'} logged ${req.hours}h overtime for ${monthLabel(req.monthKey)}.`,
         on: req.requestedOn,
-        href: '/my-team'
+        href: '/my-team?tab=overtime'
       })
     }
     if (req.employeeId !== employeeId) continue
@@ -331,7 +366,7 @@ export function buildEmployeeNotifications(employeeId) {
         title: 'Shift change approved',
         body: `Your request to move to ${toShift?.name || 'a new shift'} was approved.`,
         on: req.decidedOn,
-        href: '/me'
+        href: '/my-shifts?tab=change-requests'
       })
     }
     if (req.status === 'rejected' && req.decidedOn) {
@@ -344,7 +379,7 @@ export function buildEmployeeNotifications(employeeId) {
           ? `Your request to move to ${toShift?.name || 'a new shift'} was rejected: ${req.rejectReason}`
           : `Your request to move to ${toShift?.name || 'a new shift'} was rejected.`,
         on: req.decidedOn,
-        href: '/me'
+        href: '/my-shifts?tab=change-requests'
       })
     }
   }
@@ -403,7 +438,7 @@ export function buildEmployeeNotifications(employeeId) {
     })
   }
 
-  items.sort((a, b) => String(b.on || '').localeCompare(String(a.on || '')))
+  items.sort((a, b) => toTimestamp(b.on) - toTimestamp(a.on))
   return items
 }
 
@@ -435,8 +470,8 @@ export function buildAdminNotifications() {
         id: `leave-pending-${lv.id}`,
         category: 'leave',
         title: lv.stage === 'manager' ? 'Leave with manager' : 'Leave request pending',
-        body: `${nameOf(lv.employeeId)} applied for ${leaveTypeLabel(lv.type)} leave${stageNote}.`,
-        on: lv.appliedOn,
+        body: `${nameOf(lv.employeeId)} applied for ${leavePhrase(lv.type)}${stageNote}.`,
+        on: lv.createdAt || lv.appliedOn,
         href: '/leave-requests'
       })
     }
@@ -552,7 +587,7 @@ export function buildAdminNotifications() {
       title: 'Shift change request',
       body: `${nameOf(req.employeeId)} requested a change to ${toShift?.name || 'another shift'}.`,
       on: req.requestedOn,
-      href: '/shift-management'
+      href: '/shift-management?tab=change-requests'
     })
   }
 
@@ -570,7 +605,7 @@ export function buildAdminNotifications() {
     })
   }
 
-  items.sort((a, b) => String(b.on || '').localeCompare(String(a.on || '')))
+  items.sort((a, b) => toTimestamp(b.on) - toTimestamp(a.on))
   return items
 }
 
@@ -591,7 +626,7 @@ function buildNotifications(userId, viewerRole) {
       }
     }
     return [...actionItems, ...announcementItems].sort(
-      (a, b) => String(b.on || '').localeCompare(String(a.on || ''))
+      (a, b) => toTimestamp(b.on) - toTimestamp(a.on)
     )
   }
   return buildEmployeeNotifications(userId)

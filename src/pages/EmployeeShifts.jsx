@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useSearchParams } from 'react-router-dom'
 import {
   getEmployeeById,
   getShiftById,
@@ -26,7 +27,9 @@ const TABS = ['My Shift', 'Change Requests']
 // Employee's own shift management page.
 export default function EmployeeShifts() {
   const { user } = useAuth()
-  const [tab, setTab] = useState(0)
+  const [searchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab') === 'change-requests' ? 1 : 0
+  const [tab, setTab] = useState(initialTab)
 
   return (
     <div>

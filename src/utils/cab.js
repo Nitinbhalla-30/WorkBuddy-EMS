@@ -16,7 +16,14 @@ export function directionLabel(dir) {
 // Format an ISO date-time into a short "20 Jul, 08:32 AM" style string.
 export function formatDateTime(iso) {
   if (!iso) return '--'
-  const d = new Date(iso)
+  let d
+  // Date-only string "YYYY-MM-DD" — parse as local time to avoid UTC midnight shift
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    const [y, m, day] = iso.split('-').map(Number)
+    d = new Date(y, m - 1, day)
+  } else {
+    d = new Date(iso)
+  }
   const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
   const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   return `${date}, ${time}`

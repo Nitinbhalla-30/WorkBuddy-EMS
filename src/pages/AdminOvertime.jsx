@@ -15,7 +15,6 @@ import TableEmpty from '../components/TableEmpty.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { formatDate } from '../utils/attendance.js'
 import { monthKey, monthLabel, listRecentMonths, formatRupees } from '../utils/salary.js'
 import {
   overtimeStatusLabel,
@@ -89,6 +88,7 @@ function RequestsTab({ refresh, onDecided }) {
     filterFns: {
       status: (r, val) => {
         if (val === 'all') return true
+        if (val === 'pending-hr') return r.status === 'pending'
         return r.status === val
       }
     }
@@ -146,7 +146,7 @@ function RequestsTab({ refresh, onDecided }) {
 
   const STATUS_OPTIONS = [
     { value: 'all', label: 'All statuses' },
-    { value: 'pending', label: 'Pending' },
+    { value: 'pending-hr', label: 'Pending (HR)' },
     { value: 'approved', label: 'Approved' },
     { value: 'rejected', label: 'Rejected' }
   ]
@@ -218,45 +218,43 @@ function RequestsTab({ refresh, onDecided }) {
                     </span>
                   </td>
                   <td>
-                    {r.status === 'pending' ? (
-                      <div className="task-menu-container">
-                        <button
-                          type="button"
-                          className="btn btn-tiny btn-light task-menu-button"
-                          onClick={() => toggleMenu(r.id)}
-                          aria-label="Request actions"
-                        ><MoreHorizontal size={16} /></button>
-                        {openMenuId === r.id && (
-                          <div className="task-menu-dropdown">
-                            <button
-                              type="button"
-                              className="task-menu-item"
-                              onClick={() => {
-                                setApproveId(r.id)
-                                closeMenu()
-                              }}
-                            >
-                              <CircleCheck size={14} aria-hidden="true" />
-                              Approve
-                            </button>
-                            <button
-                              type="button"
-                              className="task-menu-item task-menu-item-danger"
-                              onClick={() => {
-                                setRejectId(r.id)
-                                setRejectReason('')
-                                closeMenu()
-                              }}
-                            >
-                              <CircleX size={14} aria-hidden="true" />
-                              Reject
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="muted small">{r.decidedOn ? formatDate(r.decidedOn) : '--'}</span>
-                    )}
+                    <div className="task-menu-container">
+                      <button
+                        type="button"
+                        className="btn btn-tiny btn-light task-menu-button"
+                        onClick={() => toggleMenu(r.id)}
+                        aria-label="Request actions"
+                      ><MoreHorizontal size={16} /></button>
+                      {openMenuId === r.id && (
+                        <div className="task-menu-dropdown">
+                          <button
+                            type="button"
+                            className="task-menu-item"
+                            disabled={r.status !== 'pending'}
+                            onClick={() => {
+                              setApproveId(r.id)
+                              closeMenu()
+                            }}
+                          >
+                            <CircleCheck size={14} aria-hidden="true" />
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="task-menu-item task-menu-item-danger"
+                            disabled={r.status !== 'pending'}
+                            onClick={() => {
+                              setRejectId(r.id)
+                              setRejectReason('')
+                              closeMenu()
+                            }}
+                          >
+                            <CircleX size={14} aria-hidden="true" />
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )
@@ -330,19 +328,14 @@ function SummaryTab({ refresh }) {
     const allRequests = getOvertimeRequestsByMonth(selectedMonth)
     return employees.map((emp) => {
       const approved = allRequests.filter((r) => r.employeeId === emp.id && r.status === 'approved')
-      const pending = allRequests.filter((r) => r.employeeId === emp.id && r.status === 'pending')
       const totalHours = totalApprovedOvertimeHours(approved)
       const totalPay = totalHours > 0 ? calculateOvertimePay(emp, totalHours) : 0
-      const pendingHours = pending.reduce((sum, r) => sum + (r.hours || 0), 0)
       return {
         employee: emp,
         totalHours,
-        totalPay,
-        pendingHours,
-        approvedCount: approved.length,
-        pendingCount: pending.length
+        totalPay
       }
-    }).filter((s) => s.totalHours > 0 || s.pendingHours > 0)
+    }).filter((s) => s.totalHours > 0)
   }, [selectedMonth, employees, refresh])
 
   const summaryTable = useTableControls(summary, {
@@ -367,7 +360,6 @@ function SummaryTab({ refresh }) {
     setPage: setSummaryPage
   } = usePagination(summaryTable.rows)
 
-  const grandTotalHours = summary.reduce((sum, s) => sum + s.totalHours, 0)
   const grandTotalPay = summary.reduce((sum, s) => sum + s.totalPay, 0)
 
   return (
@@ -391,21 +383,15 @@ function SummaryTab({ refresh }) {
         <>
           <table className="table" style={{ tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '30%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '10%' }} />
+              <col style={{ width: '50%' }} />
+              <col style={{ width: '25%' }} />
+              <col style={{ width: '25%' }} />
             </colgroup>
             <thead>
               <tr>
                 <SortableTh label="Employee" keyName="name" sortKey={summaryTable.sortKey} sortDir={summaryTable.sortDir} onSort={summaryTable.toggleSort} />
                 <SortableTh label="Approved hours" keyName="hours" sortKey={summaryTable.sortKey} sortDir={summaryTable.sortDir} onSort={summaryTable.toggleSort} />
                 <SortableTh label="Overtime pay" keyName="pay" sortKey={summaryTable.sortKey} sortDir={summaryTable.sortDir} onSort={summaryTable.toggleSort} />
-                <th>Pending hours</th>
-                <th>Requests</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -422,26 +408,13 @@ function SummaryTab({ refresh }) {
                   </td>
                   <td><strong>{s.totalHours}h</strong></td>
                   <td><strong>{formatRupees(s.totalPay)}</strong></td>
-                  <td>{s.pendingHours > 0 ? <span className="tag tag-pending">{s.pendingHours}h</span> : <span className="muted">--</span>}</td>
-                  <td>
-                    <span className="muted small">
-                      {s.approvedCount} approved{s.pendingCount > 0 ? `, ${s.pendingCount} pending` : ''}
-                    </span>
-                  </td>
-                  <td>
-                    {s.totalHours > 0 && <span className="tag tag-ok">Paid</span>}
-                  </td>
                 </tr>
               ))}
-            </tbody>
-            <tfoot>
-              <tr style={{ fontWeight: 'bold', borderTop: '2px solid var(--border)' }}>
-                <td>Total</td>
-                <td>{grandTotalHours}h</td>
-                <td>{formatRupees(grandTotalPay)}</td>
-                <td colSpan={3}></td>
+              <tr>
+                <td colSpan="2" style={{ textAlign: 'right' }}><strong>Total</strong></td>
+                <td><strong>{formatRupees(grandTotalPay)}</strong></td>
               </tr>
-            </tfoot>
+            </tbody>
           </table>
           <Pagination
             page={summaryPageNum}

@@ -33,7 +33,7 @@ import Avatar from '../components/Avatar.jsx'
 
 const STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
-  { value: 'pending', label: 'Pending' },
+  { value: 'pending-hr', label: 'Pending (HR)' },
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'withdrawn', label: 'Withdrawn' }
@@ -47,11 +47,23 @@ const TYPE_FILTER_OPTS = [
 // HR/Admin leave screen: review requests, ask questions, approve or reject.
 export default function AdminLeaves() {
   const { user } = useAuth()
-  const [leaves, setLeaves] = useState(() => getLeaves())
+  const [allLeaves, setAllLeaves] = useState(() => getLeaves())
   const [openId, setOpenId] = useState(null)
+  const [approveId, setApproveId] = useState(null)
   const [rejectMode, setRejectMode] = useState(false)
   const [rejectNote, setRejectNote] = useState('')
   const [openMenuId, setOpenMenuId] = useState(null)
+
+  // Only show leaves that HR can act on:
+  // - Already decided (approved/rejected/withdrawn)
+  // - Pending at HR stage (manager approved or auto-escalated)
+  // Hide leaves pending at manager stage (manager hasn't decided yet).
+  const leaves = useMemo(
+    () => allLeaves.filter((lv) =>
+      lv.status !== 'pending' || lv.stage === 'hr' || lv.managerStatus === 'escalated'
+    ),
+    [allLeaves]
+  )
 
   const employees = useMemo(
     () => getEmployees().filter((e) => e.role === 'employee'),
@@ -71,7 +83,7 @@ export default function AdminLeaves() {
       const emp = getEmployeeById(lv.employeeId)
       return [
         emp?.name, emp?.department, leaveTypeLabelWithPart(lv),
-        lv.fromDate, lv.toDate, lv.reason, leaveStatusLabel(lv.status)
+        lv.fromDate, lv.toDate, lv.reason, leaveStatusLabel(lv)
       ].join(' ')
     },
     getSortValue: (lv, key) => {
@@ -83,7 +95,7 @@ export default function AdminLeaves() {
         const docs = leaveSupportingDocuments(lv)
         return docs.length ? docs.map((d) => d.name || '').join(', ') : 'Not uploaded'
       }
-      if (key === 'status') return leaveStatusLabel(lv.status)
+      if (key === 'status') return leaveStatusLabel(lv)
       return lv[key]
     },
     initialSortKey: 'appliedOn',
@@ -91,7 +103,11 @@ export default function AdminLeaves() {
     filterFns: {
       employeeId: (lv, val) => lv.employeeId === val,
       type: (lv, val) => lv.type === val,
-      status: (lv, val) => lv.status === val
+      status: (lv, val) => {
+        if (val === 'pending-manager') return lv.status === 'pending' && lv.stage === 'manager'
+        if (val === 'pending-hr') return lv.status === 'pending' && lv.stage === 'hr'
+        return lv.status === val
+      }
     }
   })
 
@@ -112,7 +128,7 @@ export default function AdminLeaves() {
   }
 
   function refresh() {
-    setLeaves(getLeaves())
+    setAllLeaves(getLeaves())
   }
 
   function toggleMenu(id) {
@@ -136,11 +152,17 @@ export default function AdminLeaves() {
     setRejectNote('')
   }
 
-  function handleApprove(id = openLeave?.id) {
+  function handleApprove(id = approveId || openLeave?.id) {
     if (!id) return
     setLeaveStatus(id, 'approved', user.id, '')
     refresh()
     closeReview()
+    setApproveId(null)
+    closeMenu()
+  }
+
+  function requestApprove(id) {
+    setApproveId(id)
     closeMenu()
   }
 
@@ -262,7 +284,7 @@ export default function AdminLeaves() {
                   </td>
                   <td>
                     <span className={`tag ${statusTagClass(lv.status)}`}>
-                      {leaveStatusLabel(lv.status)}
+                      {leaveStatusLabel(lv)}
                     </span>
                   </td>
                   <td>
@@ -287,7 +309,7 @@ export default function AdminLeaves() {
                             type="button"
                             className="task-menu-item"
                             disabled={lv.status !== 'pending'}
-                            onClick={() => handleApprove(lv.id)}
+                            onClick={() => requestApprove(lv.id)}
                           >
                             <CircleCheck size={14} aria-hidden="true" />
                             Approve
@@ -342,7 +364,7 @@ export default function AdminLeaves() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className={`tag ${statusTagClass(openLeave.status)}`}>
-                  {leaveStatusLabel(openLeave.status)}
+                  {leaveStatusLabel(openLeave)}
                 </span>
                 <button type="button" className="btn btn-tiny btn-light" onClick={closeReview} aria-label="Close"><X size={15} /></button>
               </div>
@@ -415,6 +437,28 @@ export default function AdminLeaves() {
           </div>
         </Modal>
       )}
+
+      {approveId && (() => {
+        const lv = leaves.find((l) => l.id === approveId)
+        const emp = lv ? getEmployeeById(lv.employeeId) : null
+        return (
+          <Modal onClose={() => setApproveId(null)} title="Confirm approval">
+            <div className="modal-form">
+              <div className="modal-header">
+                <h3 className="section-title first">Confirm approval</h3>
+                <button type="button" className="btn btn-tiny btn-light" onClick={() => setApproveId(null)} aria-label="Close"><X size={15} /></button>
+              </div>
+              <p className="hint first">
+                Are you sure you want to approve the leave request{emp ? ` from ${emp.name}` : ''}?
+              </p>
+              <div className="button-row">
+                <button type="button" className="btn btn-primary" onClick={() => handleApprove()}>Approve</button>
+                <button type="button" className="btn btn-light" onClick={() => setApproveId(null)}>Cancel</button>
+              </div>
+            </div>
+          </Modal>
+        )
+      })()}
 
       <p className="hint">
         Open a leave request to review it, ask questions, then approve or reject.

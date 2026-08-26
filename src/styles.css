@@ -1542,6 +1542,14 @@ textarea::placeholder {
 .task-menu-item:last-child {
   border-radius: 0 0 8px 8px;
 }
+.task-menu-info {
+  cursor: default;
+  opacity: 0.6;
+  font-size: 0.82rem;
+}
+.task-menu-info:hover {
+  background: none;
+}
 
 /* ---------- Task status donut chart ---------- */
 .dashboard-attendance-overview {

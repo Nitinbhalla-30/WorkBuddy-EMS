@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   addShift,
   approveShiftChange,
@@ -9,12 +10,11 @@ import {
   getProfileForEmployee,
   getShiftById,
   getShiftChangeRequests,
-  getShiftHistory,
   getShifts,
   rejectShiftChange,
-  updateShift
+  updateShift,
+  refreshStoreFromSupabase
 } from '../data/store.js'
-import { formatDate } from '../utils/attendance.js'
 import { formatTime12 } from '../utils/cab.js'
 import { profilePhotoUrl } from '../utils/profile.js'
 import Avatar from '../components/Avatar.jsx'
@@ -26,15 +26,35 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableEmpty from '../components/TableEmpty.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CircleCheck, CircleX, History, MoreHorizontal, Pencil, Plus, Shuffle, Trash2, X } from 'lucide-react'
+import { CircleCheck, CircleX, MoreHorizontal, Pencil, Plus, Shuffle, Trash2, X } from 'lucide-react'
 
 const TABS = ['Shifts', 'Employee Assignments', 'Change Requests']
 
 // Admin page to define shifts, assign them to employees, and handle shift change requests.
 export default function AdminShifts() {
-  const [tab, setTab] = useState(0)
+  const [searchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab') === 'change-requests' ? 2 : 0
+  const [tab, setTab] = useState(initialTab)
   const [refresh, setRefresh] = useState(0)
   const trigger = () => setRefresh((n) => n + 1)
+
+  // Pull the latest shared data from Supabase so shift change requests
+  // submitted by employees show up even if this tab's initial load was stale.
+  useEffect(() => {
+    let cancelled = false
+    async function refreshData() {
+      await refreshStoreFromSupabase()
+      if (!cancelled) trigger()
+    }
+    refreshData()
+    window.addEventListener('storage', refreshData)
+    window.addEventListener('focus', refreshData)
+    return () => {
+      cancelled = true
+      window.removeEventListener('storage', refreshData)
+      window.removeEventListener('focus', refreshData)
+    }
+  }, [])
 
   return (
     <div>
@@ -55,6 +75,7 @@ export default function AdminShifts() {
             onClick={() => setTab(i)}
           >
             {t}
+            {t === 'Change Requests' ? ` (${getShiftChangeRequests().filter((r) => r.status === 'pending').length})` : ''}
           </button>
         ))}
       </div>
@@ -412,18 +433,18 @@ function AssignmentsTab() {
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '25%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '17%' }} />
             <col style={{ width: '15%' }} />
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '35%' }} />
-            <col style={{ width: '10%' }} />
+            <col style={{ width: '30%' }} />
           </colgroup>
           <thead>
             <tr>
               <SortableTh label="Employee" keyName="name" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Employee ID" keyName="id" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Department" keyName="department" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Designation" keyName="designation" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Current shift" keyName="shift" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <th>History</th>
             </tr>
           </thead>
           <tbody>
@@ -438,12 +459,10 @@ function AssignmentsTab() {
                   <td>
                     <div className="person-cell">
                       <Avatar src={photoUrl} name={e.name} size={34} />
-                      <div>
-                        <strong>{e.name}</strong>
-                        <div className="muted small">{e.id}</div>
-                      </div>
+                      <strong>{e.name}</strong>
                     </div>
                   </td>
+                  <td>{e.id}</td>
                   <td>{e.department}</td>
                   <td>{e.designation || <span className="muted">--</span>}</td>
                   <td>
@@ -460,9 +479,6 @@ function AssignmentsTab() {
                         </option>
                       ))}
                     </select>
-                  </td>
-                  <td>
-                    <ShiftHistoryBadge employeeId={e.id} />
                   </td>
                 </tr>
               )
@@ -495,60 +511,6 @@ function AssignmentsTab() {
             <div className="button-row">
               <button type="button" className="btn btn-primary" onClick={confirmChange}>Confirm</button>
               <button type="button" className="btn btn-light" onClick={() => setChangeConfirm(null)}>Cancel</button>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </>
-  )
-}
-
-function ShiftHistoryBadge({ employeeId }) {
-  const [show, setShow] = useState(false)
-  const history = getShiftHistory().filter((h) => h.employeeId === employeeId)
-
-  if (history.length === 0) return <span className="muted">--</span>
-
-  return (
-    <>
-      <button type="button" className="btn btn-tiny btn-light" onClick={() => setShow(true)} aria-label="View shift history">
-        <History size={14} /> {history.length}
-      </button>
-      {show && (
-        <Modal onClose={() => setShow(false)} title="Shift change history">
-          <div className="modal-form">
-            <div className="modal-header">
-              <h3 className="section-title first">Shift history</h3>
-              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShow(false)} aria-label="Close"><X size={15} /></button>
-            </div>
-            <table className="table" style={{ tableLayout: 'fixed' }}>
-              <colgroup>
-                <col style={{ width: '25%' }} />
-                <col style={{ width: '25%' }} />
-                <col style={{ width: '25%' }} />
-                <col style={{ width: '25%' }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>From</th>
-                  <th>To</th>
-                  <th>Changed by</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h) => (
-                  <tr key={h.id}>
-                    <td>{formatDate(h.changedOn)}</td>
-                    <td>{getShiftById(h.fromShiftId)?.name || 'None'}</td>
-                    <td>{getShiftById(h.toShiftId)?.name || 'None'}</td>
-                    <td>{h.changedBy === 'admin' ? 'Admin' : (getEmployeeById(h.changedBy)?.name || h.changedBy || '--')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="button-row">
-              <button type="button" className="btn btn-light" onClick={() => setShow(false)}>Close</button>
             </div>
           </div>
         </Modal>

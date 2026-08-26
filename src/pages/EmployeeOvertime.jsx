@@ -70,6 +70,8 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
     filterFns: {
       status: (r, val) => {
         if (val === 'all') return true
+        if (val === 'pending-manager') return r.status === 'pending' && r.stage === 'manager'
+        if (val === 'pending-hr') return r.status === 'pending' && r.stage === 'hr'
         return r.status === val
       }
     }
@@ -122,7 +124,8 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
 
   const STATUS_OPTIONS = [
     { value: 'all', label: 'All statuses' },
-    { value: 'pending', label: 'Pending' },
+    { value: 'pending-manager', label: 'Pending (Manager)' },
+    { value: 'pending-hr', label: 'Pending (HR)' },
     { value: 'approved', label: 'Approved' },
     { value: 'rejected', label: 'Rejected' },
     { value: 'withdrawn', label: 'Withdrawn' }
@@ -217,7 +220,7 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
                           <button
                             type="button"
                             className="task-menu-item"
-                            disabled={r.status !== 'pending'}
+                            disabled={r.status !== 'pending' || r.managerStatus === 'approved' || r.managerStatus === 'rejected'}
                             onClick={() => {
                               setEditId(r)
                               closeMenu()

@@ -68,7 +68,7 @@ export default function Payslip({ employee, monthKey, calc }) {
           ))}
           <div className="payslip-row total">
             <span>Gross</span>
-            <span>{formatRupees(calc.gross)}</span>
+            <span>{formatRupees(calc.gross + calc.overtimePay)}</span>
           </div>
         </div>
 

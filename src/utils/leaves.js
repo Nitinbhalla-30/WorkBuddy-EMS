@@ -110,7 +110,9 @@ export function statusTagClass(status) {
 }
 
 export function canEditLeave(leave) {
-  return leave?.status === 'pending'
+  // Once the manager has approved, the request is locked for editing
+  // (it is with HR for final approval). Withdrawal is still allowed.
+  return leave?.status === 'pending' && leave?.managerStatus !== 'approved'
 }
 
 export function canWithdrawLeave(leave) {

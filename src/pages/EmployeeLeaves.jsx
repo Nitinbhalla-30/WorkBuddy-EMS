@@ -6,6 +6,7 @@ import {
   getEmployeeById,
   getLeavesForEmployee,
   getSettings,
+  refreshStoreFromSupabase,
   updateLeave,
   withdrawLeave
 } from '../data/store.js'
@@ -49,7 +50,8 @@ const BALANCE_ICONS = {
 
 const LEAVE_STATUS_FILTERS = [
   { value: 'all', label: 'All statuses' },
-  { value: 'pending', label: 'Pending' },
+  { value: 'pending-manager', label: 'Pending (Manager)' },
+  { value: 'pending-hr', label: 'Pending (HR)' },
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'withdrawn', label: 'Withdrawn' }
@@ -73,6 +75,18 @@ export default function EmployeeLeaves() {
   const [withdrawId, setWithdrawId] = useState(null)
   const [message, setMessage] = useState('')
 
+  // Refresh from Supabase on mount to pick up any data that was saved
+  // from another session or that failed to load initially.
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      await refreshStoreFromSupabase()
+      if (!cancelled) setLeaves(getLeavesForEmployee(user.id))
+    }
+    load()
+    return () => { cancelled = true }
+  }, [user.id])
+
   const currentYear = new Date().getFullYear()
   const companyHolidays = useMemo(
     () => getObservedCompanyHolidays(settings.companyHolidays, currentYear),
@@ -94,7 +108,11 @@ export default function EmployeeLeaves() {
     initialSortKey: 'fromDate',
     initialSortDir: 'desc',
     filterFns: {
-      status: (lv, val) => lv.status === val,
+      status: (lv, val) => {
+        if (val === 'pending-manager') return lv.status === 'pending' && lv.stage === 'manager'
+        if (val === 'pending-hr') return lv.status === 'pending' && lv.stage === 'hr'
+        return lv.status === val
+      },
       type: (lv, val) => lv.type === val
     }
   })
@@ -443,7 +461,7 @@ export default function EmployeeLeaves() {
                   {/* Only the status tag here; stage and decision details
                       are shown in the Open modal from the Action menu. */}
                   <span className={`tag ${statusTagClass(lv.status)}`}>
-                    {leaveStatusLabel(lv.status)}
+                    {leaveStatusLabel(lv)}
                   </span>
                 </td>
                 <td>
@@ -537,7 +555,7 @@ export default function EmployeeLeaves() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className={`tag ${statusTagClass(openLeave.status)}`}>
-                  {leaveStatusLabel(openLeave.status)}
+                  {leaveStatusLabel(openLeave)}
                 </span>
                 <button type="button" className="btn btn-tiny btn-light" onClick={closeLeaveModal} aria-label="Close"><X size={15} /></button>
               </div>

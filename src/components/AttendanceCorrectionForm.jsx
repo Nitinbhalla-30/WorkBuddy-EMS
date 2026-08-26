@@ -103,10 +103,6 @@ export default function AttendanceCorrectionForm({
         />
       </label>
 
-      <p className="hint first">
-        HR will review your request and correct your attendance record if approved. You will be notified of the outcome.
-      </p>
-
       <div className="button-row">
         <button type="submit" className="btn btn-primary">{submitLabel}</button>
         {onCancel && (
