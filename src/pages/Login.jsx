@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getSettings } from '../data/store.js'
-import { Clock, CheckCircle2, Megaphone } from 'lucide-react'
+import { Clock, CheckCircle2, Megaphone, User, Lock, Eye, EyeOff, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import CinematicThemeSwitcher from '../components/ui/cinematic-theme-switcher.tsx'
 
 // Simple login for the test phase: Employee ID + PIN.
@@ -14,21 +14,39 @@ export default function Login() {
   const [id, setId] = useState('')
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [showDemo, setShowDemo] = useState(false)
+  const [showPin, setShowPin] = useState(false)
+  const [remember, setRemember] = useState(false)
 
   function handleSubmit(e) {
     e.preventDefault()
-    const err = login(id, pin)
-    if (err) {
-      setError(err)
-      return
-    }
-    navigate('/', { replace: true })
+    setLoading(true)
+    setError('')
+    // Small delay so the loading state is visible
+    setTimeout(() => {
+      const err = login(id, pin)
+      if (err) {
+        setError(err)
+        setLoading(false)
+        return
+      }
+      if (remember) {
+        localStorage.setItem('hr_remember_id', id)
+      } else {
+        localStorage.removeItem('hr_remember_id')
+      }
+      navigate('/', { replace: true })
+    }, 400)
   }
 
   return (
-    <div className="login-page">
+    <div className="login-page login-fade-in">
       <div className="login-brand-panel">
-        <div className="login-brand-logo">WorkBuddy</div>
+        <div className="login-brand-logo">
+          <span className="brand-mark brand-mark--lg">W</span>
+          WorkBuddy
+        </div>
         <div>
           <h1 className="login-brand-headline">Everything your team needs, in one place.</h1>
           <p className="login-brand-sub">
@@ -43,6 +61,12 @@ export default function Login() {
         <div className="login-brand-footer">{settings.companyName}</div>
       </div>
 
+      {/* Compact brand header for mobile */}
+      <div className="login-brand-compact">
+        <span className="brand-mark brand-mark--lg">W</span>
+        <span className="login-brand-compact-name">WorkBuddy</span>
+      </div>
+
       <div className="login-form-panel">
         <div className="login-card">
           <div className="login-card-head">
@@ -54,41 +78,81 @@ export default function Login() {
           <p className="login-sub">Log in to WorkBuddy — {settings.companyName}</p>
 
           <form onSubmit={handleSubmit}>
-            <label className="field">
+            <label className="field field-icon-field">
               <span>WorkBuddy ID</span>
-              <input
-                value={id}
-                onChange={(e) => setId(e.target.value)}
-                placeholder="e.g. EMP001 or DRV01"
-                autoFocus
-              />
+              <div className="field-icon-row">
+                <User className="field-ico" size={16} />
+                <input
+                  value={id}
+                  onChange={(e) => setId(e.target.value)}
+                  placeholder="e.g. EMP001 or DRV01"
+                  autoFocus
+                />
+              </div>
             </label>
 
-            <label className="field">
+            <label className="field field-icon-field">
               <span>PIN</span>
-              <input
-                type="password"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="Your PIN"
-              />
+              <div className="field-icon-row field-icon-row--pin">
+                <Lock className="field-ico" size={16} />
+                <input
+                  type={showPin ? 'text' : 'password'}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  placeholder="Your PIN"
+                />
+                <button
+                  type="button"
+                  className="login-pin-toggle"
+                  onClick={() => setShowPin(!showPin)}
+                  aria-label={showPin ? 'Hide PIN' : 'Show PIN'}
+                  tabIndex={-1}
+                >
+                  {showPin ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
             </label>
+
+            <div className="login-remember-row">
+              <label className="login-remember-label">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                <span className="login-remember-checkmark" />
+                Remember me
+              </label>
+            </div>
 
             {error && <div className="error-box">{error}</div>}
 
-            <button className="btn btn-primary btn-block" type="submit">
-              Log in
+            <button className="btn btn-primary btn-block login-btn" type="submit" disabled={loading}>
+              {loading ? (
+                <><Loader2 className="login-btn-spinner" size={16} /> Signing in...</>
+              ) : (
+                'Log in'
+              )}
             </button>
           </form>
 
           <div className="login-help">
-            <strong>Test logins:</strong>
-            <ul>
-              <li>Employee &mdash; <code>EMP001</code> / PIN <code>1111</code></li>
-              <li>HR / Admin &mdash; <code>ADM001</code> / PIN <code>0000</code></li>
-              <li>IT Support &mdash; <code>IT001</code> / PIN <code>5555</code></li>
-              <li>Driver &mdash; <code>DRV01</code> / PIN <code>1234</code></li>
-            </ul>
+            <button
+              type="button"
+              className="login-demo-toggle"
+              onClick={() => setShowDemo(!showDemo)}
+            >
+              {showDemo ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {showDemo ? 'Hide' : 'Show'} demo accounts
+            </button>
+            {showDemo && (
+              <ul>
+                <li>Employee &mdash; <code>EMP001</code> / PIN <code>1111</code></li>
+                <li>HR / Admin &mdash; <code>ADM001</code> / PIN <code>0000</code></li>
+                <li>IT Support &mdash; <code>IT001</code> / PIN <code>5555</code></li>
+                <li>Driver &mdash; <code>DRV01</code> / PIN <code>1234</code></li>
+              </ul>
+            )}
           </div>
         </div>
       </div>

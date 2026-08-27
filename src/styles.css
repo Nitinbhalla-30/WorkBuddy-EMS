@@ -102,6 +102,7 @@ html {
 body {
   margin: 0;
   height: 100%;
+  overflow: hidden;
   font-family: "Plus Jakarta Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--ink);
   background: var(--bg);
@@ -148,10 +149,52 @@ code {
 }
 
 /* ---------- Login ---------- */
+
+/* Hide browser-native password reveal buttons (Edge eye icon, Chrome autofill icon) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear,
+input[type="password"]::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Fade-in animation */
+@keyframes loginFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.login-fade-in {
+  animation: loginFadeIn 0.45s ease-out both;
+}
+
+/* Floating animation for brand panel decorative circles */
+@keyframes loginFloatA {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(30px, -24px) scale(1.03); }
+  66%      { transform: translate(-10px, 12px) scale(0.98); }
+}
+@keyframes loginFloatB {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(-24px, 30px) scale(0.97); }
+  66%      { transform: translate(16px, -10px) scale(1.02); }
+}
+
+/* Loading spinner for button */
+@keyframes loginSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.login-btn-spinner {
+  animation: loginSpin 0.8s linear infinite;
+}
+
 .login-page {
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-columns: 1fr 1fr;
   background: var(--bg);
 }
 .login-brand-panel {
@@ -177,20 +220,38 @@ code {
   right: -140px;
   width: 420px;
   height: 420px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.10);
+  animation: loginFloatA 14s ease-in-out infinite;
+  will-change: transform;
 }
 .login-brand-panel::after {
   bottom: -200px;
   left: -140px;
   width: 480px;
   height: 480px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
+  animation: loginFloatB 18s ease-in-out infinite;
+  will-change: transform;
 }
 .login-brand-panel > * { position: relative; z-index: 1; }
 .login-brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+/* Higher specificity to override .brand-mark base styles */
+.brand-mark.brand-mark--lg {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
 }
 .login-brand-headline {
   margin: 0 0 14px;
@@ -244,20 +305,66 @@ code {
   text-transform: uppercase;
   opacity: 0.9;
 }
+
+/* Compact brand header for mobile */
+.login-brand-compact {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #115e59 0%, #0f766e 100%);
+  color: #f0fdfa;
+}
+.login-brand-compact-name {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
 .login-form-panel {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 32px 20px;
+  background:
+    radial-gradient(ellipse 600px 400px at 15% 85%, #d4eeec 0%, transparent 70%),
+    radial-gradient(ellipse 500px 350px at 85% 15%, #e0f0ef 0%, transparent 70%),
+    #f5f8fa;
+}
+[data-theme="dark"] .login-form-panel {
+  background:
+    radial-gradient(ellipse 600px 400px at 15% 85%, #0d2e2b 0%, transparent 70%),
+    radial-gradient(ellipse 500px 350px at 85% 15%, #112a28 0%, transparent 70%),
+    #0e1417;
 }
 .login-card {
   background: var(--card);
   width: 100%;
   max-width: 400px;
   padding: 36px;
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+/* Animated shimmer accent along top edge */
+.login-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--brand) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: loginShimmer 3.5s ease-in-out infinite;
+  border-radius: 14px 14px 0 0;
+  pointer-events: none;
+}
+@keyframes loginShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 .login-card-head {
   display: flex;
@@ -269,6 +376,132 @@ code {
 .login-card-head .login-brand { margin: 0; }
 .login-brand { margin: 0; font-size: 24px; letter-spacing: -0.02em; }
 .login-sub { margin: 6px 0 24px; color: var(--muted); font-size: 15px; }
+
+/* Input fields with icons — flexbox layout */
+.field-icon-field .field-icon-row {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field-icon-field .field-icon-row:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+.field-icon-field .field-ico {
+  flex-shrink: 0;
+  margin-left: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.field-icon-field .field-icon-row input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  width: 100%;
+}
+.field-icon-field .field-icon-row input:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+.field-icon-field .field-icon-row input::placeholder {
+  color: var(--placeholder);
+}
+
+/* PIN visibility toggle button */
+.login-pin-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.login-pin-toggle:hover {
+  background: color-mix(in srgb, var(--brand) 10%, transparent);
+  color: var(--brand);
+}
+
+/* Remember me checkbox */
+.login-remember-row {
+  margin-bottom: 14px;
+}
+.login-remember-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.login-remember-label input[type="checkbox"] {
+  display: none;
+}
+.login-remember-checkmark {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--line);
+  background: var(--input-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+.login-remember-checkmark::after {
+  content: "";
+  visibility: hidden;
+  width: 4px;
+  height: 8px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-top: -2px;
+}
+.login-remember-label input[type="checkbox"]:checked + .login-remember-checkmark {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+.login-remember-label input[type="checkbox"]:checked + .login-remember-checkmark::after {
+  visibility: visible;
+}
+
+/* Login button enhancements */
+.login-btn {
+  position: relative;
+  transition: box-shadow 0.2s ease, transform 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.login-btn:hover:not(:disabled) {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
+}
+.login-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.login-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Demo accounts toggle */
 .login-help {
   margin-top: 20px;
   padding-top: 16px;
@@ -276,11 +509,29 @@ code {
   font-size: 13px;
   color: var(--muted);
 }
+.login-demo-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s ease;
+}
+.login-demo-toggle:hover {
+  opacity: 0.75;
+}
 .login-help ul { margin: 8px 0 0; padding-left: 18px; }
 .login-help li { margin: 4px 0; }
+
 @media (max-width: 900px) {
   .login-page { grid-template-columns: 1fr; }
   .login-brand-panel { display: none; }
+  .login-brand-compact { display: flex; }
 }
 
 /* ---------- App shell ---------- */
@@ -664,6 +915,8 @@ code {
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
 }
 .page-head h2 { margin: 0; font-size: 22px; }
 .muted { color: var(--muted); }
@@ -792,9 +1045,26 @@ textarea::placeholder {
 .state-working { background: #e6f5ec; color: var(--good); }
 .state-on-break { background: #fdf0e2; color: var(--warn); }
 .state-done { background: #e6f2f1; color: var(--brand-dark); }
-.today-figures { display: flex; gap: 26px; flex-wrap: wrap; }
-.today-figures .muted { font-size: 12px; }
-.today-figures strong { font-size: 16px; }
+.today-figures { display: flex; gap: 12px; flex-wrap: wrap; }
+.today-figure {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--line);
+  min-width: 120px;
+  flex: 0 0 auto;
+}
+.today-figure .muted { font-size: 12px; margin-bottom: 4px; }
+.today-figure strong { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+/* Color accents for each time figure */
+.today-figure--in { border-left-color: var(--accent-blue); }
+.today-figure--in strong { color: var(--accent-blue); }
+.today-figure--out { border-left-color: var(--muted); }
+.today-figure--worked { border-left-color: var(--good); }
+.today-figure--worked strong { color: var(--good); }
+.today-figure--break { border-left-color: var(--warn); }
+.today-figure--break strong { color: var(--warn); }
 
 /* ---------- Stats ---------- */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 8px; }
@@ -804,6 +1074,7 @@ textarea::placeholder {
 .stat-good .stat-num { color: var(--good); }
 .stat-warn .stat-num { color: var(--warn); }
 .stat-bad .stat-num { color: var(--bad); }
+.stat-info .stat-num { color: var(--accent-blue); }
 .stat-chip {
   width: 34px;
   height: 34px;
@@ -820,6 +1091,24 @@ textarea::placeholder {
 .stat-warn .stat-chip { background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); }
 .stat-bad .stat-chip { background: color-mix(in srgb, var(--bad) 12%, transparent); color: var(--bad); }
 .stat-info .stat-chip { background: color-mix(in srgb, var(--accent-blue) 12%, transparent); color: var(--accent-blue); }
+
+/* Stat card progress bar (used on leave balance cards) */
+.stat-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  margin-top: 10px;
+  overflow: hidden;
+}
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.35s ease;
+  background: var(--good);
+}
+.stat-warn .stat-bar-fill { background: var(--warn); }
+.stat-bad .stat-bar-fill { background: var(--bad); }
+.stat-info .stat-bar-fill { background: var(--accent-blue); }
 
 /* ---------- Table ---------- */
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -2147,45 +2436,54 @@ button.task-status-stat-card {
   flex-shrink: 0;
 }
 
-/* --- Toggle button --- */
+/* --- Toggle button — premium redesign --- */
 .theme-toggle {
   position: relative;
-  width: 56px;
-  height: 30px;
-  border-radius: 15px;
-  border: 2px solid var(--line);
+  width: 60px;
+  height: 32px;
+  border-radius: 16px;
+  border: none;
   padding: 0;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: background 0.35s ease, box-shadow 0.35s ease, transform 0.15s ease;
   -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
 }
-/* Light track */
+
+/* Light track — clean neutral */
 .theme-toggle[data-theme="light"] {
-  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-  border-color: #b0bec5;
+  background: linear-gradient(135deg, #e8ecf0 0%, #dde3e9 40%, #d1d8df 100%);
+  border: 1px solid #c4cdd5;
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 .theme-toggle[data-theme="light"]:hover {
-  background: linear-gradient(135deg, #d5dce4 0%, #b8c5cf 100%);
-  border-color: #90a4ae;
+  background: linear-gradient(135deg, #dde3e9 0%, #d1d8df 40%, #c4cdd5 100%);
+  border-color: #b0bac3;
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
 }
-/* Dark track */
+
+/* Dark track — deep night gradient with subtle teal accent */
 .theme-toggle[data-theme="dark"] {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border-color: #334155;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #132f3e 100%);
+  border: 1px solid #334155;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 .theme-toggle[data-theme="dark"]:hover {
-  background: linear-gradient(135deg, #263244 0%, #162032 100%);
+  background: linear-gradient(135deg, #263244 0%, #162032 50%, #1a3a4a 100%);
   border-color: #475569;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.6), 0 2px 10px rgba(45, 212, 191, 0.12);
 }
-/* Focus ring — visible in both themes */
+
+/* Focus ring */
 .theme-toggle:focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
+
 /* Press feedback */
 .theme-toggle:active {
-  transform: scale(0.96);
+  transform: scale(0.95);
 }
 
 /* --- Track icons (sun left, moon right) --- */
@@ -2195,44 +2493,68 @@ button.task-status-stat-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 7px;
+  padding: 0 8px;
   pointer-events: none;
 }
 .theme-toggle-icon {
-  opacity: 0.45;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.35s ease, color 0.35s ease, transform 0.35s ease;
 }
-/* In light mode the sun is bright, moon is dim */
-.theme-toggle[data-theme="light"] .theme-toggle-icon--sun { opacity: 0.85; color: #d97706; }
-.theme-toggle[data-theme="light"] .theme-toggle-icon--moon { opacity: 0.3; color: #64748b; }
-/* In dark mode the moon is bright, sun is dim */
-.theme-toggle[data-theme="dark"] .theme-toggle-icon--sun { opacity: 0.3; color: #94a3b8; }
-.theme-toggle[data-theme="dark"] .theme-toggle-icon--moon { opacity: 0.85; color: #e2e8f0; }
+/* Light mode: sun visible, moon dim */
+.theme-toggle[data-theme="light"] .theme-toggle-icon--sun {
+  opacity: 1;
+  color: #475569;
+  transform: scale(1.1);
+}
+.theme-toggle[data-theme="light"] .theme-toggle-icon--moon {
+  opacity: 0.35;
+  color: #a8a29e;
+  transform: scale(0.85);
+}
+/* Dark mode: moon bright, sun dim */
+.theme-toggle[data-theme="dark"] .theme-toggle-icon--sun {
+  opacity: 0.3;
+  color: #64748b;
+  transform: scale(0.85);
+}
+.theme-toggle[data-theme="dark"] .theme-toggle-icon--moon {
+  opacity: 1;
+  color: #e2e8f0;
+  transform: scale(1.1);
+}
 
-/* --- Sliding knob --- */
+/* --- Sliding knob — premium --- */
 .theme-toggle-knob {
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.35s ease, box-shadow 0.35s ease;
   pointer-events: none;
 }
-/* Light knob */
+
+/* Light knob — clean white */
 .theme-toggle[data-theme="light"] .theme-toggle-knob {
   background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 2px 6px rgba(15, 23, 42, 0.12),
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
-/* Dark knob */
+
+/* Dark knob — cool slate with subtle teal reflection */
 .theme-toggle[data-theme="dark"] .theme-toggle-knob {
-  background: linear-gradient(145deg, #64748b 0%, #475569 100%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(145deg, #334155 0%, #1e293b 100%);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
+
 /* Knob icon colour */
 .theme-toggle-knob-icon {
   display: flex;
@@ -2240,8 +2562,49 @@ button.task-status-stat-card {
   justify-content: center;
   line-height: 0;
 }
-.theme-toggle[data-theme="light"] .theme-toggle-knob-icon { color: #d97706; }
+.theme-toggle[data-theme="light"] .theme-toggle-knob-icon { color: #475569; }
 .theme-toggle[data-theme="dark"] .theme-toggle-knob-icon { color: #fde68a; }
+
+/* --- View Transitions: circular reveal on theme change --- */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+/* Old snapshot: full viewport circle shrinks to nothing */
+::view-transition-old(root) {
+  animation: vtCircleOut 0.85s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+/* New snapshot: circle at click-point expands to cover viewport */
+::view-transition-new(root) {
+  animation: vtCircleIn 0.85s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes vtCircleIn {
+  from {
+    clip-path: circle(0px at var(--reveal-x, 50%) var(--reveal-y, 50%));
+  }
+  to {
+    clip-path: circle(var(--reveal-r, 150%) at var(--reveal-x, 50%) var(--reveal-y, 50%));
+  }
+}
+
+@keyframes vtCircleOut {
+  from {
+    clip-path: circle(var(--reveal-r, 150%) at var(--reveal-x, 50%) var(--reveal-y, 50%));
+  }
+  to {
+    clip-path: circle(0px at var(--reveal-x, 50%) var(--reveal-y, 50%));
+  }
+}
 
 /* ============================================================
    Driver run-sheet page (/driver/:id) — mobile-first

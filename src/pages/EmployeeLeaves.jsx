@@ -363,6 +363,12 @@ export default function EmployeeLeaves() {
                 {b.label.toLowerCase().endsWith('leave') ? b.label : `${b.label} leave`} left{' '}
                 <span className="muted">/ {b.allowed}</span>
               </div>
+              <div className="stat-bar">
+                <div
+                  className="stat-bar-fill"
+                  style={{ width: `${Math.round(ratio * 100)}%` }}
+                />
+              </div>
             </div>
           )
         })}

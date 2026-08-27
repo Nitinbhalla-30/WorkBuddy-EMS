@@ -10,12 +10,18 @@ export default function TableToolbar({
   actions,
   children
 }) {
-  const hasActiveFilters = filters.some((f) => f.value && f.value !== 'all')
+  const hasActiveFilters = filters.some((f) => {
+    const def = f.defaultValue ?? 'all'
+    const cur = f.value ?? 'all'
+    return cur !== def
+  })
 
   function handleClearFilters() {
     filters.forEach((f) => {
-      if (f.value && f.value !== 'all') {
-        onFilterChange(f.key, 'all')
+      const def = f.defaultValue ?? 'all'
+      const cur = f.value ?? 'all'
+      if (cur !== def) {
+        onFilterChange(f.key, def)
       }
     })
   }

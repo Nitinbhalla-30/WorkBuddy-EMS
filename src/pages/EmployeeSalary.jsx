@@ -79,7 +79,7 @@ export default function EmployeeSalary() {
 
       <p className="hint">
         Your salary is calculated based on your attendance and approved leaves.
-        Absent days and approved unpaid leave will reduce your pay.
+        Absent days will reduce your pay.
         The current month is not shown because its salary is finalized only after the month ends.
       </p>
     </div>

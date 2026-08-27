@@ -153,40 +153,34 @@ function supabaseSeen() {
 
 // Push one collection to Supabase, retrying a few times with backoff so a
 // temporary outage never silently drops the change.
-function pushKeyToSupabase(key, attempt) {
+async function pushKeyToSupabase(key, attempt) {
   pendingWrites.add(key)
   savePendingWrites()
   const tableName = OPTIMIZED_TABLES[key]
   
   if (tableName) {
-    // Write to optimized table.
-    // Read the latest data inside the async chain so concurrent writes
-    // don't cause stale data to be pushed.
-    supabase
-      .from(tableName)
-      .delete()
-      .neq('id', '')
-      .then(async ({ error: deleteError }) => {
-        if (deleteError) throw deleteError
-        // Re-read the latest data from memory at push time
-        const records = mem[key]
-        if (!Array.isArray(records) || records.length === 0) return { data: null, error: null }
-        const dbRecords = transformRowsToDb(records)
-        // Insert in batches to avoid hitting the server's max-rows limit
-        await batchedInsert(tableName, dbRecords)
-        return { data: null, error: null }
-      })
-      .then(({ error }) => {
+    // Write to optimized table using upsert (not delete-all + insert) to
+    // prevent data loss when memory holds only a partial snapshot.
+    const records = mem[key]
+    if (!Array.isArray(records) || records.length === 0) return
+    try {
+      const dbRecords = transformRowsToDb(records)
+      // Upsert in batches to avoid hitting the server's max-rows limit
+      for (let i = 0; i < dbRecords.length; i += 1000) {
+        const batch = dbRecords.slice(i, i + 1000)
+        const { error } = await supabase.from(tableName).upsert(batch, { onConflict: 'id' })
         if (error) {
           scheduleRetryPush(key, attempt, error.message)
-        } else {
-          pendingWrites.delete(key)
-          savePendingWrites()
-          remoteReady = true
-          markSupabaseSeen()
+          return
         }
-      })
-      .catch((err) => scheduleRetryPush(key, attempt, err.message || 'network error'))
+      }
+      pendingWrites.delete(key)
+      savePendingWrites()
+      remoteReady = true
+      markSupabaseSeen()
+    } catch (err) {
+      scheduleRetryPush(key, attempt, err.message)
+    }
   } else {
     // Write to app_store for non-optimized collections
     supabase
@@ -939,7 +933,9 @@ function findOrCreateAttendanceRecord(employeeId, date) {
 
 function applyCorrectionToAttendance(correction) {
   const rec = findOrCreateAttendanceRecord(correction.employeeId, correction.date)
-  const next = { ...rec, breaks: rec.breaks || [] }
+  let breaks = rec.breaks || []
+  if (typeof breaks === 'string') { try { breaks = JSON.parse(breaks) } catch { breaks = [] } }
+  const next = { ...rec, breaks }
 
   if (correction.suggestedTimeIn) {
     next.timeIn = combineDateAndTime(correction.date, correction.suggestedTimeIn) || next.timeIn

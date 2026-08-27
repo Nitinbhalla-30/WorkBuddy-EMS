@@ -705,7 +705,7 @@ function TeamLeavesTab({ teamLeaves, openApproveLeave, openReject }) {
               value: table.filters.type || 'all',
               options: [
                 { value: 'all', label: 'All types' },
-                ...LEAVE_TYPES.filter((t) => t.key !== 'unpaid').map((t) => ({ value: t.key, label: t.label }))
+                ...LEAVE_TYPES.map((t) => ({ value: t.key, label: t.label }))
               ]
             }
           ]}

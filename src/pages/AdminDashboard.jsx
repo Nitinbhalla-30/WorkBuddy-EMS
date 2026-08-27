@@ -87,8 +87,7 @@ export default function AdminDashboard() {
     sick: 'Sick',
     earned: 'Earned',
     halfday: 'Half-day',
-    short: 'Short',
-    unpaid: 'Unpaid'
+    short: 'Short'
   }
 
   const table = useTableControls(allRows, {

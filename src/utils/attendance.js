@@ -15,11 +15,23 @@ function minutesBetween(startIso, endIso) {
   return Math.max(0, Math.round((e - s) / 60000))
 }
 
+// Normalize the breaks field — it may arrive as a JSON string from the
+// database (JSONB stored as a string literal) or as a parsed array.
+function normalizeBreaks(record) {
+  if (!record || !record.breaks) return []
+  if (Array.isArray(record.breaks)) return record.breaks
+  if (typeof record.breaks === 'string') {
+    try { return JSON.parse(record.breaks) } catch { return [] }
+  }
+  return []
+}
+
 // Total break minutes for a record (includes open breaks up to now).
 export function totalBreakMinutes(record, asOfIso = null) {
   if (!record || !record.breaks) return 0
   const now = asOfIso || new Date().toISOString()
-  return record.breaks.reduce((sum, b) => {
+  const breaks = normalizeBreaks(record)
+  return breaks.reduce((sum, b) => {
     if (!b.start) return sum
     const end = b.end || now
     return sum + minutesBetween(b.start, end)
@@ -87,7 +99,8 @@ export function statusOf(record, officeStartTime, lateGraceMinutes = 0) {
 export function currentState(record) {
   if (!record || !record.timeIn) return 'not-in'
   if (record.timeOut) return 'done'
-  const openBreak = (record.breaks || []).some((b) => b.start && !b.end)
+  const breaks = normalizeBreaks(record)
+  const openBreak = breaks.some((b) => b.start && !b.end)
   return openBreak ? 'on-break' : 'working'
 }
 
@@ -115,6 +128,12 @@ export function todayDateKey(d = new Date()) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+export function yesterdayKey(d = new Date()) {
+  const x = new Date(d)
+  x.setDate(x.getDate() - 1)
+  return todayDateKey(x)
+}
+
 export const ATTENDANCE_STATS_PERIODS = [
   { key: 'this-month', label: 'This month' },
   { key: 'last-month', label: 'Last month' },
@@ -124,6 +143,10 @@ export const ATTENDANCE_STATS_PERIODS = [
 
 export function statsPeriodLabel(period, joinDate) {
   switch (period) {
+    case 'today':
+      return 'Today'
+    case 'yesterday':
+      return 'Yesterday'
     case 'this-month':
       return `${monthLabel(monthKey())} (month to date)`
     case 'last-month':
@@ -154,6 +177,14 @@ function recordInPeriod(record, period, { joinDate, todayDate }) {
   if (!date || date > todayDate) return false
 
   switch (period) {
+    case 'today':
+      return date === todayDate
+    case 'yesterday': {
+      const d = new Date(`${todayDate}T00:00:00`)
+      d.setDate(d.getDate() - 1)
+      const yKey = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      return date === yKey
+    }
     case 'this-month':
       return date.startsWith(monthKey()) && date <= todayDate
     case 'last-month':

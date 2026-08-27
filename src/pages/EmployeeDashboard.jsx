@@ -5,6 +5,7 @@ import {
   getAttendanceCorrectionsForEmployee,
   getAttendanceForEmployee,
   getEmployeeById,
+  getLeaves,
   getSettings,
   getTodayRecord,
   submitAttendanceCorrection,
@@ -44,6 +45,7 @@ import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread
 import { formatTime12 } from '../utils/cab.js'
 import { Briefcase, Clock, Coffee, Download, Eye, LogIn, LogOut, MoreHorizontal, Pencil, Trash2, Undo2, X } from 'lucide-react'
 import { downloadExcelXlsx } from '../utils/exportExcel.js'
+import { leaveTypeLabel } from '../utils/leaves.js'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TABS = ['Today', 'Attendance History', 'Correction Request']
@@ -54,7 +56,15 @@ export default function EmployeeDashboard() {
   const settings = getSettings()
   const shiftStartTime = resolveStartTime(user.id)
 
-  const [today, setToday] = useState(() => getTodayRecord(user.id))
+  const [today, setToday] = useState(() => {
+    const rec = getTodayRecord(user.id)
+    // Normalize breaks — may arrive as a JSON string from Supabase
+    if (typeof rec.breaks === 'string') {
+      try { rec.breaks = JSON.parse(rec.breaks) } catch { rec.breaks = [] }
+    }
+    if (!Array.isArray(rec.breaks)) rec.breaks = []
+    return rec
+  })
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [showLunchPolicy, setShowLunchPolicy] = useState(false)
@@ -115,17 +125,44 @@ export default function EmployeeDashboard() {
       .map((k) => ({ value: k, label: monthLabel(k) }))
   }, [user.id, today.date])
 
+  // Map of date → approved leave type for this employee (used in history tab).
+  const approvedLeavesByDate = useMemo(() => {
+    const map = new Map()
+    getLeaves()
+      .filter((l) => l.employeeId === user.id && l.status === 'approved')
+      .forEach((l) => {
+        const start = new Date(`${l.fromDate}T00:00:00`)
+        const end = new Date(`${l.toDate}T00:00:00`)
+        const d = new Date(start)
+        while (d <= end) {
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+          if (!map.has(key)) map.set(key, l.type)
+          d.setDate(d.getDate() + 1)
+        }
+      })
+    return map
+  }, [user.id])
+
   const historyTable = useTableControls(history, {
     getSortValue: (r, key) => {
       if (key === 'worked') return workedMinutes(r)
       if (key === 'break') return totalBreakMinutes(r)
-      if (key === 'status') return statusOf(r, shiftStartTime, settings.lateGraceMinutes)
+      if (key === 'status') {
+        if (approvedLeavesByDate.has(r.date) && (!r || !r.timeIn)) return 'On leave'
+        return statusOf(r, shiftStartTime, settings.lateGraceMinutes)
+      }
+      if (key === 'leaveType') return leaveTypeLabel(approvedLeavesByDate.get(r.date) || '')
       return r[key]
     },
     initialSortKey: 'date',
     initialSortDir: 'desc',
     filterFns: {
-      status: (r, val) => statusOf(r, shiftStartTime, settings.lateGraceMinutes).toLowerCase() === val.toLowerCase()
+      status: (r, val) => {
+        const onLeave = approvedLeavesByDate.has(r.date) && (!r || !r.timeIn)
+        if (val === 'On leave') return onLeave
+        if (val === 'Absent') return !onLeave && (!r || !r.timeIn)
+        return !onLeave && statusOf(r, shiftStartTime, settings.lateGraceMinutes) === val
+      }
     }
   })
 
@@ -141,9 +178,10 @@ export default function EmployeeDashboard() {
 
   const ATTENDANCE_STATUS_FILTERS = [
     { value: 'all', label: 'All statuses' },
-    { value: 'Present', label: 'Present' },
+    { value: 'On time', label: 'On time' },
     { value: 'Late', label: 'Late' },
-    { value: 'Absent', label: 'Absent' }
+    { value: 'Absent', label: 'Absent' },
+    { value: 'On leave', label: 'On leave' }
   ]
 
   const CORRECTION_ISSUE_FILTERS = [
@@ -366,19 +404,19 @@ export default function EmployeeDashboard() {
                 </div>
               </div>
               <div className="today-figures">
-                <div>
+                <div className="today-figure today-figure--in">
                   <div className="muted">Time in</div>
                   <strong>{formatClock(today.timeIn)}</strong>
                 </div>
-                <div>
+                <div className="today-figure today-figure--out">
                   <div className="muted">Time out</div>
                   <strong>{formatClock(today.timeOut)}</strong>
                 </div>
-                <div>
+                <div className="today-figure today-figure--worked">
                   <div className="muted">Worked{isLive ? ' (live)' : ''}</div>
                   <strong>{formatMinutes(workedMinutes(today))}</strong>
                 </div>
-                <div>
+                <div className="today-figure today-figure--break">
                   <div className="muted">Break{isLive ? ' (live)' : ''}</div>
                   <strong>{formatMinutes(totalBreakMinutes(today))}</strong>
                 </div>
@@ -450,7 +488,7 @@ export default function EmployeeDashboard() {
               : ' · no attendance days in this period'}
           </p>
           <div className="stat-grid">
-            <div className="stat-card">
+            <div className="stat-card stat-info">
               <span className="stat-chip"><LogIn size={18} aria-hidden="true" /></span>
               <div className="stat-num">{periodStats.avgTimeIn}</div>
               <div className="stat-label">Avg time in</div>
@@ -460,15 +498,15 @@ export default function EmployeeDashboard() {
               <div className="stat-num">{periodStats.avgTimeOut}</div>
               <div className="stat-label">Avg time out</div>
             </div>
-            <div className="stat-card">
-              <span className="stat-chip"><Coffee size={18} aria-hidden="true" /></span>
-              <div className="stat-num">{periodStats.avgBreak}</div>
-              <div className="stat-label">Avg break</div>
-            </div>
             <div className="stat-card stat-good">
               <span className="stat-chip"><Briefcase size={18} aria-hidden="true" /></span>
               <div className="stat-num">{periodStats.avgWorked}</div>
               <div className="stat-label">Avg hours worked</div>
+            </div>
+            <div className="stat-card stat-warn">
+              <span className="stat-chip"><Coffee size={18} aria-hidden="true" /></span>
+              <div className="stat-num">{periodStats.avgBreak}</div>
+              <div className="stat-label">Avg break</div>
             </div>
           </div>
         </>
@@ -487,6 +525,7 @@ export default function EmployeeDashboard() {
               key: 'month',
               label: 'Month',
               value: selectedHistoryMonth,
+              defaultValue: monthKey(),
               options: historyMonthOptions
             },
             {
@@ -505,15 +544,20 @@ export default function EmployeeDashboard() {
               type="button"
               className="btn btn-primary btn-tiny"
               onClick={() => {
-                const headers = ['Date', 'Time In', 'Time Out', 'Worked', 'Break', 'Status']
-                const rows = historyTable.rows.map((r) => [
-                  formatDate(r.date),
-                  formatClock(r.timeIn),
-                  formatClock(r.timeOut),
-                  formatMinutes(workedMinutes(r)),
-                  formatMinutes(totalBreakMinutes(r)),
-                  statusOf(r, shiftStartTime, settings.lateGraceMinutes)
-                ])
+                const headers = ['Date', 'Time In', 'Time Out', 'Worked', 'Break', 'Leave Type', 'Status']
+                const rows = historyTable.rows.map((r) => {
+                  const onLeave = approvedLeavesByDate.has(r.date) && (!r || !r.timeIn)
+                  const leaveType = approvedLeavesByDate.get(r.date)
+                  return [
+                    formatDate(r.date),
+                    formatClock(r.timeIn),
+                    formatClock(r.timeOut),
+                    formatMinutes(workedMinutes(r)),
+                    formatMinutes(totalBreakMinutes(r)),
+                    leaveType ? leaveTypeLabel(leaveType) : '--',
+                    onLeave ? 'On leave' : statusOf(r, shiftStartTime, settings.lateGraceMinutes)
+                  ]
+                })
                 downloadExcelXlsx(`attendance-history-${selectedHistoryMonth}`, headers, rows)
               }}
               disabled={historyTable.rows.length === 0}
@@ -529,6 +573,7 @@ export default function EmployeeDashboard() {
             <col className="col-time" />
             <col className="col-narrow" />
             <col className="col-narrow" />
+            <col className="col-narrow" />
             <col className="col-status" />
           </colgroup>
           <thead>
@@ -538,27 +583,41 @@ export default function EmployeeDashboard() {
               <SortableTh label="Time Out" keyName="timeOut" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
               <SortableTh label="Worked" keyName="worked" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
               <SortableTh label="Break" keyName="break" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
+              <SortableTh label="Leave Type" keyName="leaveType" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={historyTable.sortKey} sortDir={historyTable.sortDir} onSort={historyTable.toggleSort} />
             </tr>
           </thead>
           <tbody>
             {historyTable.count === 0 && (
-              <TableEmpty colSpan="6" message={`No attendance records for ${monthLabel(selectedHistoryMonth)}.`} />
+              <TableEmpty colSpan="7" message={`No attendance records for ${monthLabel(selectedHistoryMonth)}.`} />
             )}
-            {historyPage.map((r) => (
+            {historyPage.map((r) => {
+              const onLeave = approvedLeavesByDate.has(r.date) && (!r || !r.timeIn)
+              const leaveType = approvedLeavesByDate.get(r.date)
+              return (
               <tr key={r.id}>
                 <td>{formatDate(r.date)}</td>
                 <td>{formatClock(r.timeIn)}</td>
                 <td>{formatClock(r.timeOut)}</td>
                 <td>{formatMinutes(workedMinutes(r))}</td>
                 <td>{formatMinutes(totalBreakMinutes(r))}</td>
+                <td>{leaveType ? leaveTypeLabel(leaveType) : '--'}</td>
                 <td>
-                  <span className={`tag ${isLate(r, shiftStartTime, settings.lateGraceMinutes) ? 'tag-late' : 'tag-ok'}`}>
-                    {statusOf(r, shiftStartTime, settings.lateGraceMinutes)}
+                  <span className={`tag ${
+                    onLeave
+                      ? 'tag-absent'
+                      : isLate(r, shiftStartTime, settings.lateGraceMinutes)
+                        ? 'tag-late'
+                        : !r || !r.timeIn
+                          ? 'tag-absent'
+                          : 'tag-ok'
+                  }`}>
+                    {onLeave ? 'On leave' : statusOf(r, shiftStartTime, settings.lateGraceMinutes)}
                   </span>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         <Pagination

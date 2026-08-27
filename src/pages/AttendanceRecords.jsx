@@ -6,6 +6,7 @@ import {
   getAttendanceCorrections,
   getEmployeeById,
   getEmployees,
+  getLeaves,
   getSettings,
   resolveAttendanceCorrection
 } from '../data/store.js'
@@ -37,9 +38,19 @@ import Avatar from '../components/Avatar.jsx'
 
 const PERIOD_FILTER_OPTS = [
   { value: 'all', label: 'All period' },
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
   { value: 'this-month', label: 'This month' },
   { value: 'last-month', label: 'Last month' },
   { value: 'ytd', label: 'Year to date' }
+]
+
+const STATUS_FILTER_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'On time', label: 'On time' },
+  { value: 'Late', label: 'Late' },
+  { value: 'Absent', label: 'Absent' },
+  { value: 'On leave', label: 'On leave' }
 ]
 
 const CORRECTION_STATUS_FILTER_OPTS = [
@@ -93,27 +104,91 @@ export default function AttendanceRecords() {
     ]
   }, [employees])
 
-  const allRecords = useMemo(() => getAttendance(), [])
+  const rawRecords = useMemo(() => getAttendance(), [])
+
+  const allRecords = useMemo(() => {
+    // Build a set of dates that have at least one real record
+    const datesWithRecords = new Set(rawRecords.map((r) => r.date))
+
+    // For each date that has records, also generate synthetic absent records
+    // for employees who have no record on that date
+    const syntheticAbsent = []
+    let nextId = 1000000
+
+    for (const date of datesWithRecords) {
+      const empIdsWithRecord = new Set(
+        rawRecords.filter((r) => r.date === date).map((r) => r.employeeId)
+      )
+
+      for (const emp of employees) {
+        if (!empIdsWithRecord.has(emp.id)) {
+          syntheticAbsent.push({
+            id: `synthetic-${nextId++}`,
+            employeeId: emp.id,
+            date,
+            timeIn: null,
+            timeOut: null,
+            breaks: [],
+            createdAt: null
+          })
+        }
+      }
+    }
+
+    return [...rawRecords, ...syntheticAbsent]
+  }, [employees])
+
+  const onLeaveIds = useMemo(() => new Set(
+    getLeaves()
+      .filter((l) => l.status === 'approved' && l.fromDate <= today && today <= l.toDate)
+      .map((l) => l.employeeId)
+  ), [today])
+
+  const leaveTypeByEmployee = useMemo(() => {
+    const map = new Map()
+    getLeaves()
+      .filter((l) => l.status === 'approved' && l.fromDate <= today && today <= l.toDate)
+      .forEach((l) => {
+        if (!map.has(l.employeeId)) {
+          map.set(l.employeeId, l.type)
+        }
+      })
+    return map
+  }, [today])
+
+  const LEAVE_TYPE_LABELS = {
+    casual: 'Casual',
+    sick: 'Sick',
+    earned: 'Earned',
+    halfday: 'Half-day',
+    short: 'Short'
+  }
+
+  function recordStatus(r) {
+    if (onLeaveIds.has(r.employeeId) && !r.timeIn) return 'On leave'
+    return statusOf(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes)
+  }
 
   const joinDateByEmployee = useMemo(() => {
     const map = {}
     for (const emp of employees) {
       map[emp.id] = resolveJoinDate(
         emp,
-        allRecords.filter((r) => r.employeeId === emp.id)
+        rawRecords.filter((r) => r.employeeId === emp.id)
       )
     }
     return map
-  }, [employees, allRecords])
+  }, [employees, rawRecords])
 
   const table = useTableControls(allRecords, {
     getSearchText: (r) => {
       const emp = getEmployeeById(r.employeeId)
       const manager = emp?.managerId ? getEmployeeById(emp.managerId) : null
+      const leaveType = leaveTypeByEmployee.get(r.employeeId) || ''
       return [
         r.date, emp?.name, emp?.department, manager?.name,
         formatClock(r.timeIn), formatClock(r.timeOut),
-        statusOf(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes)
+        recordStatus(r), leaveType
       ].join(' ')
     },
     getSortValue: (r, key) => {
@@ -125,7 +200,8 @@ export default function AttendanceRecords() {
       }
       if (key === 'worked') return workedMinutes(r)
       if (key === 'break') return totalBreakMinutes(r)
-      if (key === 'status') return statusOf(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes)
+      if (key === 'status') return recordStatus(r)
+      if (key === 'leaveType') return leaveTypeByEmployee.get(r.employeeId) || ''
       return r[key]
     },
     initialSortKey: 'date',
@@ -141,6 +217,10 @@ export default function AttendanceRecords() {
         const managerId = getEmployeeById(r.employeeId)?.managerId
         if (val === 'none') return !managerId
         return managerId === val
+      },
+      status: (r, val) => {
+        if (val === 'all') return true
+        return recordStatus(r) === val
       }
     },
     initialFilters: { period: 'all' }
@@ -281,24 +361,63 @@ export default function AttendanceRecords() {
       'Time Out',
       'Worked',
       'Break',
+      'Leave Type',
       'Status'
     ]
     const rows = table.rows.map((r) => {
       const emp = getEmployeeById(r.employeeId)
       const manager = emp?.managerId ? getEmployeeById(emp.managerId) : null
+      const leaveType = leaveTypeByEmployee.get(r.employeeId)
+
+      // Convert date string "YYYY-MM-DD" to a UTC Date object for Excel
+      let dateObj = ''
+      if (r.date) {
+        const [y, m, d] = r.date.split('-').map(Number)
+        dateObj = new Date(Date.UTC(y, m - 1, d))
+      }
+
+      // Convert time ISO strings to Excel time fractions (decimal day)
+      // Convert to local time first to match what the web app displays
+      function timeToFraction(iso) {
+        if (!iso) return ''
+        const d = new Date(iso)
+        if (isNaN(d.getTime())) return ''
+        const h = d.getHours()
+        const m = d.getMinutes()
+        const s = d.getSeconds()
+        return (h * 3600 + m * 60 + s) / 86400
+      }
+
+      // Convert minutes to Excel time fraction (decimal day)
+      function minutesToFraction(mins) {
+        if (!mins || mins <= 0) return ''
+        return Math.round(mins) / 1440 // 1440 minutes in a day
+      }
+
       return [
-        r.date,
+        dateObj,
         emp?.name || r.employeeId,
         emp?.department || '',
         manager?.name || 'None',
-        formatClock(r.timeIn),
-        formatClock(r.timeOut),
-        formatMinutes(workedMinutes(r)),
-        formatMinutes(totalBreakMinutes(r)),
-        statusOf(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes)
+        timeToFraction(r.timeIn),
+        timeToFraction(r.timeOut),
+        minutesToFraction(workedMinutes(r)),
+        minutesToFraction(totalBreakMinutes(r)),
+        leaveType ? (LEAVE_TYPE_LABELS[leaveType] || leaveType) : '',
+        recordStatus(r)
       ]
     })
-    downloadExcelXlsx(`attendance-records-${today}`, headers, rows)
+
+    downloadExcelXlsx(`attendance-records-${today}`, headers, rows, {
+      autoFilter: true,
+      colFormats: {
+        0: { t: 'd', z: 'yyyy-mm-dd' },
+        4: { t: 'n', z: 'hh:mm AM/PM' },
+        5: { t: 'n', z: 'hh:mm AM/PM' },
+        6: { t: 'n', z: '[h]:mm' },
+        7: { t: 'n', z: '[h]:mm' }
+      }
+    })
   }
 
   return (
@@ -346,6 +465,12 @@ export default function AttendanceRecords() {
               label: 'Department',
               value: table.filters.department || 'all',
               options: departmentFilterOpts
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              value: table.filters.status || 'all',
+              options: STATUS_FILTER_OPTS
             }
           ]}
           onFilterChange={table.setFilter}
@@ -362,15 +487,16 @@ export default function AttendanceRecords() {
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '10%' }} />
             <col style={{ width: '11%' }} />
-            <col style={{ width: '17%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '10%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '9%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -382,16 +508,19 @@ export default function AttendanceRecords() {
               <SortableTh label="Time Out" keyName="timeOut" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
               <SortableTh label="Worked" keyName="worked" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Break" keyName="break" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Leave Type" keyName="leaveType" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
             </tr>
           </thead>
           <tbody>
             {recordsTotal === 0 && (
-              <TableEmpty colSpan="9" message="No records match your filters." />
+              <TableEmpty colSpan="10" message="No records match your filters." />
             )}
             {recordsPage.map((r) => {
               const emp = getEmployeeById(r.employeeId)
               const manager = emp?.managerId ? getEmployeeById(emp.managerId) : null
+              const leaveType = leaveTypeByEmployee.get(r.employeeId)
+              const recStatus = recordStatus(r)
               return (
                 <tr key={r.id}>
                   <td>{formatDate(r.date)}</td>
@@ -405,11 +534,17 @@ export default function AttendanceRecords() {
                   <td>{manager?.name || <span className="muted">None</span>}</td>
                   <td>{formatClock(r.timeIn)}</td>
                   <td>{formatClock(r.timeOut)}</td>
-                  <td>{formatMinutes(workedMinutes(r))}</td>
-                  <td>{formatMinutes(totalBreakMinutes(r))}</td>
+                  <td>{r.timeIn ? formatMinutes(workedMinutes(r)) : <span className="muted">--</span>}</td>
+                  <td>{r.timeIn ? formatMinutes(totalBreakMinutes(r)) : <span className="muted">--</span>}</td>
+                  <td>{leaveType ? (LEAVE_TYPE_LABELS[leaveType] || leaveType) : <span className="muted">--</span>}</td>
                   <td>
-                    <span className={`tag ${isLate(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes) ? 'tag-late' : 'tag-ok'}`}>
-                      {statusOf(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes)}
+                    <span className={`tag ${
+                      recStatus === 'On leave' ? 'tag-absent'
+                        : recStatus === 'Late' ? 'tag-late'
+                        : recStatus === 'Absent' ? 'tag-absent'
+                        : 'tag-ok'
+                    }`}>
+                      {recStatus}
                     </span>
                   </td>
                 </tr>

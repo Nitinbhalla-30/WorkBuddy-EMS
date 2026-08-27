@@ -273,8 +273,8 @@ export default function EmployeeRecords() {
             <col style={{ width: '8%' }} />
             <col style={{ width: '11%' }} />
             <col style={{ width: '5%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '5%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '8%' }} />
           </colgroup>
           <thead>
             <tr>

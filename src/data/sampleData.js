@@ -80,8 +80,7 @@ export const LEAVE_TYPES = [
   // Partial-day leaves: a single date that consumes half a day. They are
   // paid but are not tracked against the yearly day allowance.
   { key: 'halfday', label: 'Half day', paid: true, partial: true },
-  { key: 'short',   label: 'Short leave', paid: true, partial: true },
-  { key: 'unpaid', label: 'Unpaid', paid: false }
+  { key: 'short',   label: 'Short leave', paid: true, partial: true }
 ]
 
 // Expense categories employees can claim for reimbursement.
