@@ -33,15 +33,15 @@ export function statusLabel(key) {
   return s ? s.label : key
 }
 
-// Reuse the existing tag colours for a status.
+// Five distinct tag colours for ticket statuses.
 export function statusTagClass(key) {
   switch (key) {
-    case 'open':       return 'tag-late'   // orange: needs attention
-    case 'inprogress': return 'tag-low'    // blue: being worked on
-    case 'resolved':   return 'tag-ok'     // green: sorted
-    case 'closed':     return 'tag-absent' // grey: finished
-    case 'withdrawn':  return 'tag-absent'
-    default:           return 'tag-absent'
+    case 'open':       return 'tag-tk-open'       // orange: needs attention
+    case 'inprogress': return 'tag-tk-inprogress' // blue: being worked on
+    case 'resolved':   return 'tag-tk-resolved'   // green: sorted
+    case 'closed':     return 'tag-tk-closed'     // grey: finished
+    case 'withdrawn':  return 'tag-tk-withdrawn'  // red: cancelled
+    default:           return 'tag-tk-closed'
   }
 }
 

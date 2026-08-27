@@ -1511,6 +1511,18 @@ textarea::placeholder {
 .tag-low { background: #e6f2f1; color: var(--brand-dark); }
 .tag-pickup { background: #fef3c7; color: #78350f; }
 .tag-drop   { background: #eff6ff; color: #0369a1; }
+/* IT issue status tags — five distinct colours */
+.tag-it-open       { background: #fdf0e2; color: var(--warn); }
+.tag-it-inprogress { background: #e8f0fe; color: #1a73e8; }
+.tag-it-resolved   { background: #e6f5ec; color: var(--good); }
+.tag-it-closed     { background: #f0f2f6; color: var(--muted); }
+.tag-it-withdrawn  { background: #fdecec; color: var(--bad); }
+/* Ticket (Queries & Grievances) status tags — five distinct colours */
+.tag-tk-open       { background: #fdf0e2; color: var(--warn); }
+.tag-tk-inprogress { background: #e8f0fe; color: #1a73e8; }
+.tag-tk-resolved   { background: #e6f5ec; color: var(--good); }
+.tag-tk-closed     { background: #f0f2f6; color: var(--muted); }
+.tag-tk-withdrawn  { background: #fdecec; color: var(--bad); }
 /* Announcement type badges: keep the same filled-pill look for every type. */
 .tag-event { background: #e6f5ec; color: var(--good); }
 .tag-general { background: #f0f2f6; color: #475569; }
@@ -2411,6 +2423,16 @@ button.task-status-stat-card {
 [data-theme="dark"] .tag-low { background: #123b37; }
 [data-theme="dark"] .tag-event { background: #1a3d2a; }
 [data-theme="dark"] .tag-general { background: #252d3f; color: #cbd5e1; }
+[data-theme="dark"] .tag-it-open       { background: #3d2e1a; }
+[data-theme="dark"] .tag-it-inprogress { background: #1a2d4a; color: #8ab4f8; }
+[data-theme="dark"] .tag-it-resolved   { background: #1a3d2a; }
+[data-theme="dark"] .tag-it-closed     { background: #252d3f; }
+[data-theme="dark"] .tag-it-withdrawn  { background: #3d2428; }
+[data-theme="dark"] .tag-tk-open       { background: #3d2e1a; }
+[data-theme="dark"] .tag-tk-inprogress { background: #1a2d4a; color: #8ab4f8; }
+[data-theme="dark"] .tag-tk-resolved   { background: #1a3d2a; }
+[data-theme="dark"] .tag-tk-closed     { background: #252d3f; }
+[data-theme="dark"] .tag-tk-withdrawn  { background: #3d2428; }
 [data-theme="dark"] .team-chat-overlay { background: rgba(0, 0, 0, 0.55); }
 [data-theme="dark"] .team-chat-slide { box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4); }
 [data-theme="dark"] .state-not-in { background: #252d3f; }

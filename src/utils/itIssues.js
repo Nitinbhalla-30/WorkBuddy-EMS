@@ -25,12 +25,12 @@ export function itIssueStatusLabel(status) {
 
 export function itIssueStatusClass(status) {
   switch (status) {
-    case 'open': return 'tag-high'
-    case 'inprogress': return 'tag-medium'
-    case 'resolved': return 'tag-low'
-    case 'withdrawn': return 'tag-absent'
-    case 'closed': return ''
-    default: return ''
+    case 'open': return 'tag-it-open'
+    case 'inprogress': return 'tag-it-inprogress'
+    case 'resolved': return 'tag-it-resolved'
+    case 'closed': return 'tag-it-closed'
+    case 'withdrawn': return 'tag-it-withdrawn'
+    default: return 'tag-it-closed'
   }
 }
 
