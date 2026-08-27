@@ -199,7 +199,8 @@ export default function AdminSalary() {
               key: 'month',
               label: 'Month',
               value: selected,
-              options: months.map((m) => ({ value: m.key, label: m.label }))
+              options: months.map((m) => ({ value: m.key, label: m.label })),
+              clearable: false
             }
           ]}
           onFilterChange={(key, val) => {

@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getSettings } from '../data/store.js'
-import { Clock, CheckCircle2, Megaphone, User, Lock, Eye, EyeOff, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { Clock, CheckCircle2, Megaphone, User, Lock, Eye, EyeOff, ChevronDown, ChevronUp, Loader2, Briefcase } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
 import CinematicThemeSwitcher from '../components/ui/cinematic-theme-switcher.tsx'
+import Modal from '../components/Modal.jsx'
 
 // Simple login for the test phase: Employee ID + PIN.
 export default function Login() {
@@ -18,6 +20,49 @@ export default function Login() {
   const [showDemo, setShowDemo] = useState(false)
   const [showPin, setShowPin] = useState(false)
   const [remember, setRemember] = useState(false)
+  const [showForgotPin, setShowForgotPin] = useState(false)
+
+  const shouldReduceMotion = useReducedMotion()
+
+  const formPanelRef = useRef(null)
+  const idInputRef = useRef(null)
+  const pinInputRef = useRef(null)
+  const pinToggleRef = useRef(null)
+  const rememberRef = useRef(null)
+  const forgotPinRef = useRef(null)
+  const loginBtnRef = useRef(null)
+
+  // Focus trap: Tab cycles within ID → PIN → Eye → Remember me → Forgot PIN → Log in
+  useEffect(() => {
+    const focusable = () =>
+      [idInputRef.current, pinInputRef.current, pinToggleRef.current, rememberRef.current, forgotPinRef.current, loginBtnRef.current].filter(Boolean)
+
+    function handleKeyDown(e) {
+      if (e.key !== 'Tab') return
+      // Only trap when focus is inside the login form panel
+      if (!formPanelRef.current?.contains(document.activeElement)) return
+
+      const els = focusable()
+      if (!els.length) return
+      const first = els[0]
+      const last = els[els.length - 1]
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -44,7 +89,9 @@ export default function Login() {
     <div className="login-page login-fade-in">
       <div className="login-brand-panel">
         <div className="login-brand-logo">
-          <span className="brand-mark brand-mark--lg">W</span>
+          <span className="brand-mark brand-mark--lg" aria-hidden="true">
+            <Briefcase size={18} strokeWidth={2.25} />
+          </span>
           WorkBuddy
         </div>
         <div>
@@ -63,11 +110,13 @@ export default function Login() {
 
       {/* Compact brand header for mobile */}
       <div className="login-brand-compact">
-        <span className="brand-mark brand-mark--lg">W</span>
+        <span className="brand-mark brand-mark--lg" aria-hidden="true">
+          <Briefcase size={18} strokeWidth={2.25} />
+        </span>
         <span className="login-brand-compact-name">WorkBuddy</span>
       </div>
 
-      <div className="login-form-panel">
+      <div className="login-form-panel" ref={formPanelRef}>
         <div className="login-card">
           <div className="login-card-head">
             <h2 className="login-brand">Welcome back</h2>
@@ -83,9 +132,10 @@ export default function Login() {
               <div className="field-icon-row">
                 <User className="field-ico" size={16} />
                 <input
+                  ref={idInputRef}
                   value={id}
                   onChange={(e) => setId(e.target.value)}
-                  placeholder="e.g. EMP001 or DRV01"
+                  placeholder="Enter your WorkBuddy ID"
                   autoFocus
                 />
               </div>
@@ -96,17 +146,18 @@ export default function Login() {
               <div className="field-icon-row field-icon-row--pin">
                 <Lock className="field-ico" size={16} />
                 <input
+                  ref={pinInputRef}
                   type={showPin ? 'text' : 'password'}
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
-                  placeholder="Your PIN"
+                  placeholder="Enter your PIN"
                 />
                 <button
+                  ref={pinToggleRef}
                   type="button"
                   className="login-pin-toggle"
                   onClick={() => setShowPin(!showPin)}
                   aria-label={showPin ? 'Hide PIN' : 'Show PIN'}
-                  tabIndex={-1}
                 >
                   {showPin ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
@@ -116,6 +167,7 @@ export default function Login() {
             <div className="login-remember-row">
               <label className="login-remember-label">
                 <input
+                  ref={rememberRef}
                   type="checkbox"
                   checked={remember}
                   onChange={(e) => setRemember(e.target.checked)}
@@ -123,17 +175,33 @@ export default function Login() {
                 <span className="login-remember-checkmark" />
                 Remember me
               </label>
+              <button
+                ref={forgotPinRef}
+                type="button"
+                className="login-forgot-pin"
+                onClick={() => setShowForgotPin(true)}
+              >
+                Forgot PIN?
+              </button>
             </div>
 
             {error && <div className="error-box">{error}</div>}
 
-            <button className="btn btn-primary btn-block login-btn" type="submit" disabled={loading}>
+            <motion.button
+              ref={loginBtnRef}
+              className="btn btn-primary btn-block login-btn"
+              type="submit"
+              disabled={loading}
+              whileHover={!loading && !shouldReduceMotion ? { scale: 1.02 } : {}}
+              whileTap={!loading && !shouldReduceMotion ? { scale: 0.97 } : {}}
+              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+            >
               {loading ? (
                 <><Loader2 className="login-btn-spinner" size={16} /> Signing in...</>
               ) : (
                 'Log in'
               )}
-            </button>
+            </motion.button>
           </form>
 
           <div className="login-help">
@@ -156,6 +224,28 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      {showForgotPin && (
+        <Modal onClose={() => setShowForgotPin(false)} title="Forgot PIN?">
+          <div className="modal-form">
+            <p className="hint first">
+              If you have forgotten your PIN, please contact your <strong>HR Administrator</strong> or <strong>Reporting Manager</strong> to have it reset.
+            </p>
+            <p className="hint">
+              They can generate a new PIN for you from the <strong>Profiles</strong> section in the admin panel.
+            </p>
+            <div className="button-row">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setShowForgotPin(false)}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

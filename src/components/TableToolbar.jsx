@@ -11,6 +11,7 @@ export default function TableToolbar({
   children
 }) {
   const hasActiveFilters = filters.some((f) => {
+    if (f.clearable === false) return false
     const def = f.defaultValue ?? 'all'
     const cur = f.value ?? 'all'
     return cur !== def
@@ -18,6 +19,7 @@ export default function TableToolbar({
 
   function handleClearFilters() {
     filters.forEach((f) => {
+      if (f.clearable === false) return
       const def = f.defaultValue ?? 'all'
       const cur = f.value ?? 'all'
       if (cur !== def) {

@@ -1,11 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Ban, CarFront, House, LogOut, Navigation, Phone, TriangleAlert, Briefcase } from 'lucide-react'
+import { Ban, CarFront, House, LogOut, Navigation, Phone, TriangleAlert, Briefcase, X } from 'lucide-react'
 import { getDriverRunSheet, getSettings } from '../data/store.js'
 import { formatTime12, googleMapsUrl } from '../utils/cab.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import CinematicThemeSwitcher from '../components/ui/cinematic-theme-switcher.tsx'
+import { OriginButton } from '../components/ui/origin-button.tsx'
 import Avatar from '../components/Avatar.jsx'
+import Modal from '../components/Modal.jsx'
 
 // Driver's run-sheet page. Requires driver login.
 // Mobile-first: plain page scroll, one full card per stop, large tap targets.
@@ -13,6 +15,8 @@ export default function DriverView() {
   const { driverId } = useParams()
   const { user, logout } = useAuth()
   const todayKey = new Date().toISOString().slice(0, 10)
+  const [noticeDismissed, setNoticeDismissed] = useState(false)
+  const [confirmLogout, setConfirmLogout] = useState(false)
 
   const sheet = useMemo(
     () => getDriverRunSheet(driverId, todayKey),
@@ -32,13 +36,27 @@ export default function DriverView() {
         <header className="driver-topbar">
           <div className="driver-topbar-row">
             <span className="driver-brand">
-              <Briefcase size={16} style={{ marginRight: 6, flexShrink: 0 }} aria-hidden="true" />
+              <span className="brand-mark" aria-hidden="true">
+                <Briefcase size={14} strokeWidth={2.25} />
+              </span>
               WorkBuddy — Driver View
             </span>
-            {user?.role === 'driver' && (
-              <button className="driver-logout" onClick={logout}>Log out</button>
-            )}
+            <div className="cinematic-theme-switcher-wrap">
+              <CinematicThemeSwitcher />
+            </div>
           </div>
+          {user?.role === 'driver' && (
+            <div className="driver-topbar-driver" style={{ justifyContent: 'flex-end' }}>
+              <OriginButton
+                className="h-10 rounded-lg px-4 text-[14px] data-[hovered=true]:text-white dark:data-[hovered=true]:text-white"
+                fillClassName="bg-[#e81123] dark:bg-[#e81123]"
+                onClick={() => setConfirmLogout(true)}
+              >
+                <LogOut size={14} aria-hidden="true" />
+                <span className="driver-logout-text">Log out</span>
+              </OriginButton>
+            </div>
+          )}
         </header>
         <main className="driver-content">
           <div className="info-box">Driver not found. Please check your credentials.</div>
@@ -65,18 +83,13 @@ export default function DriverView() {
       <header className="driver-topbar">
         <div className="driver-topbar-row">
           <span className="driver-brand">
-            <Briefcase size={16} style={{ marginRight: 6, flexShrink: 0 }} aria-hidden="true" />
+            <span className="brand-mark" aria-hidden="true">
+              <Briefcase size={14} strokeWidth={2.25} />
+            </span>
             WorkBuddy — Driver View
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div className="cinematic-theme-switcher-wrap">
-              <CinematicThemeSwitcher />
-            </div>
-            {user?.role === 'driver' && (
-              <button className="driver-logout" onClick={logout}>
-                <LogOut size={14} aria-hidden="true" /> Log out
-              </button>
-            )}
+          <div className="cinematic-theme-switcher-wrap">
+            <CinematicThemeSwitcher />
           </div>
         </div>
         <div className="driver-topbar-driver">
@@ -84,21 +97,42 @@ export default function DriverView() {
             <Avatar name={driver.name} size={36} className="driver-avatar" />
             <span className="driver-name">{driver.name}</span>
           </div>
-          <span className="driver-date">{todayLabel}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="driver-date">{todayLabel}</span>
+            {user?.role === 'driver' && (
+              <OriginButton
+                className="h-10 rounded-lg px-4 text-[14px] data-[hovered=true]:text-white dark:data-[hovered=true]:text-white"
+                fillClassName="bg-[#e81123] dark:bg-[#e81123]"
+                onClick={() => setConfirmLogout(true)}
+              >
+                <LogOut size={14} aria-hidden="true" />
+                <span className="driver-logout-text">Log out</span>
+              </OriginButton>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="driver-content">
         {/* Waiting policy notice */}
-        <div className="driver-notice">
-          <TriangleAlert size={20} className="driver-notice-icon" aria-hidden="true" />
-          <div>
-            <strong>Waiting Policy:</strong> Do not wait for more than{' '}
-            <strong>{cabWaitingTime} minutes</strong> at any pickup or drop stop.
-            Please leave after this duration to ensure you are not late for
-            subsequent stops or shifts.
+        {!noticeDismissed && (
+          <div className="driver-notice">
+            <TriangleAlert size={20} className="driver-notice-icon" aria-hidden="true" />
+            <div className="driver-notice-text">
+              <strong>Waiting Policy:</strong> Do not wait for more than{' '}
+              <strong>{cabWaitingTime} minutes</strong> at any pickup or drop stop.
+              Please leave after this duration to ensure you are not late for
+              subsequent stops or shifts.
+            </div>
+            <button
+              className="driver-notice-close"
+              onClick={() => setNoticeDismissed(true)}
+              aria-label="Dismiss waiting policy notice"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
           </div>
-        </div>
+        )}
 
         {/* ---- CHRONOLOGICAL RUN SHEET ---- */}
         <section className="driver-section">
@@ -149,6 +183,30 @@ export default function DriverView() {
           the address in Google Maps. Cancelled stops are shown separately — skip them entirely.
         </p>
       </main>
+
+      {confirmLogout && (
+        <Modal onClose={() => setConfirmLogout(false)} title="Confirm Log out">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Log out</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmLogout(false)} aria-label="Close">
+                <X size={15} />
+              </button>
+            </div>
+            <p className="hint first">
+              You will be signed out and need to log in again to access your run sheet.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={logout} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <LogOut size={14} aria-hidden="true" /> Log out
+              </button>
+              <button type="button" className="btn btn-light" onClick={() => setConfirmLogout(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
