@@ -864,8 +864,8 @@ function TeamOvertimeTab({ teamOvertime, openApproveOvertime, openRejectOvertime
             <col style={{ width: '22%' }} />
             <col style={{ width: '15%' }} />
             <col style={{ width: '10%' }} />
-            <col style={{ width: '30%' }} />
-            <col style={{ width: '23%' }} />
+            <col style={{ width: '45%' }} />
+            <col style={{ width: '8%' }} />
           </colgroup>
           <thead>
             <tr>

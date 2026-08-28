@@ -10,6 +10,7 @@ import {
   withdrawITIssue
 } from '../data/store.js'
 import { IT_ISSUE_CATEGORIES, IT_ISSUE_PRIORITIES, IT_ISSUE_STATUSES } from '../data/sampleData.js'
+import DropdownSelect from '../components/DropdownSelect.jsx'
 import { formatDate } from '../utils/attendance.js'
 import {
   canEditITIssue,
@@ -120,29 +121,27 @@ function ITIssueForm({ formData, onChange, onSubmit, onCancel, submitLabel = 'Su
           placeholder="Describe the problem in detail..."
         />
       </label>
-      <label className="field">
+      <div className="field">
         <span>Category *</span>
-        <select
+        <DropdownSelect
           value={formData.category}
-          onChange={(e) => onChange({ ...formData, category: e.target.value })}
-        >
-          <option value="">-- choose --</option>
-          {IT_ISSUE_CATEGORIES.map((c) => (
-            <option key={c.key} value={c.key}>{c.label}</option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
+          options={[
+            { value: '', label: '-- choose --' },
+            ...IT_ISSUE_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))
+          ]}
+          onChange={(v) => onChange({ ...formData, category: v })}
+          ariaLabel="Category"
+        />
+      </div>
+      <div className="field">
         <span>Priority</span>
-        <select
+        <DropdownSelect
           value={formData.priority}
-          onChange={(e) => onChange({ ...formData, priority: e.target.value })}
-        >
-          {IT_ISSUE_PRIORITIES.map((p) => (
-            <option key={p.key} value={p.key}>{p.label}</option>
-          ))}
-        </select>
-      </label>
+          options={IT_ISSUE_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))}
+          onChange={(v) => onChange({ ...formData, priority: v })}
+          ariaLabel="Priority"
+        />
+      </div>
       <ScreenshotField
         attachment={formData.attachment}
         onChange={(attachment) => onChange({ ...formData, attachment })}

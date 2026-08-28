@@ -49,16 +49,27 @@ function isDateOnly(val) {
 }
 
 // Pick the best timestamp for display, preferring full ISO datetimes
-// over date-only strings (which show as 12:00 AM).
+// over date-only strings (which show as 12:00 AM). Date-only fallbacks are
+// coerced to local noon so the notification list never shows 12:00 AM.
 function bestTime(...candidates) {
   for (const val of candidates) {
     if (val && !isDateOnly(val)) return val
   }
   // Fall back to the first truthy value (even if date-only)
   for (const val of candidates) {
-    if (val) return val
+    if (val) return toDisplayTime(val)
   }
   return null
+}
+
+// Convert a date-only string ("2026-08-26") to a local-noon ISO datetime so
+// the notification list shows "12:00 PM" (an approximation) instead of the
+// misleading "12:00 AM" that a raw date-only value produces. Full ISO
+// datetimes pass through unchanged.
+function toDisplayTime(val) {
+  if (!isDateOnly(val)) return val
+  const [y, m, d] = val.split('-').map(Number)
+  return new Date(y, m - 1, d, 12, 0, 0).toISOString()
 }
 
 function push(list, item) {
@@ -251,13 +262,28 @@ export function buildEmployeeNotifications(employeeId) {
   }
 
   for (const claim of getReimbursementsForEmployee(employeeId)) {
+    // Approval alert — its own notification, shown once the claim is approved.
+    // Stays in the feed after payment too, but with a distinct id so it never
+    // collides with (or is mistaken for) the separate "paid" alert below.
     if (claim.status === 'approved' || claim.status === 'approved_unpaid' || claim.status === 'paid') {
       push(items, {
-        id: `reimburse-ok-${claim.id}`,
+        id: `reimburse-approved-${claim.id}`,
         category: 'reimbursement',
-        title: 'Reimbursement update',
-        body: `Your claim of ₹${claim.amount} was ${claim.status === 'paid' ? 'paid' : 'approved'}.`,
-        on: claim.decidedOn || claim.appliedOn,
+        title: 'Reimbursement approved',
+        body: `Your claim of ₹${claim.amount} was approved.`,
+        on: toDisplayTime(bestTime(claim.decidedOn, claim.appliedOn)),
+        href: '/my-reimbursements'
+      })
+    }
+    // Payment alert — a separate notification with its own id, so marking a
+    // claim paid raises a NEW alert instead of repeating the approval one.
+    if (claim.status === 'paid') {
+      push(items, {
+        id: `reimburse-paid-${claim.id}`,
+        category: 'reimbursement',
+        title: 'Reimbursement paid',
+        body: `Your claim of ₹${claim.amount} has been paid.`,
+        on: toDisplayTime(bestTime(claim.paidOn, claim.decidedOn, claim.appliedOn)),
         href: '/my-reimbursements'
       })
     }
@@ -269,7 +295,7 @@ export function buildEmployeeNotifications(employeeId) {
         body: claim.reviewNote
           ? `Claim of ₹${claim.amount} rejected: ${claim.reviewNote}`
           : `Your claim of ₹${claim.amount} was rejected.`,
-        on: claim.decidedOn || claim.appliedOn,
+        on: toDisplayTime(bestTime(claim.decidedOn, claim.appliedOn)),
         href: '/my-reimbursements'
       })
     }
@@ -459,19 +485,19 @@ export function buildAdminNotifications() {
         href: '/leave-requests'
       })
     } else {
-      const stageNote = lv.stage === 'manager'
-        ? ' — awaiting manager approval'
-        : lv.managerStatus === 'approved'
-          ? ' — manager approved, final approval needed'
-          : lv.managerStatus === 'escalated'
-            ? ' — auto-escalated, final approval needed'
-            : ' — final approval needed'
+      // Only notify admin when leave is at HR stage (after manager approval or escalation)
+      if (lv.stage === 'manager') continue
+      const stageNote = lv.managerStatus === 'approved'
+        ? ' — manager approved, final approval needed'
+        : lv.managerStatus === 'escalated'
+          ? ' — auto-escalated, final approval needed'
+          : ' — final approval needed'
       push(items, {
         id: `leave-pending-${lv.id}`,
         category: 'leave',
-        title: lv.stage === 'manager' ? 'Leave with manager' : 'Leave request pending',
+        title: 'Leave request pending',
         body: `${nameOf(lv.employeeId)} applied for ${leavePhrase(lv.type)}${stageNote}.`,
-        on: lv.createdAt || lv.appliedOn,
+        on: lv.managerDecidedOn || lv.escalatedOn || lv.createdAt || lv.appliedOn,
         href: '/leave-requests'
       })
     }
@@ -484,7 +510,7 @@ export function buildAdminNotifications() {
       category: 'reimbursement',
       title: 'Reimbursement pending',
       body: `${nameOf(claim.employeeId)} submitted a claim of ₹${claim.amount}.`,
-      on: claim.appliedOn,
+      on: toDisplayTime(claim.appliedOn),
       href: '/reimbursements'
     })
   }
@@ -591,16 +617,17 @@ export function buildAdminNotifications() {
     })
   }
 
-  // Pending overtime requests from employees.
+  // Pending overtime requests from employees (only HR-stage, after manager approval).
   for (const req of getOvertimeRequests()) {
     if (req.status !== 'pending') continue
-    const withManager = req.stage === 'manager' || !req.stage
+    // Only notify admin when request is at HR stage (manager has approved)
+    if (req.stage !== 'hr') continue
     push(items, {
       id: `overtime-pending-${req.id}`,
       category: 'overtime',
-      title: withManager ? 'Overtime with manager' : 'Overtime request pending',
-      body: `${nameOf(req.employeeId)} logged ${req.hours}h overtime for ${monthLabel(req.monthKey)}${withManager ? ' — awaiting manager approval' : ' — manager approved, final approval needed'}.`,
-      on: req.requestedOn,
+      title: 'Overtime request pending',
+      body: `${nameOf(req.employeeId)} logged ${req.hours}h overtime for ${monthLabel(req.monthKey)} — manager approved, final approval needed.`,
+      on: req.managerDecidedOn || req.requestedOn,
       href: '/overtime'
     })
   }

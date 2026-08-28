@@ -2057,7 +2057,7 @@ button.task-status-stat-card {
   padding: 24px;
 }
 .modal-content:has(.modal-form-wide) {
-  max-width: 640px;
+  max-width: 900px;
 }
 .modal-header {
   display: flex;
@@ -2374,6 +2374,108 @@ button.task-status-stat-card {
 }
 .lunch-policy-list strong {
   line-height: 1.5;
+}
+
+/* ---------- Reimbursement claim detail modal ---------- */
+/* Shared polished body for admin + employee claim pop-ups. Dimensional
+   layering: an elevated summary panel, clear header hierarchy, and depth on
+   the chat bubbles. All colors use theme tokens so dark mode works for free. */
+.claim-detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.claim-detail-heading { min-width: 0; }
+.claim-detail-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.claim-detail-sub {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.claim-detail-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.claim-detail-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.claim-detail-close:hover {
+  background: var(--btn-hover-bg);
+  color: var(--ink);
+}
+.claim-detail-close:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.claim-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.claim-summary-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.claim-summary-full { grid-column: 1 / -1; }
+.claim-summary-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--label-text);
+}
+.claim-summary-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.claim-summary-amount {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--brand);
+}
+.claim-summary-desc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.claim-thread-wrap { margin-top: 20px; }
+.thread .msg {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+@media (max-width: 480px) {
+  .claim-summary { grid-template-columns: 1fr; }
 }
 .text-link-btn {
   background: none;

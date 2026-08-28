@@ -50,9 +50,9 @@ export function leaveDays(leave) {
 // "First half" / "Second half" for half-day leaves, else null.
 export function leaveHalfLabel(leave) {
   if (leave?.type !== 'halfday') return null
-  if (leave.halfDayPart === 'first') return 'First half'
   if (leave.halfDayPart === 'second') return 'Second half'
-  return null
+  // Default to first half if not specified
+  return 'First half'
 }
 
 // Type label including the chosen half, e.g. "Half day (First half)".

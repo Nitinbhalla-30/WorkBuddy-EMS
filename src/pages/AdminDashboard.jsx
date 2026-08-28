@@ -261,8 +261,8 @@ export default function AdminDashboard() {
                 <td>{emp.department}</td>
                 <td>{formatClock(rec?.timeIn)}</td>
                 <td>{formatClock(rec?.timeOut)}</td>
-                <td>{rec ? formatMinutes(workedMinutes(rec)) : '--'}</td>
-                <td>{rec ? formatMinutes(totalBreakMinutes(rec)) : '--'}</td>
+                <td>{rec && workedMinutes(rec) > 0 ? formatMinutes(workedMinutes(rec)) : '--'}</td>
+                <td>{rec && totalBreakMinutes(rec) > 0 ? formatMinutes(totalBreakMinutes(rec)) : '--'}</td>
                 <td>{leaveType ? LEAVE_TYPE_LABELS[leaveType] || leaveType : '--'}</td>
                 <td>
                   <span

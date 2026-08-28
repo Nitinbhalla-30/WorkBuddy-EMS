@@ -8,8 +8,8 @@ import {
   markReimbursementPaid,
   rejectReimbursementClaim
 } from '../data/store.js'
-import { REIMBURSEMENT_CATEGORIES, REIMBURSEMENT_STATUSES } from '../data/sampleData.js'
-import { formatDate } from '../utils/attendance.js'
+import { REIMBURSEMENT_CATEGORIES } from '../data/sampleData.js'
+import { formatDateDDMMYYYY } from '../utils/attendance.js'
 import {
   categoryLabel,
   formatAmount,
@@ -20,16 +20,22 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
-import ReimbursementThread from '../components/ReimbursementThread.jsx'
+import ReimbursementClaimDetail from '../components/ReimbursementClaimDetail.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { CircleCheck, CircleX, Eye, ReceiptText, MoreHorizontal, Banknote, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
 
+// The status column groups both approved states under a single "Approved"
+// label (statusLabel) and color, so the filter matches that: one "Approved"
+// option that includes both yet-to-pay and paid claims.
 const STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
-  ...REIMBURSEMENT_STATUSES.map((s) => ({ value: s.key, label: s.label }))
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'withdrawn', label: 'Withdrawn' }
 ]
 const CATEGORY_FILTER_OPTS = [
   { value: 'all', label: 'All categories' },
@@ -64,9 +70,11 @@ export default function AdminReimbursements() {
     initialSortDir: 'desc',
     filterFns: {
       category: (c, val) => c.category === val,
-      status: (c, val) => c.status === val
-    },
-    initialFilters: { status: 'pending' }
+      status: (c, val) => {
+        if (val === 'approved') return c.status === 'approved_unpaid' || c.status === 'paid'
+        return c.status === val
+      }
+    }
   })
   const {
     items: claimsPage,
@@ -212,12 +220,12 @@ export default function AdminReimbursements() {
                     </div>
                   </td>
                   <td>{categoryLabel(c.category)}</td>
-                  <td>{formatDate(c.expenseDate)}</td>
+                  <td>{formatDateDDMMYYYY(c.expenseDate)}</td>
                   <td><strong>{formatAmount(c.amount)}</strong></td>
                   <td className="cell-ellipsis" title={c.description || ''}>
                     {c.description || <span className="muted">--</span>}
                   </td>
-                  <td>{formatDate(c.appliedOn)}</td>
+                  <td>{formatDateDDMMYYYY(c.appliedOn)}</td>
                   <td>
                     <span className={`tag ${statusTagClass(c.status)}`}>
                       {statusLabel(c.status)}
@@ -305,82 +313,14 @@ export default function AdminReimbursements() {
 
       {openClaim && (
         <Modal onClose={() => setOpenId(null)} title="Reimbursement claim">
-          <div className="modal-form">
-            <div className="modal-header">
-              <div>
-                <h3 className="section-title first" style={{ margin: 0 }}>
-                  {categoryLabel(openClaim.category)}
-                </h3>
-                <div className="muted small">
-                  {getEmployeeById(openClaim.employeeId)?.name || openClaim.employeeId}
-                  {' · '}Submitted {formatDate(openClaim.appliedOn)}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className={`tag ${statusTagClass(openClaim.status)}`}>
-                  {statusLabel(openClaim.status)}
-                </span>
-                <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenId(null)} aria-label="Close"><X size={15} /></button>
-              </div>
-            </div>
-            <ul className="lunch-policy-list first">
-              <li>
-                <span className="muted">Expense date</span>
-                <strong>{formatDate(openClaim.expenseDate)}</strong>
-              </li>
-              <li>
-                <span className="muted">Amount</span>
-                <strong>{formatAmount(openClaim.amount)}</strong>
-              </li>
-              {openClaim.status === 'paid' && openClaim.paidOn && (
-                <li>
-                  <span className="muted">Paid on</span>
-                  <strong>{formatDate(openClaim.paidOn)}</strong>
-                </li>
-              )}
-            </ul>
-            {openClaim.description && (
-              <p className="hint"><strong>Description:</strong> {openClaim.description}</p>
-            )}
-            {openClaim.status === 'rejected' && openClaim.reviewNote && (
-              <div className="info-box">Reason: {openClaim.reviewNote}</div>
-            )}
-
-            {openClaim.status === 'pending' && (
-              <div className="button-row first">
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => {
-                    setApproveId(openClaim.id)
-                    setOpenId(null)
-                  }}
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => {
-                    setRejectId(openClaim.id)
-                    setRejectNote('')
-                    setOpenId(null)
-                  }}
-                >
-                  Reject
-                </button>
-              </div>
-            )}
-
-            <ReimbursementThread
-              claim={openClaim}
-              viewerRole="admin"
-              viewerId={user.id}
-              nameOf={nameOf}
-              onReply={handleReply}
-              onClose={() => setOpenId(null)}
-            />
-          </div>
+          <ReimbursementClaimDetail
+            claim={openClaim}
+            viewerRole="admin"
+            viewerId={user.id}
+            nameOf={nameOf}
+            onReply={handleReply}
+            onClose={() => setOpenId(null)}
+          />
         </Modal>
       )}
 

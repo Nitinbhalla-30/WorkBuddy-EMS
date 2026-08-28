@@ -27,6 +27,7 @@ import {
   updateVehicle
 } from '../data/store.js'
 import Modal from '../components/Modal.jsx'
+import DropdownSelect from '../components/DropdownSelect.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
@@ -742,29 +743,44 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
     return (
       <>
         <div className="two-col">
-          <label className="field">
+          <div className="field">
             <span>Vehicle</span>
-            <select value={form.vehicleId} onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}>
-              <option value="">-- choose --</option>
-              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.number}</option>)}
-            </select>
-          </label>
-          <label className="field">
+            <DropdownSelect
+              value={form.vehicleId}
+              options={[
+                { value: '', label: '-- choose --' },
+                ...vehicles.map((v) => ({ value: v.id, label: v.number }))
+              ]}
+              onChange={(v) => setForm({ ...form, vehicleId: v })}
+              ariaLabel="Vehicle"
+            />
+          </div>
+          <div className="field">
             <span>Driver</span>
-            <select value={form.driverId} onChange={(e) => setForm({ ...form, driverId: e.target.value })}>
-              <option value="">-- choose --</option>
-              {drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-          </label>
+            <DropdownSelect
+              value={form.driverId}
+              options={[
+                { value: '', label: '-- choose --' },
+                ...drivers.map((d) => ({ value: d.id, label: d.name }))
+              ]}
+              onChange={(v) => setForm({ ...form, driverId: v })}
+              ariaLabel="Driver"
+            />
+          </div>
         </div>
         <div className="two-col">
-          <label className="field">
+          <div className="field">
             <span>Direction</span>
-            <select value={form.direction} onChange={(e) => setForm({ ...form, direction: e.target.value })}>
-              <option value="pickup">Pickup (home to office)</option>
-              <option value="drop">Drop (office to home)</option>
-            </select>
-          </label>
+            <DropdownSelect
+              value={form.direction}
+              options={[
+                { value: 'pickup', label: 'Pickup (home to office)' },
+                { value: 'drop', label: 'Drop (office to home)' }
+              ]}
+              onChange={(v) => setForm({ ...form, direction: v })}
+              ariaLabel="Direction"
+            />
+          </div>
           <label className="field">
             <span>{form.direction === 'drop' ? 'Cab leaves office time' : 'Pickup time'}</span>
             <TimeInput value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />

@@ -55,7 +55,7 @@ export function formatRupees(n) {
 }
 
 // Work out the full salary breakdown for an employee in a month.
-export function computeSalary(employee, mKey, { attendance, leaves, settings, overtimeRequests }) {
+export function computeSalary(employee, mKey, { attendance, leaves, settings, overtimeRequests, reimbursements }) {
   const s = employee.salary || { basic: 0, hra: 0, other: 0, tdsMonthly: 0 }
   const gross = (s.basic || 0) + (s.hra || 0) + (s.other || 0)
   const dim = daysInMonth(mKey)
@@ -123,6 +123,14 @@ export function computeSalary(employee, mKey, { attendance, leaves, settings, ov
   const hourlyRate = gross / dim / 8 // standard 8-hour workday
   const overtimePay = Math.round(overtimeHours * hourlyRate * 2)
 
+  // Reimbursements: approved claims for this month (based on approval date)
+  const approvedReimbursements = (reimbursements || []).filter(
+    (r) => r.employeeId === employee.id && 
+           (r.status === 'approved_unpaid' || r.status === 'paid') &&
+           r.decidedOn && r.decidedOn.startsWith(mKey)
+  )
+  const reimbursementAmount = approvedReimbursements.reduce((sum, r) => sum + (r.amount || 0), 0)
+
   const rules = settings.salary || {}
   const pf = Math.round(((rules.pfPercent || 0) / 100) * (s.basic || 0))
   const esiApplicable = gross > 0 && gross <= (rules.esiThreshold || 0)
@@ -132,7 +140,7 @@ export function computeSalary(employee, mKey, { attendance, leaves, settings, ov
   const tds = s.tdsMonthly || 0
 
   const totalDeductions = pf + esi + tds
-  const netPay = Math.max(0, earnedGross + overtimePay - totalDeductions)
+  const netPay = Math.max(0, earnedGross + overtimePay + reimbursementAmount - totalDeductions)
 
   return {
     basic: s.basic || 0,
@@ -141,6 +149,7 @@ export function computeSalary(employee, mKey, { attendance, leaves, settings, ov
     gross,
     overtimeHours,
     overtimePay,
+    reimbursementAmount,
     daysInMonth: dim,
     perDay,
     workingDays,

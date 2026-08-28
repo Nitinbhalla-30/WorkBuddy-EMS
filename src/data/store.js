@@ -440,6 +440,8 @@ export async function refreshStoreFromSupabase() {
     
     await Promise.all(fetchPromises)
     
+    migrateReimbursementTimestamps()
+    
     if (mem[KEYS.employees]) {
       remoteReady = true
       markSupabaseSeen()
@@ -530,6 +532,7 @@ export function initStore() {
   initPromise = (async () => {
     if (!supabase) {
       seedIfEmpty()
+      migrateReimbursementTimestamps()
       return
     }
     try {
@@ -611,6 +614,7 @@ export function initStore() {
       
       remoteReady = true
       markSupabaseSeen()
+      migrateReimbursementTimestamps()
       
       // If no employees data found anywhere, this is a fresh install
       if (!mem[KEYS.employees]) {
@@ -1178,7 +1182,43 @@ export function getReimbursementsForEmployee(employeeId) {
     .sort((a, b) => (a.appliedOn < b.appliedOn ? 1 : -1))
 }
 
-export function submitReimbursementClaim({
+// ── Single-row save for a new reimbursement claim ──────────────────
+// The old path re-uploaded the ENTIRE reimbursements list (≈3000 rows) on
+// every submit, which is slow and can silently drop the new claim if the tab
+// closes or the network blips mid-upload. These helpers push ONLY the one new
+// claim and report success/failure so the UI can confirm or offer a retry.
+// The full-list upload is intentionally NOT triggered here.
+
+function upsertSingleReimbursement(claim) {
+  const tableName = OPTIMIZED_TABLES[KEYS.reimbursements]
+  if (!supabase || !tableName) return Promise.resolve({ ok: false, error: 'No server connection' })
+  return supabase
+    .from(tableName)
+    .upsert([transformRowToDb(claim)], { onConflict: 'id' })
+    .then(({ error }) => (error ? { ok: false, error: error.message } : { ok: true }))
+    .catch((err) => ({ ok: false, error: (err && err.message) || String(err) }))
+}
+
+// Push ONE already-local claim row to the server and track pending state so a
+// reload can retry. Returns { ok, offline?, error? }. Shared by submit/edit/
+// withdraw so they all behave the same way.
+async function syncClaimRow(claim) {
+  if (!supabase) return { ok: true, offline: true }
+  pendingWrites.add(KEYS.reimbursements)
+  savePendingWrites()
+  const res = await upsertSingleReimbursement(claim)
+  if (res.ok) {
+    pendingWrites.delete(KEYS.reimbursements)
+    savePendingWrites()
+    return { ok: true }
+  }
+  return { ok: false, error: res.error }
+}
+
+// Persist locally (instant, works offline) then push ONLY this claim to the
+// server. Returns { claim, ok, offline, error }. The caller shows a "Saved" or
+// "Failed — tap to retry" message based on `ok`.
+export async function submitReimbursementClaimSynced({
   employeeId,
   category,
   expenseDate,
@@ -1194,32 +1234,47 @@ export function submitReimbursementClaim({
     amount,
     description: description || '',
     status: 'pending',
-    appliedOn: todayKey(),
+    appliedOn: new Date().toISOString(),
     decidedBy: null,
     decidedOn: null,
     paidOn: null,
     reviewNote: ''
   }
   all.push(claim)
-  write(KEYS.reimbursements, all)
-  return claim
+  // Save to memory + browser storage only — no heavy full-list upload.
+  writeLocal(KEYS.reimbursements, all)
+  const sync = await syncClaimRow(claim)
+  return { claim, ...sync }
 }
 
-// Employee withdraws a pending reimbursement claim.
-export function withdrawReimbursementClaim(claimId, employeeId) {
+// Re-attempt the server save for a claim that failed earlier. The claim id is
+// stable, so the upsert is idempotent (no duplicates). Returns { ok, error }.
+export async function retrySyncReimbursementClaim(claim) {
+  if (!claim) return { ok: false, error: 'Nothing to retry' }
+  return syncClaimRow(claim)
+}
+
+// Employee withdraws a pending reimbursement claim. Saves locally then pushes
+// only that row to the server. Returns { claim, ok, offline?, error? }, or null
+// if the claim isn't found / not owned / not pending.
+export async function withdrawReimbursementClaim(claimId, employeeId) {
   const all = getReimbursements()
   const idx = all.findIndex((r) => r.id === claimId)
   if (idx < 0) return null
   const claim = all[idx]
   if (claim.employeeId !== employeeId) return null
   if (claim.status !== 'pending') return null
-  all[idx] = { ...claim, status: 'withdrawn', withdrawnOn: todayKey() }
-  write(KEYS.reimbursements, all)
-  return all[idx]
+  const updated = { ...claim, status: 'withdrawn', withdrawnOn: new Date().toISOString() }
+  all[idx] = updated
+  writeLocal(KEYS.reimbursements, all)
+  const sync = await syncClaimRow(updated)
+  return { claim: updated, ...sync }
 }
 
-// Employee edits a pending reimbursement claim.
-export function updateReimbursementClaim(claimId, employeeId, {
+// Employee edits a pending reimbursement claim. Saves locally then pushes only
+// that row to the server. Returns { claim, ok, offline?, error? }, or null if
+// the claim isn't found / not owned / not pending.
+export async function updateReimbursementClaim(claimId, employeeId, {
   category,
   expenseDate,
   amount,
@@ -1231,7 +1286,7 @@ export function updateReimbursementClaim(claimId, employeeId, {
   const claim = all[idx]
   if (claim.employeeId !== employeeId) return null
   if (claim.status !== 'pending') return null
-  all[idx] = {
+  const updated = {
     ...claim,
     category,
     expenseDate,
@@ -1241,8 +1296,10 @@ export function updateReimbursementClaim(claimId, employeeId, {
     decidedBy: null,
     decidedOn: null
   }
-  write(KEYS.reimbursements, all)
-  return all[idx]
+  all[idx] = updated
+  writeLocal(KEYS.reimbursements, all)
+  const sync = await syncClaimRow(updated)
+  return { claim: updated, ...sync }
 }
 
 export function approveReimbursementClaim(claimId, decidedBy) {
@@ -1253,7 +1310,7 @@ export function approveReimbursementClaim(claimId, decidedBy) {
     ...all[idx],
     status: 'approved_unpaid',
     decidedBy: decidedBy || null,
-    decidedOn: todayKey(),
+    decidedOn: new Date().toISOString(),
     reviewNote: ''
   }
   write(KEYS.reimbursements, all)
@@ -1268,7 +1325,7 @@ export function rejectReimbursementClaim(claimId, decidedBy, reviewNote = '') {
     ...all[idx],
     status: 'rejected',
     decidedBy: decidedBy || null,
-    decidedOn: todayKey(),
+    decidedOn: new Date().toISOString(),
     reviewNote: reviewNote || '',
     paidOn: null
   }
@@ -1283,7 +1340,7 @@ export function markReimbursementPaid(claimId, decidedBy) {
   all[idx] = {
     ...all[idx],
     status: 'paid',
-    paidOn: todayKey(),
+    paidOn: new Date().toISOString(),
     decidedBy: decidedBy || all[idx].decidedBy
   }
   write(KEYS.reimbursements, all)
@@ -1305,7 +1362,8 @@ export function addReimbursementMessage(claimId, { byId, byRole, text }) {
   if (byRole === 'employee' && byId !== claim.employeeId) return null
   if (byRole !== 'employee' && byRole !== 'admin') return null
 
-  all[idx] = {
+  const next = all.slice()
+  next[idx] = {
     ...claim,
     messages: [
       ...(claim.messages || []),
@@ -1318,8 +1376,8 @@ export function addReimbursementMessage(claimId, { byId, byRole, text }) {
       }
     ]
   }
-  write(KEYS.reimbursements, all)
-  return all[idx]
+  write(KEYS.reimbursements, next)
+  return next[idx]
 }
 
 // ---- tasks ----
@@ -2711,4 +2769,39 @@ export function updateOvertimeRequest(requestId, employeeId, updates) {
 export function getApprovedOvertimeForMonth(employeeId, monthKey) {
   return getOvertimeRequests()
     .filter((r) => r.employeeId === employeeId && r.monthKey === monthKey && r.status === 'approved')
+}
+
+// Migration: update existing reimbursement claims to have proper datetime
+// timestamps. The Supabase `reimbursements` table used to store applied_on /
+// decided_on as plain DATE columns, so a full ISO datetime was truncated to a
+// date-only string ("2026-09-06") on the round trip and showed as 12:00 AM in
+// the notification list. Date-only values are rewritten as noon timestamps and
+// pushed back, so the fix persists centrally. Runs after every store load.
+function migrateReimbursementTimestamps() {
+  const all = getReimbursements()
+  let needsUpdate = false
+  
+  for (const claim of all) {
+    // Convert date-only strings to ISO datetime strings at noon (12:00 PM)
+    if (claim.appliedOn && /^\d{4}-\d{2}-\d{2}$/.test(claim.appliedOn)) {
+      claim.appliedOn = new Date(`${claim.appliedOn}T12:00:00`).toISOString()
+      needsUpdate = true
+    }
+    if (claim.decidedOn && /^\d{4}-\d{2}-\d{2}$/.test(claim.decidedOn)) {
+      claim.decidedOn = new Date(`${claim.decidedOn}T12:00:00`).toISOString()
+      needsUpdate = true
+    }
+    if (claim.paidOn && /^\d{4}-\d{2}-\d{2}$/.test(claim.paidOn)) {
+      claim.paidOn = new Date(`${claim.paidOn}T12:00:00`).toISOString()
+      needsUpdate = true
+    }
+    if (claim.withdrawnOn && /^\d{4}-\d{2}-\d{2}$/.test(claim.withdrawnOn)) {
+      claim.withdrawnOn = new Date(`${claim.withdrawnOn}T12:00:00`).toISOString()
+      needsUpdate = true
+    }
+  }
+  
+  if (needsUpdate) {
+    write(KEYS.reimbursements, all)
+  }
 }

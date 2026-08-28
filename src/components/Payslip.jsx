@@ -19,6 +19,13 @@ export default function Payslip({ employee, monthKey, calc }) {
     })
   }
 
+  if (calc.reimbursementAmount > 0) {
+    earnings.push({
+      label: 'Reimbursements (approved)',
+      value: calc.reimbursementAmount
+    })
+  }
+
   const deductions = [
     { label: `Provident Fund (${settings.salary.pfPercent}% of Basic)`, value: calc.pf },
     {
@@ -68,7 +75,7 @@ export default function Payslip({ employee, monthKey, calc }) {
           ))}
           <div className="payslip-row total">
             <span>Gross</span>
-            <span>{formatRupees(calc.gross + calc.overtimePay)}</span>
+            <span>{formatRupees(calc.gross + calc.overtimePay + calc.reimbursementAmount)}</span>
           </div>
         </div>
 

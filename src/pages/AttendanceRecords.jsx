@@ -77,7 +77,7 @@ export default function AttendanceRecords() {
 
   const employeeFilterOpts = useMemo(() => [
     { value: 'all', label: 'All employees' },
-    ...employees.map((e) => ({ value: e.id, label: e.name }))
+    ...employees.map((e) => ({ value: e.id, label: `${e.name} (${e.id})` }))
   ], [employees])
 
   const departmentFilterOpts = useMemo(() => {
@@ -527,7 +527,10 @@ export default function AttendanceRecords() {
                   <td>
                     <div className="person-cell">
                       <Avatar src={emp?.photoUrl} name={emp?.name} size={34} />
-                      <span>{emp ? emp.name : r.employeeId}</span>
+                      <div>
+                        <strong>{emp ? emp.name : r.employeeId}</strong>
+                        <div className="muted small">{r.employeeId}</div>
+                      </div>
                     </div>
                   </td>
                   <td>{emp?.department || <span className="muted">--</span>}</td>

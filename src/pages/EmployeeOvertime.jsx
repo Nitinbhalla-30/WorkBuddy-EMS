@@ -178,9 +178,9 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
           <colgroup>
             <col style={{ width: '20%' }} />
             <col style={{ width: '15%' }} />
-            <col style={{ width: '35%' }} />
+            <col style={{ width: '40%' }} />
             <col style={{ width: '15%' }} />
-            <col style={{ width: '15%' }} />
+            <col style={{ width: '10%' }} />
           </colgroup>
           <thead>
             <tr>

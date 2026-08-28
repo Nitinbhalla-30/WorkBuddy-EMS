@@ -272,7 +272,16 @@ export default function AdminLeaves() {
                       </div>
                     </div>
                   </td>
-                  <td>{leaveTypeLabelWithPart(lv)}</td>
+                  <td>
+                    {lv.type === 'halfday' ? (
+                      <>
+                        <div>Half day</div>
+                        <div className="muted small">({leaveHalfLabel(lv).toLowerCase()})</div>
+                      </>
+                    ) : (
+                      leaveTypeLabel(lv.type)
+                    )}
+                  </td>
                   <td>{formatDate(lv.fromDate)}</td>
                   <td>{formatDate(lv.toDate)}</td>
                   <td>{leaveDays(lv)}</td>

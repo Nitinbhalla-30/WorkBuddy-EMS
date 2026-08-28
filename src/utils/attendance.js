@@ -75,6 +75,16 @@ export function formatDate(dateKey) {
   })
 }
 
+// Format date as DD/MM/YYYY
+export function formatDateDDMMYYYY(dateKey) {
+  if (!dateKey) return '--'
+  const d = dateKey.includes('T') ? new Date(dateKey) : new Date(`${dateKey}T00:00:00`)
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
 // Was the person late? Compares time-in against office start + grace period.
 // officeStartTime is a string like "09:30". lateGraceMinutes is minutes after that
 // when arrival is still on time (e.g. start 09:30 + 20 min → late only after 09:50).

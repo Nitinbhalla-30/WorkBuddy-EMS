@@ -5,6 +5,7 @@ import {
   getLeaves,
   getSettings,
   getOvertimeRequests,
+  getReimbursements,
   updateEmployeeSalary
 } from '../data/store.js'
 import Payslip from '../components/Payslip.jsx'
@@ -45,9 +46,10 @@ export default function AdminSalary() {
     const leaves = getLeaves()
     const settings = getSettings()
     const overtimeRequests = getOvertimeRequests()
+    const reimbursements = getReimbursements()
     return employees.map((emp) => ({
       emp,
-      calc: computeSalary(emp, selected, { attendance, leaves, settings, overtimeRequests })
+      calc: computeSalary(emp, selected, { attendance, leaves, settings, overtimeRequests, reimbursements })
     }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employees, selected, refresh])

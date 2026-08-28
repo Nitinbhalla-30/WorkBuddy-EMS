@@ -1,66 +1,46 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addReimbursementMessage,
   getEmployeeById,
   getReimbursementsForEmployee,
-  submitReimbursementClaim,
+  submitReimbursementClaimSynced,
+  retrySyncReimbursementClaim,
   updateReimbursementClaim,
   withdrawReimbursementClaim
 } from '../data/store.js'
-import { formatDate } from '../utils/attendance.js'
+import { formatDateDDMMYYYY } from '../utils/attendance.js'
+import { REIMBURSEMENT_CATEGORIES } from '../data/sampleData.js'
 import {
   categoryLabel,
   formatAmount,
-  reimbursementSummary,
   statusLabel,
   statusTagClass,
   canEditReimbursement,
   canWithdrawReimbursement
 } from '../utils/reimbursements.js'
 import ReimbursementForm from '../components/ReimbursementForm.jsx'
-import ReimbursementThread from '../components/ReimbursementThread.jsx'
+import ReimbursementClaimDetail from '../components/ReimbursementClaimDetail.jsx'
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CircleCheck, Eye, Hourglass, MoreHorizontal, Pencil, ReceiptText, Trash2, Undo2, Wallet, X } from 'lucide-react'
+import { Eye, MoreHorizontal, Pencil, ReceiptText, Trash2, Undo2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All statuses' },
-  { value: 'pending', label: 'Pending approval' },
-  { value: 'approved_unpaid', label: 'Approved — yet to be paid' },
-  { value: 'paid', label: 'Approved and paid' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'withdrawn', label: 'Withdrawn' }
 ]
-const SUBMITTED_DURING_FILTERS = [
-  { value: 'all', label: 'All time' },
-  { value: 'this-month', label: 'This Month' },
-  { value: 'last-month', label: 'Last Month' },
-  { value: 'ytd', label: 'Year to Date' }
+const CATEGORY_FILTERS = [
+  { value: 'all', label: 'All categories' },
+  ...REIMBURSEMENT_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))
 ]
-
-// Whether a claim's submitted-on date (YYYY-MM-DD) falls inside the chosen
-// "Submitted During" window.
-function inSubmittedDuring(dateKey, val) {
-  if (!val || val === 'all') return true
-  if (!dateKey) return false
-  const d = new Date(`${dateKey}T00:00:00`)
-  const now = new Date()
-  if (val === 'this-month') {
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-  }
-  if (val === 'last-month') {
-    const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    return d.getFullYear() === lm.getFullYear() && d.getMonth() === lm.getMonth()
-  }
-  if (val === 'ytd') return d.getFullYear() === now.getFullYear()
-  return true
-}
 
 export default function EmployeeReimbursements() {
   const { user } = useAuth()
@@ -71,8 +51,11 @@ export default function EmployeeReimbursements() {
   const [openMenuId, setOpenMenuId] = useState(null)
   const [withdrawId, setWithdrawId] = useState(null)
   const [message, setMessage] = useState('')
+  // Holds a claim that was saved locally but failed to reach the server, so we
+  // can show a "Failed — tap to retry" banner instead of silently losing it.
+  const [syncError, setSyncError] = useState(null)
+  const [retrying, setRetrying] = useState(false)
 
-  const summary = useMemo(() => reimbursementSummary(claims), [claims])
   const openClaim = claims.find((c) => c.id === openId) || null
   const editClaim = claims.find((c) => c.id === editId) || null
 
@@ -92,8 +75,11 @@ export default function EmployeeReimbursements() {
     initialSortKey: 'appliedOn',
     initialSortDir: 'desc',
     filterFns: {
-      status: (c, val) => c.status === val,
-      submittedDuring: (c, val) => inSubmittedDuring(c.appliedOn, val)
+      status: (c, val) => {
+        if (val === 'approved') return c.status === 'approved_unpaid' || c.status === 'paid'
+        return c.status === val
+      },
+      category: (c, val) => c.category === val
     }
   })
 
@@ -121,33 +107,71 @@ export default function EmployeeReimbursements() {
     refreshClaims()
   }
 
-  function handleSubmit(data) {
-    submitReimbursementClaim({ employeeId: user.id, ...data })
+  async function handleSubmit(data) {
+    setMessage('')
+    setSyncError(null)
+    const result = await submitReimbursementClaimSynced({ employeeId: user.id, ...data })
     refreshClaims()
     setShowForm(false)
-    setMessage('Your reimbursement claim was sent to HR for review.')
+    if (result.ok) {
+      setMessage(
+        result.offline
+          ? 'Your claim was saved on this device (no server configured).'
+          : 'Your reimbursement claim was sent to HR for review.'
+      )
+    } else {
+      setSyncError({ claim: result.claim, reason: result.error })
+    }
   }
 
-  function handleEdit(data) {
+  async function handleRetry() {
+    if (!syncError) return
+    setRetrying(true)
+    const res = await retrySyncReimbursementClaim(syncError.claim)
+    setRetrying(false)
+    if (res.ok) {
+      setSyncError(null)
+      setMessage('Saved. Your claim is now up to date for HR.')
+      refreshClaims()
+    } else {
+      setSyncError({ ...syncError, reason: res.error })
+    }
+  }
+
+  async function handleEdit(data) {
     if (!editClaim) return
-    updateReimbursementClaim(editClaim.id, user.id, data)
+    const res = await updateReimbursementClaim(editClaim.id, user.id, data)
     refreshClaims()
     setEditId(null)
-    setMessage('Your reimbursement claim was updated.')
+    if (!res) return
+    if (res.ok) {
+      setSyncError(null)
+      setMessage('Your reimbursement claim was updated.')
+    } else {
+      setMessage('')
+      setSyncError({ claim: res.claim, reason: res.error })
+    }
   }
 
   function handleWithdraw(claimId) {
     setWithdrawId(claimId)
   }
 
-  function confirmWithdraw() {
-    if (withdrawId) {
-      withdrawReimbursementClaim(withdrawId, user.id)
-      refreshClaims()
-      if (openId === withdrawId) setOpenId(null)
-      if (editId === withdrawId) setEditId(null)
-      setWithdrawId(null)
+  async function confirmWithdraw() {
+    if (!withdrawId) return
+    const id = withdrawId
+    const res = await withdrawReimbursementClaim(id, user.id)
+    refreshClaims()
+    if (openId === id) setOpenId(null)
+    if (editId === id) setEditId(null)
+    setWithdrawId(null)
+    if (!res) return
+    if (res.ok) {
+      setSyncError(null)
       setMessage('Your reimbursement claim was withdrawn.')
+    } else {
+      setMessage('')
+      setSyncError({ claim: res.claim, reason: res.error })
     }
   }
 
@@ -182,15 +206,37 @@ export default function EmployeeReimbursements() {
           </h2>
           <p className="muted small" style={{ margin: '4px 0 0' }}>Submit and track your reimbursement claims</p>
         </div>
-        <button
-          className="btn btn-primary btn-tiny"
-          onClick={() => setShowForm(true)}
-        >
-          Submit claim
-        </button>
       </div>
 
       {message && <div className="info-box">{message}</div>}
+
+      {syncError && (
+        <div
+          className="info-box"
+          style={{
+            borderColor: 'rgba(239, 68, 68, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <span>
+            <strong>Your latest change is saved on this device but didn't reach the server.</strong>{' '}
+            HR can't see the update yet. Check your internet connection and retry.
+            {syncError.reason ? <span className="muted"> ({syncError.reason})</span> : null}
+          </span>
+          <button
+            type="button"
+            className="btn btn-tiny btn-primary"
+            onClick={handleRetry}
+            disabled={retrying}
+          >
+            {retrying ? 'Retrying…' : 'Retry now'}
+          </button>
+        </div>
+      )}
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Submit reimbursement claim">
@@ -238,82 +284,17 @@ export default function EmployeeReimbursements() {
 
       {openClaim && (
         <Modal onClose={() => setOpenId(null)} title="Reimbursement claim">
-          <div className="modal-form">
-            <div className="modal-header">
-              <div>
-                <h3 className="section-title first" style={{ margin: 0 }}>
-                  {categoryLabel(openClaim.category)}
-                </h3>
-                <div className="muted small">
-                  Submitted {formatDate(openClaim.appliedOn)}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className={`tag ${statusTagClass(openClaim.status)}`}>
-                  {statusLabel(openClaim.status)}
-                </span>
-                <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenId(null)} aria-label="Close"><X size={15} /></button>
-              </div>
-            </div>
-            <ul className="lunch-policy-list first">
-              <li>
-                <span className="muted">Expense date</span>
-                <strong>{formatDate(openClaim.expenseDate)}</strong>
-              </li>
-              <li>
-                <span className="muted">Amount</span>
-                <strong>{formatAmount(openClaim.amount)}</strong>
-              </li>
-              {openClaim.status === 'paid' && openClaim.paidOn && (
-                <li>
-                  <span className="muted">Paid on</span>
-                  <strong>{formatDate(openClaim.paidOn)}</strong>
-                </li>
-              )}
-            </ul>
-            {openClaim.description && (
-              <p className="hint"><strong>Description:</strong> {openClaim.description}</p>
-            )}
-            {openClaim.status === 'rejected' && openClaim.reviewNote && (
-              <div className="info-box">Reason: {openClaim.reviewNote}</div>
-            )}
-            <ReimbursementThread
-              claim={openClaim}
-              viewerRole="employee"
-              viewerId={user.id}
-              nameOf={nameOf}
-              onReply={handleReply}
-              onClose={() => setOpenId(null)}
-            />
-          </div>
+          <ReimbursementClaimDetail
+            claim={openClaim}
+            viewerRole="employee"
+            viewerId={user.id}
+            nameOf={nameOf}
+            onReply={handleReply}
+            onClose={() => setOpenId(null)}
+          />
         </Modal>
       )}
 
-      <div className="stat-grid">
-        <div className="stat-card">
-          <span className="stat-chip"><Hourglass size={18} aria-hidden="true" /></span>
-          <div className="stat-num">{summary.pendingCount}</div>
-          <div className="stat-label">
-            Pending approval
-            <span className="muted"> · {formatAmount(summary.pendingAmount)}</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <span className="stat-chip"><Wallet size={18} aria-hidden="true" /></span>
-          <div className="stat-num">{summary.approvedUnpaidCount}</div>
-          <div className="stat-label">
-            Approved — yet to be paid
-            <span className="muted"> · {formatAmount(summary.approvedUnpaidAmount)}</span>
-          </div>
-        </div>
-        <div className="stat-card stat-good">
-          <span className="stat-chip"><CircleCheck size={18} aria-hidden="true" /></span>
-          <div className="stat-num">{formatAmount(summary.paidThisYear)}</div>
-          <div className="stat-label">Paid this year</div>
-        </div>
-      </div>
-
-      <h3 className="section-title">My claims</h3>
       <div className="card">
         <TableToolbar
           search={table.search}
@@ -324,10 +305,10 @@ export default function EmployeeReimbursements() {
           placeholder="Search claims..."
           filters={[
             {
-              key: 'submittedDuring',
-              label: 'Submitted During',
-              value: table.filters.submittedDuring || 'all',
-              options: SUBMITTED_DURING_FILTERS
+              key: 'category',
+              label: 'Category',
+              value: table.filters.category || 'all',
+              options: CATEGORY_FILTERS
             },
             {
               key: 'status',
@@ -337,15 +318,23 @@ export default function EmployeeReimbursements() {
             }
           ]}
           onFilterChange={table.setFilter}
+          actions={
+            <button
+              className="btn btn-primary btn-tiny"
+              onClick={() => setShowForm(true)}
+            >
+              Submit claim
+            </button>
+          }
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '13%' }} />
             <col style={{ width: '13%' }} />
             <col style={{ width: '9%' }} />
-            <col style={{ width: '24%' }} />
+            <col style={{ width: '32%' }} />
             <col style={{ width: '11%' }} />
-            <col style={{ width: '22%' }} />
+            <col style={{ width: '14%' }} />
             <col style={{ width: '8%' }} />
           </colgroup>
           <thead>
@@ -366,12 +355,12 @@ export default function EmployeeReimbursements() {
             {claimsPage.map((c) => (
               <tr key={c.id}>
                 <td>{categoryLabel(c.category)}</td>
-                <td>{formatDate(c.expenseDate)}</td>
+                <td>{formatDateDDMMYYYY(c.expenseDate)}</td>
                 <td><strong>{formatAmount(c.amount)}</strong></td>
                 <td className="cell-ellipsis" title={c.description || undefined}>
                   {c.description || <span className="muted">--</span>}
                 </td>
-                <td>{formatDate(c.appliedOn)}</td>
+                <td>{formatDateDDMMYYYY(c.appliedOn)}</td>
                 <td>
                   <span className={`tag ${statusTagClass(c.status)}`}>
                     {statusLabel(c.status)}

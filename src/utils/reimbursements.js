@@ -8,16 +8,18 @@ export function categoryLabel(key) {
 }
 
 export function statusLabel(status) {
+  if (status === 'pending') return 'Pending'
+  if (status === 'approved_unpaid' || status === 'paid') return 'Approved'
   const s = REIMBURSEMENT_STATUSES.find((x) => x.key === status)
   return s ? s.label : status
 }
 
 export function statusTagClass(status) {
-  if (status === 'paid') return 'tag-ok'
-  if (status === 'approved_unpaid') return 'tag-medium'
+  // Both approved states (yet-to-pay and paid) show as one green "Approved" tag.
+  if (status === 'paid' || status === 'approved_unpaid') return 'tag-ok'
   if (status === 'rejected') return 'tag-late'
   if (status === 'withdrawn') return 'tag-absent'
-  return 'tag-absent' // pending
+  return 'tag-pending' // pending — blue, distinct from the grey withdrawn tag
 }
 
 export function canEditReimbursement(claim) {

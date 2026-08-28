@@ -86,17 +86,18 @@ export default function EmployeeRecords() {
       const profile = e.role === 'employee' ? getProfileForEmployee(e.id) : null
       const manager = e.managerId ? employees.find((m) => m.id === e.managerId) : null
       return [
-        e.id, e.name, e.department, e.role,
+        e.id, e.name, e.department, e.designation || '', e.role,
         e.isManager ? 'manager' : '',
         manager?.name,
         profile ? profileStatusLabel(profile.status) : 'No record'
       ].join(' ')
     },
     getSortValue: (e, key) => {
+      if (key === 'designation') return e.designation || ''
       if (key === 'role') return e.role === 'admin' ? 'HR / Admin' : 'Employee'
       if (key === 'isManager') return e.isManager ? 1 : 0
       if (key === 'manager') return e.managerId ? (employees.find((m) => m.id === e.managerId)?.name || '') : ''
-      if (key === 'days') return getAttendanceForEmployee(e.id).length
+      if (key === 'dateJoined') return e.dateJoined || ''
       if (key === 'record') {
         const profile = e.role === 'employee' ? getProfileForEmployee(e.id) : null
         return profile ? profileStatusLabel(profile.status) : 'No record'
@@ -272,8 +273,8 @@ export default function EmployeeRecords() {
             <col style={{ width: '9%' }} />
             <col style={{ width: '8%' }} />
             <col style={{ width: '11%' }} />
-            <col style={{ width: '5%' }} />
-            <col style={{ width: '12%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '13%' }} />
             <col style={{ width: '8%' }} />
           </colgroup>
           <thead>
@@ -281,11 +282,11 @@ export default function EmployeeRecords() {
               <SortableTh label="Name" keyName="name" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="ID" keyName="id" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Department" keyName="department" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Role" keyName="role" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Designation" keyName="designation" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Manager" keyName="isManager" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Reports to" keyName="manager" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
-              <SortableTh label="Days" keyName="days" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Record" keyName="record" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Date of Joining" keyName="dateJoined" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Record Status" keyName="record" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Actions</th>
             </tr>
           </thead>
@@ -305,10 +306,20 @@ export default function EmployeeRecords() {
                   </td>
                   <td>{e.id}</td>
                   <td>{e.department}</td>
-                  <td>{e.role === 'admin' ? 'HR / Admin' : 'Employee'}</td>
+                  <td>{e.designation || <span className="muted">--</span>}</td>
                   <td>{e.isManager ? <span className="tag tag-ok">Manager</span> : <span className="muted">--</span>}</td>
                   <td>{e.managerId ? nameOf(e.managerId) : <span className="muted">--</span>}</td>
-                  <td>{getAttendanceForEmployee(e.id).length}</td>
+                  <td>
+                    {e.dateJoined
+                      ? (() => {
+                          const d = new Date(e.dateJoined)
+                          const day = String(d.getDate()).padStart(2, '0')
+                          const month = String(d.getMonth() + 1).padStart(2, '0')
+                          const year = d.getFullYear()
+                          return `${day}/${month}/${year}`
+                        })()
+                      : <span className="muted">--</span>}
+                  </td>
                   <td>
                     {profile ? (
                       <span className={`tag ${profileStatusTagClass(profile.status)}`} style={{ whiteSpace: 'normal', lineHeight: 1.4 }}>

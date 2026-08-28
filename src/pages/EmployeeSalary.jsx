@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getAttendance, getLeaves, getSettings, getOvertimeRequests } from '../data/store.js'
+import { getAttendance, getLeaves, getSettings, getOvertimeRequests, getReimbursements } from '../data/store.js'
 import Payslip from '../components/Payslip.jsx'
 import {
   computeSalary,
@@ -31,7 +31,8 @@ export default function EmployeeSalary() {
       attendance: getAttendance(),
       leaves: getLeaves(),
       settings: getSettings(),
-      overtimeRequests: getOvertimeRequests()
+      overtimeRequests: getOvertimeRequests(),
+      reimbursements: getReimbursements()
     })
   }, [user, selected])
 
