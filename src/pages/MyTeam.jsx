@@ -10,7 +10,8 @@ import {
   getTasks,
   managerDecideLeave,
   managerDecideOvertime,
-  refreshStoreFromSupabase
+  refreshStoreFromSupabase,
+  STORE_KEYS
 } from '../data/store.js'
 import { computeMonthAverages, computeMonthRawAverages, formatDate } from '../utils/attendance.js'
 import { leaveDays, leaveTypeLabel, leaveTypeLabelWithPart } from '../utils/leaves.js'
@@ -112,11 +113,18 @@ export default function MyTeam() {
 
   // Keep the leave and overtime queues fresh. Before reading, pull the latest
   // shared data from Supabase so an employee's freshly submitted request shows
-  // up even if this page's initial load fell back to stale local storage.
+  // up even if this page's initial load fell back to stale local storage. Only
+  // the collections this screen reads — a full-store refresh on every window
+  // focus would re-download megabytes of data.
   useEffect(() => {
     let cancelled = false
     async function refreshQueues() {
-      await refreshStoreFromSupabase()
+      await refreshStoreFromSupabase([
+        STORE_KEYS.leaves,
+        STORE_KEYS.overtimeRequests,
+        STORE_KEYS.tasks,
+        STORE_KEYS.employees
+      ])
       if (cancelled) return
       setTeamLeaves(loadTeamLeaves())
       setTeamOvertime(loadTeamOvertime())

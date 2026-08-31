@@ -1,6 +1,6 @@
-import { useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getAttendance, getLeaves, getSettings, getOvertimeRequests, getReimbursements } from '../data/store.js'
+import { getAttendance, getLeaves, getSettings, getOvertimeRequests, getReimbursements, ensureAttendanceMonths } from '../data/store.js'
 import Payslip from '../components/Payslip.jsx'
 import {
   computeSalary,
@@ -25,8 +25,22 @@ export default function EmployeeSalary() {
     return monthKey(lastMonth)
   })
   const payslipRef = useRef(null)
+  const [monthReady, setMonthReady] = useState(false)
+
+  // A payslip reads every day of its month, but only the rolling window is
+  // cached at startup — pull the selected month from Supabase first, otherwise
+  // missing attendance would be counted as loss of pay.
+  useEffect(() => {
+    let cancelled = false
+    setMonthReady(false)
+    ensureAttendanceMonths([selected]).then((ok) => {
+      if (!cancelled && ok) setMonthReady(true)
+    })
+    return () => { cancelled = true }
+  }, [selected])
 
   const calc = useMemo(() => {
+    if (!monthReady) return null
     return computeSalary(user, selected, {
       attendance: getAttendance(),
       leaves: getLeaves(),
@@ -34,7 +48,7 @@ export default function EmployeeSalary() {
       overtimeRequests: getOvertimeRequests(),
       reimbursements: getReimbursements()
     })
-  }, [user, selected])
+  }, [user, selected, monthReady])
 
   function downloadPDF() {
     const element = payslipRef.current
@@ -74,9 +88,15 @@ export default function EmployeeSalary() {
         </div>
       </div>
 
-      <div className="card" ref={payslipRef}>
-        <Payslip employee={user} monthKey={selected} calc={calc} />
-      </div>
+      {calc ? (
+        <div className="card" ref={payslipRef}>
+          <Payslip employee={user} monthKey={selected} calc={calc} />
+        </div>
+      ) : (
+        <div className="card">
+          <p className="muted small" style={{ margin: 0 }}>Loading attendance for this month…</p>
+        </div>
+      )}
 
       <p className="hint">
         Your salary is calculated based on your attendance and approved leaves.

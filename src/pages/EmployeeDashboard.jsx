@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addAttendanceCorrectionMessage,
+  attendanceMonthsLoaded,
+  ensureAttendanceMonths,
   getAttendanceCorrectionsForEmployee,
   getAttendanceForEmployee,
   getEmployeeById,
@@ -25,7 +27,9 @@ import {
   formatMinutes,
   isLate,
   monthKey,
+  monthKeyOffset,
   monthLabel,
+  monthsForStatsPeriod,
   resolveJoinDate,
   resolveStartTime,
   statsPeriodLabel,
@@ -80,6 +84,29 @@ export default function EmployeeDashboard() {
     getAttendanceCorrectionsForEmployee(user.id)
   )
 
+  // Only a rolling window of attendance is cached at startup, so the history
+  // month and the stats period can both point at months we have not fetched
+  // yet. Pull whatever is missing, then bump a tick to recompute below.
+  const [attendanceTick, setAttendanceTick] = useState(0)
+  const [attendancePending, setAttendancePending] = useState(false)
+
+  useEffect(() => {
+    const wanted = [
+      selectedHistoryMonth,
+      ...monthsForStatsPeriod(statsPeriod, { joinDate: user.dateJoined, todayDate: today.date })
+    ].filter(Boolean)
+    if (wanted.every((m) => attendanceMonthsLoaded().includes(m))) return undefined
+    let cancelled = false
+    setAttendancePending(true)
+    ensureAttendanceMonths(wanted).then((ok) => {
+      if (cancelled) return
+      setAttendancePending(false)
+      if (ok) setAttendanceTick((n) => n + 1)
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedHistoryMonth, statsPeriod, user.dateJoined, today.date])
+
   const [, forceTick] = useState(0)
   const state = currentState(today)
   const isLive = state === 'working' || state === 'on-break'
@@ -95,7 +122,8 @@ export default function EmployeeDashboard() {
     const all = getAttendanceForEmployee(user.id)
     const withoutToday = all.filter((r) => r.date !== today.date)
     return [...withoutToday, today]
-  }, [user.id, today, isLive])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id, today, isLive, attendanceTick])
 
   const joinDate = useMemo(
     () => resolveJoinDate(user, allRecords),
@@ -113,17 +141,21 @@ export default function EmployeeDashboard() {
   const history = useMemo(() => {
     const all = getAttendanceForEmployee(user.id)
     return all.filter((r) => r.date.startsWith(selectedHistoryMonth))
-  }, [user.id, selectedHistoryMonth, today])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id, selectedHistoryMonth, today, attendanceTick])
 
   const historyMonthOptions = useMemo(() => {
     const keys = new Set(
       getAttendanceForEmployee(user.id).map((r) => r.date.slice(0, 7))
     )
-    keys.add(monthKey())
+    // The cache only holds recent months, so offer a fixed 12-month list as
+    // well; picking an older one fetches it from Supabase on demand.
+    for (let i = 0; i < 12; i++) keys.add(monthKeyOffset(i))
     return [...keys]
       .sort((a, b) => b.localeCompare(a))
       .map((k) => ({ value: k, label: monthLabel(k) }))
-  }, [user.id, today.date])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id, today.date, attendanceTick])
 
   // Map of date → approved leave type for this employee (used in history tab).
   const approvedLeavesByDate = useMemo(() => {
@@ -589,7 +621,14 @@ export default function EmployeeDashboard() {
           </thead>
           <tbody>
             {historyTable.count === 0 && (
-              <TableEmpty colSpan="7" message={`No attendance records for ${monthLabel(selectedHistoryMonth)}.`} />
+              <TableEmpty
+                colSpan="7"
+                message={
+                  attendancePending
+                    ? 'Loading attendance for this month…'
+                    : `No attendance records for ${monthLabel(selectedHistoryMonth)}.`
+                }
+              />
             )}
             {historyPage.map((r) => {
               const onLeave = approvedLeavesByDate.has(r.date) && (!r || !r.timeIn)

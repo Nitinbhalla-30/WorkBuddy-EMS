@@ -1,271 +1,305 @@
-# Graph Report - WorkBuddy EMS  (2026-08-27)
+# Graph Report - WorkBuddy EMS  (2026-08-31)
 
 ## Corpus Check
-- 104 files · ~89,179 words
+- 108 files · ~96,074 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1117 nodes · 3698 edges · 50 communities (43 shown, 7 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 44 edges (avg confidence: 0.85)
+- 1224 nodes · 3911 edges · 61 communities (50 shown, 11 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 45 edges (avg confidence: 0.51)
 - Token cost: 0 input · 0 output
 
+## Graph Freshness
+- Built from commit: `b499240e`
+- Run `git rev-parse HEAD` and compare to check if the graph is stale.
+- Run `graphify update .` after code changes (no API cost).
+
 ## Community Hubs (Navigation)
-- Leave Management Module
-- Salary, Overtime & Attendance
-- Attendance Correction
-- Admin Profiles & Documents
-- Shared UI Components
-- Reimbursement Module
-- Ticket Management
-- Data Store Core
-- IT Help Desk
-- App Shell & Routing
-- Auth Context & Team Data
-- Task & Cab Store Operations
-- My Cab & Driver View
-- Notifications & Team Chat
-- Employee Data Queries
-- Dashboard Charts
-- React Ref Utilities
-- Cab Management Core
-- Cab Management Trips
-- Supabase Client & Config
-- Shift Management
-- Task Utilities
-- Package Dev Config
-- Package Dependencies
-- Sample Data Definitions
-- Cab Management Routes
-- Employee Tasks Page
-- Team Tasks Page
-- Admin Tasks Page
-- Component Aliases
-- Task Utility Helpers
-- Store Write Operations
-- Cab Management Schedule
-- Store Field Mapping
-- Build & Dev Scripts
-- Cab Management Drivers
-- Reimbursement Thread
-- Employee Dashboard
-- Store Leave Operations
-- Modal & Overlay Components
-- Leaflet Map Dependencies
-- Next.js Dependencies
-- React Router Dependencies
-- React DOM Dependencies
-- Tailwind CSS Config
-- Shift Scheduling
-- Vite Build Config
+- leaves.js
+- AdminSalary.jsx
+- attendance.js
+- profile.js
+- App.jsx
+- EmployeeReimbursements
+- EmployeeTickets
+- store.js
+- EmployeeITHelpDesk.jsx
+- AdminAnnouncements
+- getEmployeeById
+- getTasks
+- MyCab.jsx
+- TeamChat.jsx
+- notifications.js
+- TaskStatusChart.tsx
+- compilerOptions
+- TripsTab
+- MessagesTab
+- getShiftChangeRequests
+- ShiftsTab
+- EmployeeTasks
+- devDependencies
+- dependencies
+- Design System: WorkBuddy EMS
+- DriversTab
+- ensureAttendanceMonths
+- TeamTasksPanel
+- AdminTasks
+- components.json
+- tasks.js
+- CabManagement.jsx
+- todayKey
+- read
+- package.json
+- write
+- NotificationBell
+- EmployeeRecords
+- getEmployees
+- Product
+- leaflet
+- next-themes
+- check-leaves.mjs
+- origin-button.tsx
+- tailwind-merge
+- ProfileWizard
+- vite.config.js
+- perf-probe.mjs
+- scripts
+- ChatSection
+- MapPicker.jsx
+- WorkBuddy EMS — Agent Instructions
+- framer-motion
+- @supabase/supabase-js
+- supabase-setup.sql
+- public.reimbursements
 
 ## God Nodes (most connected - your core abstractions)
-1. `write()` - 92 edges
-2. `formatDate()` - 69 edges
+1. `write()` - 90 edges
+2. `formatDate()` - 65 edges
 3. `useTableControls()` - 64 edges
 4. `usePagination()` - 63 edges
 5. `getEmployeeById()` - 59 edges
 6. `useAuth()` - 55 edges
-7. `EmployeeDashboard()` - 46 edges
-8. `todayKey()` - 42 edges
+7. `EmployeeDashboard()` - 52 edges
+8. `read()` - 39 edges
 9. `MyCab()` - 39 edges
-10. `read()` - 37 edges
+10. `AttendanceRecords()` - 38 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `refreshData()` --calls--> `refreshStoreFromSupabase()`  [EXTRACTED]
-  src/pages/AdminShifts.jsx → src/data/store.js
+- `submit()` --calls--> `validateForSubmit()`  [EXTRACTED]
+  src/components/ProfileWizard.jsx → src/utils/profile.js
+- `nameOf()` --calls--> `getEmployeeById()`  [EXTRACTED]
+  src/pages/AdminLeaves.jsx → src/data/store.js
+- `nameOf()` --calls--> `getEmployeeById()`  [EXTRACTED]
+  src/pages/AdminReimbursements.jsx → src/data/store.js
 - `nameOf()` --calls--> `getEmployeeById()`  [EXTRACTED]
   src/pages/AdminTasks.jsx → src/data/store.js
 - `nameOf()` --calls--> `getEmployeeById()`  [EXTRACTED]
-  src/pages/AttendanceRecords.jsx → src/data/store.js
-- `nameOf()` --calls--> `getEmployeeById()`  [EXTRACTED]
-  src/pages/EmployeeDashboard.jsx → src/data/store.js
-- `nameOf()` --calls--> `getEmployeeById()`  [EXTRACTED]
-  src/pages/TeamTasks.jsx → src/data/store.js
+  src/pages/EmployeeLeaves.jsx → src/data/store.js
 
 ## Import Cycles
 - None detected.
 
-## Communities (50 total, 7 thin omitted)
+## Communities (61 total, 11 thin omitted)
 
-### Community 0 - "Leave Management Module"
-Cohesion: 0.07
-Nodes (63): LeaveForm(), changeType(), LeaveThread(), LEAVE_TYPES, addLeaveMessage(), applyLeave(), getLeaves(), getLeavesForEmployee() (+55 more)
-
-### Community 1 - "Salary, Overtime & Attendance"
+### Community 0 - "leaves.js"
 Cohesion: 0.06
-Nodes (56): Payslip(), approveOvertime(), getApprovedOvertimeForMonth(), getAttendance(), getOvertimeRequests(), getOvertimeRequestsByMonth(), getSettings(), otStage() (+48 more)
+Nodes (55): LeaveForm(), changeType(), addLeaveMessage(), applyLeave(), getLeavesForEmployee(), setLeaveStatus(), updateLeave(), withdrawLeave() (+47 more)
 
-### Community 2 - "Attendance Correction"
+### Community 1 - "AdminSalary.jsx"
 Cohesion: 0.06
-Nodes (59): AttendanceCorrectionForm(), AttendanceCorrectionThread(), ATTENDANCE_CORRECTION_ISSUES, addAttendanceCorrectionMessage(), applyCorrectionToAttendance(), findOrCreateAttendanceRecord(), getTodayRecord(), resolveAttendanceCorrection() (+51 more)
+Nodes (53): Payslip(), approveOvertime(), getApprovedOvertimeForMonth(), getEmployeeShiftStartTime(), getLeaveById(), getLeaves(), getOvertimeRequests(), getOvertimeRequestsByMonth() (+45 more)
 
-### Community 3 - "Admin Profiles & Documents"
+### Community 2 - "attendance.js"
 Cohesion: 0.05
-Nodes (50): FileField(), handlePick(), todayStr(), LeaveDocumentList(), DEFAULT_CENTER, MapPicker(), PhotoField(), handlePick() (+42 more)
+Nodes (85): AttendanceCorrectionForm(), AttendanceCorrectionThread(), ATTENDANCE_CORRECTION_ISSUES, addAttendanceCorrectionMessage(), applyCorrectionToAttendance(), attendanceMonthsLoaded(), ensureAttendanceForDate(), findOrCreateAttendanceRecord() (+77 more)
 
-### Community 4 - "Shared UI Components"
-Cohesion: 0.16
-Nodes (27): Avatar(), Modal(), Pagination(), SortableTh(), TableEmpty(), TableToolbar(), AuthContext, usePagination() (+19 more)
+### Community 3 - "profile.js"
+Cohesion: 0.15
+Nodes (18): FileField(), handlePick(), todayStr(), LeaveDocumentList(), PhotoField(), handlePick(), todayStr(), ProfileView() (+10 more)
 
-### Community 5 - "Reimbursement Module"
+### Community 4 - "App.jsx"
+Cohesion: 0.06
+Nodes (83): App(), Home(), Protected(), Avatar(), LeaveThread(), getFocusableElements(), Modal(), focusables() (+75 more)
+
+### Community 5 - "EmployeeReimbursements"
+Cohesion: 0.07
+Nodes (38): ReimbursementClaimDetail(), ReimbursementThread(), REIMBURSEMENT_STATUSES, addReimbursementMessage(), approveReimbursementClaim(), getReimbursements(), markReimbursementPaid(), rejectReimbursementClaim() (+30 more)
+
+### Community 6 - "EmployeeTickets"
+Cohesion: 0.07
+Nodes (30): TicketForm(), TICKET_CATEGORIES, addTicketMessage(), createTicket(), getTicketsForHR(), setTicketStatus(), updateTicket(), withdrawTicket() (+22 more)
+
+### Community 7 - "store.js"
+Cohesion: 0.07
+Nodes (33): DEFAULT_SETTINGS, DEFAULT_SHIFTS, APP_STORE_KEYS, APP_TO_DB_FIELD, ATTENDANCE_WINDOW_MONTHS, attendanceLoadedMonths, camelToSnake(), CRITICAL_KEYS (+25 more)
+
+### Community 8 - "EmployeeITHelpDesk.jsx"
+Cohesion: 0.06
+Nodes (34): DropdownSelect(), ITIssueThread(), addITIssueComment(), assignITIssue(), createITIssue(), getITStaff(), getITStaffById(), reopenITIssue() (+26 more)
+
+### Community 9 - "AdminAnnouncements"
+Cohesion: 0.17
+Nodes (7): createAnnouncement(), deleteAnnouncement(), AdminAnnouncements(), closeMenu(), confirmDelete(), handleClickOutside(), handleSubmit()
+
+### Community 10 - "getEmployeeById"
 Cohesion: 0.09
-Nodes (40): ReimbursementForm(), REIMBURSEMENT_CATEGORIES, REIMBURSEMENT_STATUSES, addReimbursementMessage(), approveReimbursementClaim(), getReimbursements(), getReimbursementsForEmployee(), markReimbursementPaid() (+32 more)
+Nodes (33): handleLogout(), ThemeProvider(), AuthProvider(), login(), logout(), getDriverById(), getEmployeeById(), getMyTeamDirectory() (+25 more)
 
-### Community 6 - "Ticket Management"
-Cohesion: 0.10
-Nodes (27): TicketForm(), TicketThread(), TICKET_STATUSES, addTicketMessage(), getTicketsForHR(), AdminTickets(), closeMenu(), handleClickOutside() (+19 more)
+### Community 11 - "getTasks"
+Cohesion: 0.27
+Nodes (13): approveTaskClosure(), deleteTaskByAssignee(), getTaskById(), getTasks(), isSelfAssignedTask(), updateTaskByAssignee(), updateTaskStatus(), updateTaskStatusByEmployee() (+5 more)
 
-### Community 7 - "Data Store Core"
-Cohesion: 0.09
-Nodes (38): APP_TO_DB_FIELD, batchedInsert(), camelToSnake(), DB_TO_APP_FIELD, DEFAULTS, dismissAllNotifications(), fetchAllFromTable(), getAttendanceCorrectionById() (+30 more)
-
-### Community 8 - "IT Help Desk"
-Cohesion: 0.08
-Nodes (27): ITIssueThread(), addITIssueComment(), createITIssue(), getITStaffById(), reopenITIssue(), updateITIssue(), withdrawITIssue(), handleViewReply() (+19 more)
-
-### Community 9 - "App Shell & Routing"
-Cohesion: 0.09
-Nodes (19): App(), Home(), Protected(), Layout(), ThemeProvider(), CinematicThemeSwitcher(), useAuth(), getTeamUnreadCount() (+11 more)
-
-### Community 10 - "Auth Context & Team Data"
-Cohesion: 0.10
-Nodes (32): handleLogout(), AuthProvider(), login(), logout(), getDriverById(), getEmployeeById(), getMyTeamDirectory(), managerDecideLeave() (+24 more)
-
-### Community 11 - "Task & Cab Store Operations"
-Cohesion: 0.09
-Nodes (31): approveTaskClosure(), assignITIssue(), createCabRequest(), createTicket(), deleteCabRequest(), deleteTask(), deleteTaskByAssignee(), getCabRequests() (+23 more)
-
-### Community 12 - "My Cab & Driver View"
-Cohesion: 0.14
-Nodes (26): getCabRequestsForEmployee(), StopCard(), MyCab(), closeMenu(), confirmWithdraw(), handleClickOutside(), handleEditRequest(), handleOpenRequest() (+18 more)
-
-### Community 13 - "Notifications & Team Chat"
+### Community 12 - "MyCab.jsx"
 Cohesion: 0.12
-Nodes (23): NotificationBell(), handleClearAll(), handleClickItem(), handleMarkAll(), handleOpenToggle(), onTeamMessage(), refresh(), TeamChat() (+15 more)
+Nodes (31): getCabAssignmentForEmployee(), getCabCancellationForEmployee(), getCabCancellations(), getCabClearedAt(), setCabCancellation(), StopCard(), MyCab(), closeMenu() (+23 more)
 
-### Community 14 - "Employee Data Queries"
-Cohesion: 0.18
-Nodes (27): getAnnouncementsForEmployee(), getAttendanceCorrections(), getAttendanceCorrectionsForEmployee(), getDismissedNotificationIds(), getITIssues(), getITIssuesForEmployee(), getOvertimeRequestsForEmployee(), getProfileForEmployee() (+19 more)
+### Community 13 - "TeamChat.jsx"
+Cohesion: 0.27
+Nodes (11): TeamChat(), handleClearChat(), handleKeyDown(), handlePickFiles(), loadMessages(), send(), addTeamMessage(), clearTeamConversation() (+3 more)
 
-### Community 15 - "Dashboard Charts"
-Cohesion: 0.12
-Nodes (22): AttendanceChartKey, AttendanceTodayChart(), AttendanceTodayChartProps, CHART_BUCKETS, STATUS_COLORS, STATUS_COLORS, TaskForChart, TaskStatusChart() (+14 more)
+### Community 14 - "notifications.js"
+Cohesion: 0.22
+Nodes (23): getAnnouncementsForEmployee(), getITIssues(), getITIssuesForEmployee(), getOvertimeRequestsForEmployee(), getProfiles(), getReimbursementsForEmployee(), getShiftById(), getTasksForAssignee() (+15 more)
 
-### Community 16 - "React Ref Utilities"
+### Community 15 - "TaskStatusChart.tsx"
+Cohesion: 0.17
+Nodes (15): AttendanceChartKey, AttendanceTodayChart(), AttendanceTodayChartProps, CHART_BUCKETS, STATUS_COLORS, STATUS_COLORS, TaskForChart, TaskStatusChart() (+7 more)
+
+### Community 16 - "compilerOptions"
 Cohesion: 0.08
 Nodes (24): DOM, DOM.Iterable, ES2020, src, compilerOptions, allowImportingTsExtensions, allowJs, baseUrl (+16 more)
 
-### Community 17 - "Cab Management Core"
+### Community 17 - "TripsTab"
+Cohesion: 0.10
+Nodes (22): deleteTrip(), deleteVehicle(), updateVehicle(), bump(), handleClickOutside(), TodayTab(), closeMenu(), handleClickOutside() (+14 more)
+
+### Community 18 - "MessagesTab"
+Cohesion: 0.26
+Nodes (11): addCabMessage(), clearCabChatAdmin(), getCabClearedAtAdmin(), getCabMessages(), getCabMessagesForEmployee(), markCabThreadRead(), MessagesTab(), chooseEmployee() (+3 more)
+
+### Community 19 - "getShiftChangeRequests"
+Cohesion: 0.21
+Nodes (16): approveShiftChange(), getShiftChangeRequests(), getShiftChangeRequestsForEmployee(), rejectShiftChange(), requestShiftChange(), updateShiftChangeRequest(), withdrawShiftChangeRequest(), RequestsTab() (+8 more)
+
+### Community 20 - "ShiftsTab"
+Cohesion: 0.24
+Nodes (12): addShift(), deleteShift(), getShifts(), updateShift(), closeMenu(), handleClickOutside(), ShiftsTab(), handleAdd() (+4 more)
+
+### Community 21 - "EmployeeTasks"
 Cohesion: 0.13
-Nodes (17): addVehicle(), deleteVehicle(), getVehicles(), updateVehicle(), handleClickOutside(), TodayTab(), closeMenu(), handleClickOutside() (+9 more)
+Nodes (18): EmployeeTasks(), assignerLabel(), closeMenu(), handleClickOutside(), nameOf(), statusCell(), inAssignedDuring(), statusCell() (+10 more)
 
-### Community 18 - "Cab Management Trips"
-Cohesion: 0.18
-Nodes (13): TimeInput(), addCabMessage(), getCabClearedAtAdmin(), getCabMessages(), getCabMessagesForEmployee(), getCabUnreadByEmployee(), markCabThreadRead(), EMPTY_TRIP_FORM (+5 more)
+### Community 22 - "devDependencies"
+Cohesion: 0.11
+Nodes (19): autoprefixer, devDependencies, autoprefixer, postcss, tailwindcss, @types/react, @types/react-dom, typescript (+11 more)
 
-### Community 19 - "Supabase Client & Config"
-Cohesion: 0.18
-Nodes (18): approveShiftChange(), getShiftChangeRequests(), getShiftChangeRequestsForEmployee(), rejectShiftChange(), requestShiftChange(), updateShiftChangeRequest(), withdrawShiftChangeRequest(), AdminShifts() (+10 more)
-
-### Community 20 - "Shift Management"
-Cohesion: 0.19
-Nodes (15): addShift(), deleteShift(), getEmployeeShiftStartTime(), getShiftById(), getShiftForEmployee(), getShifts(), updateShift(), closeMenu() (+7 more)
-
-### Community 21 - "Task Utilities"
-Cohesion: 0.18
-Nodes (17): ASSIGNED_DURING_FILTER_OPTS, statusCell(), inAssignedDuring(), TASK_PRIORITY_FILTER_OPTS, TASK_STATUS_FILTER_OPTS, statusCell(), canEmployeeAskQuestion(), canEmployeeDeleteTask() (+9 more)
-
-### Community 22 - "Package Dev Config"
+### Community 23 - "dependencies"
 Cohesion: 0.12
-Nodes (17): autoprefixer, devDependencies, autoprefixer, postcss, tailwindcss, @types/react, @types/react-dom, typescript (+9 more)
+Nodes (17): clsx, html2pdf.js, jszip, lucide-react, dependencies, clsx, html2pdf.js, jszip (+9 more)
 
-### Community 23 - "Package Dependencies"
-Cohesion: 0.12
-Nodes (17): clsx, framer-motion, html2pdf.js, jszip, lucide-react, dependencies, clsx, framer-motion (+9 more)
+### Community 24 - "Design System: WorkBuddy EMS"
+Cohesion: 0.08
+Nodes (25): Buttons, Cards / Containers, Chips / Tags, Colors, Components, Design System: WorkBuddy EMS, Do:, Do's and Don'ts (+17 more)
 
-### Community 24 - "Sample Data Definitions"
-Cohesion: 0.15
-Nodes (13): TaskForm(), ANNOUNCEMENT_TYPES, DEFAULT_SETTINGS, DEFAULT_SHIFTS, IT_ISSUE_CATEGORIES, IT_ISSUE_PRIORITIES, IT_ISSUE_STATUSES, SHIFT_CHANGE_STATUSES (+5 more)
+### Community 25 - "DriversTab"
+Cohesion: 0.22
+Nodes (9): addDriver(), deleteDriver(), setDriverPin(), updateDriver(), DriversTab(), confirmDelete(), savePin(), submitAdd() (+1 more)
 
-### Community 25 - "Cab Management Routes"
+### Community 26 - "ensureAttendanceMonths"
 Cohesion: 0.19
-Nodes (13): addDriver(), clearCabChatAdmin(), deleteDriver(), getDrivers(), setDriverPin(), updateDriver(), bump(), DriversTab() (+5 more)
+Nodes (22): applyAppStoreRows(), applyAttendanceWindow(), attendanceWindowMonths(), ensureAttendanceMonths(), ensureAttendanceRange(), fetchAllFromTable(), fetchAttendanceWindow(), initStore() (+14 more)
 
-### Community 26 - "Employee Tasks Page"
-Cohesion: 0.16
-Nodes (12): addTaskMessage(), EmployeeTasks(), assignerLabel(), bump(), closeMenu(), confirmDelete(), handleClickOutside(), handleCreate() (+4 more)
+### Community 27 - "TeamTasksPanel"
+Cohesion: 0.13
+Nodes (14): addTaskMessage(), deleteTask(), getTeamMembers(), confirmDelete(), handleTaskReply(), TeamTasksPanel(), bump(), closeMenu() (+6 more)
 
-### Community 27 - "Team Tasks Page"
+### Community 28 - "AdminTasks"
 Cohesion: 0.15
-Nodes (11): TeamTasksPanel(), bump(), closeMenu(), confirmDelete(), handleApproveClosure(), handleClickOutside(), move(), nameOf() (+3 more)
+Nodes (14): addTask(), addTaskMessageByAdmin(), updateTaskByAdmin(), AdminTasks(), bump(), closeMenu(), handleCreate(), handleEdit() (+6 more)
 
-### Community 28 - "Admin Tasks Page"
-Cohesion: 0.17
-Nodes (12): addTask(), addTaskMessageByAdmin(), updateTaskByAdmin(), AdminTasks(), bump(), closeMenu(), handleCreate(), handleEdit() (+4 more)
-
-### Community 29 - "Component Aliases"
+### Community 29 - "components.json"
 Cohesion: 0.14
 Nodes (13): aliases, components, ui, utils, rsc, $schema, style, tailwind (+5 more)
 
-### Community 30 - "Task Utility Helpers"
-Cohesion: 0.30
-Nodes (12): TaskBoard(), TASK_STATUSES, EMPLOYEE_ASSIGNED_STATUSES, EMPLOYEE_SELF_STATUSES, groupByStatus(), isOverdue(), isTaskComplete(), MANAGER_ASSIGNED_STATUSES (+4 more)
+### Community 30 - "tasks.js"
+Cohesion: 0.27
+Nodes (13): TaskBoard(), canManagerApproveDone(), EMPLOYEE_ASSIGNED_STATUSES, EMPLOYEE_SELF_STATUSES, groupByStatus(), isManagerAssignedDone(), isOverdue(), isTaskComplete() (+5 more)
 
-### Community 31 - "Store Write Operations"
-Cohesion: 0.16
-Nodes (13): getCabAssignmentForEmployee(), getCabAssignments(), getCabCancellationForEmployee(), getCabCancellations(), getCabCancellationsForDate(), getDriverRunSheet(), buildStops(), personInfo() (+5 more)
+### Community 31 - "CabManagement.jsx"
+Cohesion: 0.14
+Nodes (19): TimeInput(), addTrip(), addVehicle(), getCabAssignments(), getCabCancellationsForDate(), getCabUnreadByEmployee(), getDriverRunSheet(), buildStops() (+11 more)
 
-### Community 32 - "Cab Management Schedule"
-Cohesion: 0.24
-Nodes (9): addTrip(), deleteTrip(), getTrips(), updateTrip(), TripsTab(), confirmDelete(), normalize(), submitAdd() (+1 more)
+### Community 32 - "todayKey"
+Cohesion: 0.19
+Nodes (19): getProfileForEmployee(), requestProfileUpdate(), reviewProfile(), saveProfileDraft(), submitProfile(), todayKey(), upsertProfile(), profileOf() (+11 more)
 
-### Community 33 - "Store Field Mapping"
-Cohesion: 0.15
-Nodes (13): clearCabChat(), createAnnouncement(), deleteAnnouncement(), getAnnouncements(), getCabClearedAt(), getITStaff(), getReadAnnouncements(), markAnnouncementAsRead() (+5 more)
+### Community 33 - "read"
+Cohesion: 0.27
+Nodes (10): Layout(), getAnnouncements(), getReadAnnouncements(), getTeamConversations(), getTeamUnreadCount(), getUnreadAnnouncementCount(), markAnnouncementAsRead(), read() (+2 more)
 
-### Community 34 - "Build & Dev Scripts"
+### Community 34 - "package.json"
+Cohesion: 0.33
+Nodes (5): description, name, private, type, version
+
+### Community 35 - "write"
+Cohesion: 0.23
+Nodes (13): clearCabChat(), createCabRequest(), deleteCabRequest(), getCabRequests(), getCabRequestsForEmployee(), setCabRequestStatus(), updateCabRequest(), write() (+5 more)
+
+### Community 36 - "NotificationBell"
+Cohesion: 0.18
+Nodes (17): NotificationBell(), handleClearAll(), handleClickItem(), handleMarkAll(), handleOpenToggle(), onTeamMessage(), refresh(), dismissAllNotifications() (+9 more)
+
+### Community 37 - "EmployeeRecords"
 Cohesion: 0.20
-Nodes (9): description, name, private, scripts, build, dev, preview, type (+1 more)
+Nodes (11): reviewProfileUpdateRequest(), updateEmployeeTeam(), EmployeeRecords(), approveUpdateRequest(), closeEdit(), closeMenu(), denyUpdateRequest(), handleClickOutside() (+3 more)
 
-### Community 35 - "Cab Management Drivers"
-Cohesion: 0.31
-Nodes (10): getEmployees(), getMyTeammates(), getTeamMembers(), setCabRequestStatus(), CabManagement(), nameOf(), RequestsTab(), decide() (+2 more)
+### Community 38 - "getEmployees"
+Cohesion: 0.47
+Nodes (5): assignEmployeeShift(), getEmployees(), AssignmentsTab(), confirmChange(), nameOf()
 
-### Community 36 - "Reimbursement Thread"
-Cohesion: 0.28
-Nodes (3): ReimbursementThread(), TaskThread(), formatDate()
+### Community 39 - "Product"
+Cohesion: 0.17
+Nodes (11): Accessibility & Inclusion, Brand Commitments, Capabilities and Constraints, Evidence on Hand, Operating Context, Platform, Positioning, Product (+3 more)
 
-### Community 37 - "Employee Dashboard"
+### Community 42 - "check-leaves.mjs"
 Cohesion: 0.25
-Nodes (8): submitAttendanceCorrection(), updateAttendanceCorrection(), withdrawAttendanceCorrection(), confirmCorrectionWithdraw(), handleCorrectionEdit(), handleCorrectionReply(), handleCorrectionSubmit(), refreshCorrections()
+Nodes (6): __dirname, envContent, envVars, __filename, LEAVE_TYPES, supabase
 
-### Community 38 - "Store Leave Operations"
+### Community 43 - "origin-button.tsx"
+Cohesion: 0.36
+Nodes (7): assignRef(), ButtonHTMLAttributesForMotion, FILL_EASE, getCoverDiameter(), hasTextContent(), OriginButton, OriginButtonProps
+
+### Community 50 - "perf-probe.mjs"
+Cohesion: 0.33
+Nodes (4): a, keys, t0, TABLES
+
+### Community 51 - "scripts"
 Cohesion: 0.40
-Nodes (5): assignEmployeeShift(), getShiftHistory(), getShiftHistoryForEmployee(), AssignmentsTab(), confirmChange()
+Nodes (5): scripts, build, deploy, dev, preview
 
-### Community 39 - "Modal & Overlay Components"
-Cohesion: 0.67
-Nodes (3): getFocusableElements(), focusables(), onKeyDown()
+### Community 52 - "ChatSection"
+Cohesion: 0.50
+Nodes (3): ChatSection(), handleKeyDown(), send()
 
 ## Knowledge Gaps
-- **135 isolated node(s):** `$schema`, `style`, `rsc`, `tsx`, `config` (+130 more)
+- **185 isolated node(s):** `$schema`, `style`, `rsc`, `tsx`, `config` (+180 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **7 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **11 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useTableControls()` connect `Shared UI Components` to `Leave Management Module`, `Salary, Overtime & Attendance`, `Attendance Correction`, `Admin Profiles & Documents`, `Reimbursement Module`, `Ticket Management`, `IT Help Desk`, `App Shell & Routing`, `Auth Context & Team Data`, `My Cab & Driver View`, `Cab Management Core`, `Cab Management Trips`, `Supabase Client & Config`, `Shift Management`, `Task Utilities`, `Sample Data Definitions`, `Cab Management Routes`, `Employee Tasks Page`, `Team Tasks Page`, `Admin Tasks Page`, `Store Write Operations`, `Cab Management Schedule`, `Store Leave Operations`?**
-  _High betweenness centrality (0.079) - this node is a cross-community bridge._
-- **Why does `formatDate()` connect `Reimbursement Thread` to `Leave Management Module`, `Attendance Correction`, `Admin Profiles & Documents`, `Shared UI Components`, `Reimbursement Module`, `Ticket Management`, `IT Help Desk`, `App Shell & Routing`, `Auth Context & Team Data`, `My Cab & Driver View`, `Cab Management Trips`, `Supabase Client & Config`, `Task Utilities`, `Sample Data Definitions`, `Employee Tasks Page`, `Team Tasks Page`, `Admin Tasks Page`, `Task Utility Helpers`, `Cab Management Drivers`?**
-  _High betweenness centrality (0.072) - this node is a cross-community bridge._
-- **Why does `usePagination()` connect `Shared UI Components` to `Leave Management Module`, `Salary, Overtime & Attendance`, `Attendance Correction`, `Admin Profiles & Documents`, `Reimbursement Module`, `Ticket Management`, `IT Help Desk`, `App Shell & Routing`, `Auth Context & Team Data`, `My Cab & Driver View`, `Cab Management Core`, `Cab Management Trips`, `Supabase Client & Config`, `Shift Management`, `Task Utilities`, `Sample Data Definitions`, `Cab Management Routes`, `Employee Tasks Page`, `Team Tasks Page`, `Admin Tasks Page`, `Store Write Operations`, `Cab Management Schedule`, `Cab Management Drivers`, `Store Leave Operations`?**
-  _High betweenness centrality (0.069) - this node is a cross-community bridge._
+- **Why does `usePagination()` connect `App.jsx` to `leaves.js`, `AdminSalary.jsx`, `attendance.js`, `EmployeeReimbursements`, `EmployeeTickets`, `EmployeeITHelpDesk.jsx`, `AdminAnnouncements`, `getEmployeeById`, `MyCab.jsx`, `TripsTab`, `getShiftChangeRequests`, `ShiftsTab`, `EmployeeTasks`, `DriversTab`, `TeamTasksPanel`, `AdminTasks`, `CabManagement.jsx`, `write`, `EmployeeRecords`, `getEmployees`?**
+  _High betweenness centrality (0.055) - this node is a cross-community bridge._
+- **Why does `formatDate()` connect `App.jsx` to `leaves.js`, `todayKey`, `attendance.js`, `profile.js`, `write`, `EmployeeReimbursements`, `EmployeeRecords`, `EmployeeTickets`, `EmployeeITHelpDesk.jsx`, `AdminAnnouncements`, `getEmployeeById`, `MyCab.jsx`, `getShiftChangeRequests`, `EmployeeTasks`, `TeamTasksPanel`, `AdminTasks`, `tasks.js`, `CabManagement.jsx`?**
+  _High betweenness centrality (0.055) - this node is a cross-community bridge._
+- **Why does `useTableControls()` connect `App.jsx` to `leaves.js`, `AdminSalary.jsx`, `attendance.js`, `EmployeeReimbursements`, `EmployeeTickets`, `EmployeeITHelpDesk.jsx`, `AdminAnnouncements`, `getEmployeeById`, `MyCab.jsx`, `TripsTab`, `getShiftChangeRequests`, `ShiftsTab`, `EmployeeTasks`, `DriversTab`, `TeamTasksPanel`, `AdminTasks`, `CabManagement.jsx`, `EmployeeRecords`, `getEmployees`?**
+  _High betweenness centrality (0.054) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `useTableControls()` (e.g. with `setFilter()` and `toggleSort()`) actually correct?**
   _`useTableControls()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `$schema`, `style`, `rsc` to the rest of the system?**
-  _135 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Leave Management Module` be split into smaller, more focused modules?**
-  _Cohesion score 0.06751054852320675 - nodes in this community are weakly interconnected._
-- **Should `Salary, Overtime & Attendance` be split into smaller, more focused modules?**
-  _Cohesion score 0.05860805860805861 - nodes in this community are weakly interconnected._
+  _185 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `leaves.js` be split into smaller, more focused modules?**
+  _Cohesion score 0.06340326340326341 - nodes in this community are weakly interconnected._
+- **Should `AdminSalary.jsx` be split into smaller, more focused modules?**
+  _Cohesion score 0.05745814307458143 - nodes in this community are weakly interconnected._

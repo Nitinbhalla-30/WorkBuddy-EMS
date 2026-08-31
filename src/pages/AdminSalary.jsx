@@ -6,7 +6,8 @@ import {
   getSettings,
   getOvertimeRequests,
   getReimbursements,
-  updateEmployeeSalary
+  updateEmployeeSalary,
+  ensureAttendanceMonths
 } from '../data/store.js'
 import Payslip from '../components/Payslip.jsx'
 import Modal from '../components/Modal.jsx'
@@ -35,6 +36,19 @@ export default function AdminSalary() {
   const [form, setForm] = useState(null)
   const [refresh, setRefresh] = useState(0)     // bump to recompute after save
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [monthReady, setMonthReady] = useState(false)
+
+  // Pay for a month reads every attendance day in it, but only the rolling
+  // window is cached at startup — fetch the selected month first so absent
+  // rows are never mistaken for loss of pay.
+  useEffect(() => {
+    let cancelled = false
+    setMonthReady(false)
+    ensureAttendanceMonths([selected]).then((ok) => {
+      if (!cancelled && ok) setMonthReady(true)
+    })
+    return () => { cancelled = true }
+  }, [selected])
 
   const employees = useMemo(
     () => getEmployees().filter((e) => e.role === 'employee'),
@@ -42,6 +56,7 @@ export default function AdminSalary() {
   )
 
   const allRows = useMemo(() => {
+    if (!monthReady) return []
     const attendance = getAttendance()
     const leaves = getLeaves()
     const settings = getSettings()
@@ -52,7 +67,7 @@ export default function AdminSalary() {
       calc: computeSalary(emp, selected, { attendance, leaves, settings, overtimeRequests, reimbursements })
     }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employees, selected, refresh])
+  }, [employees, selected, refresh, monthReady])
 
   const EMPLOYEE_FILTER_OPTS = useMemo(
     () => [
@@ -248,7 +263,10 @@ export default function AdminSalary() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={8} message="No employees match your filters." />
+              <TableEmpty
+                colSpan={8}
+                message={monthReady ? 'No employees match your filters.' : 'Loading attendance for this month…'}
+              />
             )}
             {rowsPage.map(({ emp, calc }) => (
               <tr key={emp.id}>

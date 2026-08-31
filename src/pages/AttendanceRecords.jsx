@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addAttendanceCorrectionMessage,
+  attendanceMonthsLoaded,
+  ensureAttendanceMonths,
   getAttendance,
   getAttendanceCorrections,
   getEmployeeById,
@@ -17,6 +19,10 @@ import {
   formatDate,
   formatMinutes,
   isLate,
+  monthKey,
+  monthKeyOffset,
+  monthLabel,
+  monthsForStatsPeriod,
   resolveJoinDate,
   resolveStartTime,
   statusOf,
@@ -61,6 +67,19 @@ const CORRECTION_STATUS_FILTER_OPTS = [
   { value: 'withdrawn', label: 'Withdrawn' }
 ]
 
+// How far back the Month picker reaches. Only the rolling window is cached at
+// startup, so choosing one of these pulls that month from Supabase on demand.
+const HISTORY_MONTH_RANGE = 24
+
+function monthFilterOptions() {
+  const keys = []
+  for (let i = 0; i < HISTORY_MONTH_RANGE; i++) keys.push(monthKeyOffset(i))
+  return [
+    { value: 'all', label: 'Cached months' },
+    ...keys.map((k) => ({ value: k, label: monthLabel(k) }))
+  ]
+}
+
 // All attendance records with filters by employee, period, department, and manager.
 export default function AttendanceRecords() {
   const { user } = useAuth()
@@ -74,6 +93,11 @@ export default function AttendanceRecords() {
   const [openId, setOpenId] = useState(null)
   const [rejectMode, setRejectMode] = useState(false)
   const [rejectNote, setRejectNote] = useState('')
+  // Bumped whenever extra attendance months land in the cache, so the memos
+  // below re-read them. `historyPending` keeps the table honest while a fetch
+  // for an older month is still in flight.
+  const [attendanceTick, setAttendanceTick] = useState(0)
+  const [historyPending, setHistoryPending] = useState(false)
 
   const employeeFilterOpts = useMemo(() => [
     { value: 'all', label: 'All employees' },
@@ -104,7 +128,9 @@ export default function AttendanceRecords() {
     ]
   }, [employees])
 
-  const rawRecords = useMemo(() => getAttendance(), [])
+  const monthFilterOpts = useMemo(() => monthFilterOptions(), [])
+
+  const rawRecords = useMemo(() => getAttendance(), [attendanceTick])
 
   const allRecords = useMemo(() => {
     // Build a set of dates that have at least one real record
@@ -212,6 +238,7 @@ export default function AttendanceRecords() {
         joinDate: joinDateByEmployee[r.employeeId] || today,
         todayDate: today
       }).length > 0,
+      month: (r, val) => val === 'all' || String(r.date || '').startsWith(val),
       department: (r, val) => getEmployeeById(r.employeeId)?.department === val,
       reportsTo: (r, val) => {
         const managerId = getEmployeeById(r.employeeId)?.managerId
@@ -223,8 +250,31 @@ export default function AttendanceRecords() {
         return recordStatus(r) === val
       }
     },
-    initialFilters: { period: 'all' }
+    initialFilters: { period: 'all', month: 'all' }
   })
+
+  // Only a rolling window of attendance is cached after login. When the admin
+  // asks for an older period or month, fetch just those months from Supabase
+  // instead of the whole history, then bump the tick so the table re-reads.
+  const selectedPeriod = table.filters.period || 'all'
+  const selectedMonth = table.filters.month || 'all'
+
+  useEffect(() => {
+    const wanted = []
+    if (selectedPeriod !== 'all') wanted.push(...monthsForStatsPeriod(selectedPeriod, { todayDate: today }))
+    if (selectedMonth !== 'all') wanted.push(selectedMonth)
+    if (wanted.length === 0) return undefined
+    if (wanted.every((m) => attendanceMonthsLoaded().includes(m))) return undefined
+    let cancelled = false
+    setHistoryPending(true)
+    ensureAttendanceMonths(wanted).then((ok) => {
+      if (cancelled) return
+      setHistoryPending(false)
+      if (ok) setAttendanceTick((n) => n + 1)
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPeriod, selectedMonth, today])
 
   const correctionsTable = useTableControls(corrections, {
     getSearchText: (c) => {
@@ -299,17 +349,27 @@ export default function AttendanceRecords() {
     setRejectNote('')
   }
 
-  function approveCorrection(id) {
-    resolveAttendanceCorrection(id, 'approved', user.id, 'Attendance updated as requested.')
-    refreshCorrections()
-    closeReview()
+  // Approving an out-of-window correction needs the target month downloaded
+  // first, so the store call is async now — wait for it before refreshing.
+  async function approveCorrection(id) {
+    try {
+      await resolveAttendanceCorrection(id, 'approved', user.id, 'Attendance updated as requested.')
+      refreshCorrections()
+      closeReview()
+    } catch (err) {
+      console.warn('Could not approve attendance correction', err)
+    }
   }
 
-  function rejectCorrection(id) {
+  async function rejectCorrection(id) {
     if (!rejectNote.trim()) return
-    resolveAttendanceCorrection(id, 'rejected', user.id, rejectNote.trim())
-    refreshCorrections()
-    closeReview()
+    try {
+      await resolveAttendanceCorrection(id, 'rejected', user.id, rejectNote.trim())
+      refreshCorrections()
+      closeReview()
+    } catch (err) {
+      console.warn('Could not reject attendance correction', err)
+    }
   }
 
   function handleReply(text) {
@@ -338,7 +398,7 @@ export default function AttendanceRecords() {
     if (status === 'approved') return 'tag-ok'
     if (status === 'rejected') return 'tag-late'
     if (status === 'withdrawn') return 'tag-absent'
-    return 'tag-absent'
+    return 'tag-pending' // pending — blue, distinct from the grey withdrawn tag
   }
 
   useEffect(() => {
@@ -461,6 +521,12 @@ export default function AttendanceRecords() {
               options: PERIOD_FILTER_OPTS
             },
             {
+              key: 'month',
+              label: 'Month',
+              value: selectedMonth,
+              options: monthFilterOpts
+            },
+            {
               key: 'department',
               label: 'Department',
               value: table.filters.department || 'all',
@@ -514,7 +580,12 @@ export default function AttendanceRecords() {
           </thead>
           <tbody>
             {recordsTotal === 0 && (
-              <TableEmpty colSpan="10" message="No records match your filters." />
+              <TableEmpty
+                colSpan="10"
+                message={historyPending
+                  ? 'Loading older attendance records from the server...'
+                  : 'No records match your filters.'}
+              />
             )}
             {recordsPage.map((r) => {
               const emp = getEmployeeById(r.employeeId)

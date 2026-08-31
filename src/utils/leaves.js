@@ -102,11 +102,13 @@ export function leaveBalance(leaves, allowance) {
 }
 
 // Colour tag class for a status word.
+// App-wide convention (same as reimbursements, overtime, shifts): pending is blue
+// so it reads as "still in progress", while a withdrawn request is greyed out.
 export function statusTagClass(status) {
   if (status === 'approved') return 'tag-ok'
   if (status === 'rejected') return 'tag-late'
   if (status === 'withdrawn') return 'tag-absent'
-  return 'tag-absent' // pending
+  return 'tag-pending' // pending
 }
 
 export function canEditLeave(leave) {

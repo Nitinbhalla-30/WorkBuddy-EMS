@@ -2,7 +2,7 @@
 // an ID + PIN. Real, secure login will come in a later phase.
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { getEmployeeById, getDriverById, initStore } from '../data/store.js'
+import { getEmployeeById, getDriverById, initStore, whenDataReady } from '../data/store.js'
 
 const AuthContext = createContext(null)
 
@@ -12,11 +12,15 @@ const SESSION_ROLE_KEY = 'hr_session_role'
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [ready, setReady] = useState(false)
+  const [dataReady, setDataReady] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     // Load the store first (from Supabase when configured), then restore
-    // the saved session. initStore always resolves, even if offline.
+    // the saved session. initStore resolves as soon as the small login
+    // snapshot is in memory; the rest of the data keeps loading behind it.
     initStore().then(() => {
+      if (cancelled) return
       const savedId   = localStorage.getItem(SESSION_KEY)
       const savedRole = localStorage.getItem(SESSION_ROLE_KEY)
       if (savedId) {
@@ -34,6 +38,9 @@ export function AuthProvider({ children }) {
       }
       setReady(true)
     })
+    // Screens that need the complete dataset wait on this instead of `ready`.
+    whenDataReady().then(() => { if (!cancelled) setDataReady(true) })
+    return () => { cancelled = true }
   }, [])
 
   // Try to log in with an ID and PIN. Returns an error message or null.
@@ -75,7 +82,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, ready, login, logout }}>
+    <AuthContext.Provider value={{ user, ready, dataReady, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

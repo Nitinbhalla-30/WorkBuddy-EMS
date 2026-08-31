@@ -134,8 +134,54 @@ export function lastMonthKey(d = new Date()) {
   return monthKey(x)
 }
 
+// 'YYYY-MM' for the current month shifted back by `offset` months.
+export function monthKeyOffset(offset, d = new Date()) {
+  const x = new Date(d)
+  x.setDate(1)
+  x.setMonth(x.getMonth() - offset)
+  return monthKey(x)
+}
+
 export function todayDateKey(d = new Date()) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// Every 'YYYY-MM' month key between two 'YYYY-MM-DD' dates, inclusive.
+export function monthKeysBetween(fromDate, toDate) {
+  const keys = []
+  if (!fromDate || !toDate) return keys
+  const d = new Date(`${fromDate.slice(0, 7)}-01T00:00:00`)
+  const end = toDate.slice(0, 7)
+  while (monthKey(d) <= end && keys.length < 240) {
+    keys.push(monthKey(d))
+    d.setMonth(d.getMonth() + 1)
+  }
+  return keys
+}
+
+// Which months an attendance stats period reads. The browser only caches a
+// rolling window of attendance, so a screen has to load these before it can
+// trust the numbers it shows for that period.
+export function monthsForStatsPeriod(period, { joinDate, todayDate = todayDateKey() } = {}) {
+  switch (period) {
+    case 'today':
+    case 'this-month':
+      return [todayDate.slice(0, 7)]
+    case 'yesterday': {
+      // Yesterday can fall in the previous month on the 1st.
+      const d = new Date(`${todayDate}T00:00:00`)
+      d.setDate(d.getDate() - 1)
+      return [monthKey(d)]
+    }
+    case 'last-month':
+      return [lastMonthKey(new Date(`${todayDate}T00:00:00`))]
+    case 'ytd':
+      return monthKeysBetween(`${todayDate.slice(0, 4)}-01-01`, todayDate)
+    case 'since-joining':
+      return joinDate ? monthKeysBetween(joinDate, todayDate) : [todayDate.slice(0, 7)]
+    default:
+      return [todayDate.slice(0, 7)]
+  }
 }
 
 export function yesterdayKey(d = new Date()) {

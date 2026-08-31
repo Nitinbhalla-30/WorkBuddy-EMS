@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './context/AuthContext.jsx'
 import Layout from './components/Layout.jsx'
@@ -31,12 +32,26 @@ import AttendanceRecords from './pages/AttendanceRecords.jsx'
 import Settings from './pages/Settings.jsx'
 import DriverView from './pages/DriverView.jsx'
 
+// Placeholder shown while the store is still arriving, so the browser never
+// paints an empty white page while it waits.
+function BootScreen() {
+  return (
+    <div className="boot-screen">
+      <Loader2 size={20} className="animate-spin" aria-hidden="true" />
+      <span className="muted">Loading…</span>
+    </div>
+  )
+}
+
 // Only let logged-in users through. Admin-only pages also check the role.
 // noIT blocks everyone in the IT Support department (they get no announcements).
+// The full dataset is awaited here rather than in App: the login page needs
+// only the small critical snapshot, so it appears immediately.
 function Protected({ children, adminOnly, noIT }) {
-  const { user, ready } = useAuth()
-  if (!ready) return null
+  const { user, ready, dataReady } = useAuth()
+  if (!ready) return <BootScreen />
   if (!user) return <Navigate to="/login" replace />
+  if (!dataReady) return <BootScreen />
   if (adminOnly && user.role !== 'admin') return <Navigate to="/" replace />
   if (noIT && user.department === 'IT Support') {
     return <Navigate to="/it-help-desk" replace />
@@ -59,7 +74,7 @@ function Home() {
 
 export default function App() {
   const { ready } = useAuth()
-  if (!ready) return null
+  if (!ready) return <BootScreen />
 
   return (
     <Routes>

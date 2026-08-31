@@ -13,7 +13,8 @@ import {
   getShifts,
   rejectShiftChange,
   updateShift,
-  refreshStoreFromSupabase
+  refreshStoreFromSupabase,
+  STORE_KEYS
 } from '../data/store.js'
 import { formatTime12 } from '../utils/cab.js'
 import { profilePhotoUrl } from '../utils/profile.js'
@@ -40,10 +41,17 @@ export default function AdminShifts() {
 
   // Pull the latest shared data from Supabase so shift change requests
   // submitted by employees show up even if this tab's initial load was stale.
+  // Limited to the collections this screen reads.
   useEffect(() => {
     let cancelled = false
     async function refreshData() {
-      await refreshStoreFromSupabase()
+      await refreshStoreFromSupabase([
+        STORE_KEYS.shifts,
+        STORE_KEYS.shiftChangeRequests,
+        STORE_KEYS.shiftHistory,
+        STORE_KEYS.employees,
+        STORE_KEYS.profiles
+      ])
       if (!cancelled) trigger()
     }
     refreshData()

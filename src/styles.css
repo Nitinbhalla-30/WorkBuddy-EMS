@@ -1375,6 +1375,16 @@ textarea::placeholder {
 .tag-absent { background: #f0f2f6; color: var(--muted); }
 .tag-pending { background: #e8f0fe; color: #1a73e8; }
 
+/* ---------- Boot placeholder (store still loading) ---------- */
+.boot-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
 /* ---------- Tabs & row actions (leaves) ---------- */
 .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 .tab {

@@ -7,6 +7,7 @@ import {
   getLeavesForEmployee,
   getSettings,
   refreshStoreFromSupabase,
+  STORE_KEYS,
   updateLeave,
   withdrawLeave
 } from '../data/store.js'
@@ -76,11 +77,12 @@ export default function EmployeeLeaves() {
   const [message, setMessage] = useState('')
 
   // Refresh from Supabase on mount to pick up any data that was saved
-  // from another session or that failed to load initially.
+  // from another session or that failed to load initially. Only the two
+  // collections this screen reads, not the whole store.
   useEffect(() => {
     let cancelled = false
     async function load() {
-      await refreshStoreFromSupabase()
+      await refreshStoreFromSupabase([STORE_KEYS.leaves, STORE_KEYS.settings])
       if (!cancelled) setLeaves(getLeavesForEmployee(user.id))
     }
     load()
