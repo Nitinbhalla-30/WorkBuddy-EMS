@@ -32,8 +32,8 @@ import AttendanceRecords from './pages/AttendanceRecords.jsx'
 import Settings from './pages/Settings.jsx'
 import DriverView from './pages/DriverView.jsx'
 
-// Placeholder shown while the store is still arriving, so the browser never
-// paints an empty white page while it waits.
+// Placeholder shown after sign-in while the rest of the dataset is still
+// arriving, so an authenticated route never paints an empty white page.
 function BootScreen() {
   return (
     <div className="boot-screen">
@@ -74,7 +74,12 @@ function Home() {
 
 export default function App() {
   const { ready } = useAuth()
-  if (!ready) return <BootScreen />
+  // Render nothing until the login snapshot (and any saved session) is in
+  // memory. This wait is under a second, and routing has to happen after it:
+  // a returning user's session is restored here, and Login reads the company
+  // name from settings at render time. The spinner is deliberately not shown
+  // before the login page — the page simply appears.
+  if (!ready) return null
 
   return (
     <Routes>
