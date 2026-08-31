@@ -27,7 +27,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableEmpty from '../components/TableEmpty.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CircleCheck, CircleX, MoreHorizontal, Pencil, Plus, Shuffle, Trash2, X } from 'lucide-react'
+import { CircleCheck, CircleX, MoreVertical, Pencil, Plus, Shuffle, Trash2, X } from 'lucide-react'
 
 const TABS = ['Shifts', 'Employee Assignments', 'Change Requests']
 
@@ -222,7 +222,7 @@ function ShiftsTab() {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(s.id)}
                         aria-label="Shift actions"
-                      ><MoreHorizontal size={16} /></button>
+                      ><MoreVertical size={16} /></button>
                       {openMenuId === s.id && (
                         <div className="task-menu-dropdown">
                           <button
@@ -686,7 +686,7 @@ function RequestsTab({ onDecided }) {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(r.id)}
                         aria-label="Request actions"
-                      ><MoreHorizontal size={16} /></button>
+                      ><MoreVertical size={16} /></button>
                       {openMenuId === r.id && (
                         <div className="task-menu-dropdown">
                           <button

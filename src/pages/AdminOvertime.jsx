@@ -22,7 +22,7 @@ import {
   calculateOvertimePay,
   totalApprovedOvertimeHours
 } from '../utils/overtime.js'
-import { CircleCheck, CircleX, MoreHorizontal, Timer, X } from 'lucide-react'
+import { CircleCheck, CircleX, MoreVertical, Timer, X } from 'lucide-react'
 
 const TABS = ['Requests', 'Summary']
 
@@ -224,7 +224,7 @@ function RequestsTab({ refresh, onDecided }) {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(r.id)}
                         aria-label="Request actions"
-                      ><MoreHorizontal size={16} /></button>
+                      ><MoreVertical size={16} /></button>
                       {openMenuId === r.id && (
                         <div className="task-menu-dropdown">
                           <button

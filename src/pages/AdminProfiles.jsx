@@ -17,7 +17,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { Contact, Eye, MoreHorizontal, Users, X } from 'lucide-react'
+import { Contact, Eye, MoreVertical, Users, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
 
@@ -345,7 +345,7 @@ export default function EmployeeRecords() {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(e.id)}
                         aria-label="Employee actions"
-                       ><MoreHorizontal size={16} /></button>
+                       ><MoreVertical size={16} /></button>
                       {openMenuId === e.id && (
                         <div className="task-menu-dropdown">
                           <button

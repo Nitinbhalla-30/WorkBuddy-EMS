@@ -4,7 +4,7 @@ import { Ban, CarFront, House, LogOut, Navigation, Phone, TriangleAlert, Briefca
 import { getDriverRunSheet, getSettings } from '../data/store.js'
 import { formatTime12, googleMapsUrl } from '../utils/cab.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import CinematicThemeSwitcher from '../components/ui/cinematic-theme-switcher.tsx'
+import AnimatedThemeToggle from '../components/ui/animated-theme-toggle.tsx'
 import { OriginButton } from '../components/ui/origin-button.tsx'
 import Avatar from '../components/Avatar.jsx'
 import Modal from '../components/Modal.jsx'
@@ -41,8 +41,8 @@ export default function DriverView() {
               </span>
               WorkBuddy — Driver View
             </span>
-            <div className="cinematic-theme-switcher-wrap">
-              <CinematicThemeSwitcher />
+            <div className="theme-toggle-wrap">
+              <AnimatedThemeToggle />
             </div>
           </div>
           {user?.role === 'driver' && (
@@ -88,8 +88,8 @@ export default function DriverView() {
             </span>
             WorkBuddy — Driver View
           </span>
-          <div className="cinematic-theme-switcher-wrap">
-            <CinematicThemeSwitcher />
+          <div className="theme-toggle-wrap">
+            <AnimatedThemeToggle />
           </div>
         </div>
         <div className="driver-topbar-driver">

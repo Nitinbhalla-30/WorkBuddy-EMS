@@ -45,7 +45,7 @@ import {
   tripLabel,
   vehicleById
 } from '../utils/cab.js'
-import { CarFront, Check, Copy, ExternalLink, MoreHorizontal, MoreVertical, Pencil, Send, Trash2, X } from 'lucide-react'
+import { CarFront, Check, Copy, ExternalLink, MoreVertical, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
 
 const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Requests', 'Messages', 'Today']
 
@@ -194,7 +194,7 @@ function VehiclesTab({ vehicles, bump }) {
     <div className="card">
       <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
         <h3 className="section-title first">Company vehicles</h3>
-        <button className="btn btn-primary btn-tiny" onClick={openAdd}>Add vehicle</button>
+        <button className="btn btn-primary btn-tiny" onClick={openAdd}><Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add vehicle</button>
       </div>
       <table className="table">
         <thead>
@@ -216,7 +216,7 @@ function VehiclesTab({ vehicles, bump }) {
                     className="btn btn-tiny btn-light task-menu-button"
                     onClick={() => toggleMenu(v.id)}
                     aria-label="Vehicle actions"
-                   ><MoreHorizontal size={16} /></button>
+                   ><MoreVertical size={16} /></button>
                   {openMenuId === v.id && (
                     <div className="task-menu-dropdown">
                       <button
@@ -421,7 +421,7 @@ function DriversTab({ drivers, bump }) {
     <div className="card">
       <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
         <h3 className="section-title first">Company drivers</h3>
-        <button className="btn btn-primary btn-tiny" onClick={openAdd}>Add driver</button>
+        <button className="btn btn-primary btn-tiny" onClick={openAdd}><Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add driver</button>
       </div>
       <p className="hint first">
         Each driver needs a <strong>WorkBuddy ID</strong> and <strong>PIN</strong> to log in and
@@ -482,7 +482,7 @@ function DriversTab({ drivers, bump }) {
                     className="btn btn-tiny btn-light task-menu-button"
                     onClick={() => toggleMenu(d.id)}
                     aria-label="Driver actions"
-                   ><MoreHorizontal size={16} /></button>
+                   ><MoreVertical size={16} /></button>
                   {openMenuId === d.id && (
                     <div className="task-menu-dropdown">
                       <button
@@ -858,7 +858,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
         ]}
         onFilterChange={tripsTable.setFilter}
         actions={
-          <button className="btn btn-primary btn-tiny" onClick={openAdd}>Add trip</button>
+          <button className="btn btn-primary btn-tiny" onClick={openAdd}><Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add trip</button>
         }
       />
       <table className="table" style={{ tableLayout: 'fixed' }}>
@@ -908,7 +908,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(t.id)}
                       aria-label="Trip actions"
-                     ><MoreHorizontal size={16} /></button>
+                     ><MoreVertical size={16} /></button>
                     {openMenuId === t.id && (
                       <div className="task-menu-dropdown">
                         <button
@@ -1624,7 +1624,7 @@ function TodayTab({ employees, bump }) {
                           className="btn btn-tiny btn-light task-menu-button"
                           onClick={() => toggleMenu(d.id)}
                           aria-label="Run sheet actions"
-                         ><MoreHorizontal size={16} /></button>
+                         ><MoreVertical size={16} /></button>
                         {openMenuId === d.id && (
                           <div className="task-menu-dropdown">
                             <a

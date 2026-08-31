@@ -27,7 +27,7 @@ import LeaveThread from '../components/LeaveThread.jsx'
 import Modal from '../components/Modal.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CalendarDays, ClipboardCheck, CircleCheck, CircleX, MoreHorizontal, X } from 'lucide-react'
+import { CalendarDays, ClipboardCheck, CircleCheck, CircleX, MoreVertical, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
 
@@ -303,7 +303,7 @@ export default function AdminLeaves() {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(lv.id)}
                         aria-label="Leave actions"
-                       ><MoreHorizontal size={16} /></button>
+                       ><MoreVertical size={16} /></button>
                       {openMenuId === lv.id && (
                         <div className="task-menu-dropdown">
                           <button

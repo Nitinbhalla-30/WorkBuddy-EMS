@@ -5,10 +5,22 @@ import { profilePhotoUrl } from '../utils/profile.js'
 import Avatar from './Avatar.jsx'
 import Modal from './Modal.jsx'
 import NotificationBell from './NotificationBell.jsx'
-import CinematicThemeSwitcher from './ui/cinematic-theme-switcher.tsx'
+import AnimatedThemeToggle from './ui/animated-theme-toggle.tsx'
 import { OriginButton } from './ui/origin-button.tsx'
 import { useState, useEffect } from 'react'
-import { Banknote, Briefcase, CalendarDays, CarFront, CircleUser, Clock, Contact, LayoutDashboard, ListTodo, LogOut, Megaphone, MessageSquareText, ReceiptText, Settings, Shuffle, Users, Wrench, X, Timer } from 'lucide-react'
+import { Banknote, Briefcase, CalendarDays, CarFront, CircleUser, Clock, Contact, LayoutDashboard, ListTodo, LogOut, Megaphone, MessageSquareText, PanelLeftClose, PanelLeftOpen, ReceiptText, Settings, Shuffle, Users, Wrench, X, Timer } from 'lucide-react'
+
+// Sidebar collapse-to-rail is a display preference, not app data → localStorage.
+// Guarded because the app already tolerates storage being unavailable.
+const NAV_COLLAPSE_KEY = 'workbuddy_nav_collapsed'
+
+function readNavCollapsed() {
+  try {
+    return localStorage.getItem(NAV_COLLAPSE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 // The shared frame: top bar with the company name, side menu, and content.
 export default function Layout() {
@@ -22,6 +34,19 @@ export default function Layout() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [teamUnreadCount, setTeamUnreadCount] = useState(0)
   const [confirmLogout, setConfirmLogout] = useState(false)
+  const [navCollapsed, setNavCollapsed] = useState(readNavCollapsed)
+
+  const toggleNav = () => {
+    setNavCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(NAV_COLLAPSE_KEY, next ? '1' : '0')
+      } catch {
+        // Preference just won't persist; the toggle still works for this session.
+      }
+      return next
+    })
+  }
 
   useEffect(() => {
     if (user && showAnnouncements) {
@@ -78,6 +103,10 @@ export default function Layout() {
 
   const photoUrl = user ? profilePhotoUrl(getProfileForEmployee(user.id)) : ''
 
+  // The visible text is the button's accessible name (it clips away in the rail
+  // but stays in the DOM), so a title is only needed when there's no room.
+  const navToggleLabel = navCollapsed ? 'Expand menu' : 'Hide menu'
+
   const employeeNav = [
     { to: '/my-profile', label: 'My Details', icon: CircleUser },
     { to: '/my-shifts', label: 'My Shifts', icon: Shuffle },
@@ -122,9 +151,6 @@ export default function Layout() {
           WorkBuddy - {settings.companyName}
         </div>
         <div className="topbar-right">
-          <div className="cinematic-theme-switcher-wrap">
-            <CinematicThemeSwitcher />
-          </div>
           <span className="who">
             <Avatar src={photoUrl} name={user?.name || ''} size={32} />
             <span className="who-text">
@@ -137,6 +163,9 @@ export default function Layout() {
           {user && (user.role === 'employee' || (user.role === 'admin' && !isIT)) && (
             <NotificationBell employeeId={user.id} viewerRole={user.role} />
           )}
+          <div className="theme-toggle-wrap">
+            <AnimatedThemeToggle />
+          </div>
           <OriginButton
             className="h-10 rounded-lg px-4 text-[14px] data-[hovered=true]:text-white dark:data-[hovered=true]:text-white"
             fillClassName="bg-[#e81123] dark:bg-[#e81123]"
@@ -148,19 +177,47 @@ export default function Layout() {
       </header>
 
       <div className="body">
-        <nav className="sidebar">
-          {navItems.map(({ to, label, icon: Icon, badge }) => {
-            const count = badge && label === 'My Team' ? teamUnreadCount : unreadCount
-            return (
-              <NavLink key={to} to={to} className="nav-item">
-                <Icon className="nav-icon" size={17} aria-hidden="true" />
-                <span className="nav-label">{label}</span>
-                {badge && count > 0 && (
-                  <span className="notification-badge">{count}</span>
-                )}
-              </NavLink>
-            )
-          })}
+        <nav
+          id="app-nav"
+          className={'sidebar' + (navCollapsed ? ' sidebar--collapsed' : '')}
+          aria-label="Main navigation"
+        >
+          {/* The list scrolls; the collapse control beneath it stays put so it
+              is reachable even when every module is on screen. */}
+          <div className="sidebar-nav">
+            {navItems.map(({ to, label, icon: Icon, badge }) => {
+              const count = badge && label === 'My Team' ? teamUnreadCount : unreadCount
+              return (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className="nav-item"
+                  title={navCollapsed ? label : undefined}
+                >
+                  <Icon className="nav-icon" size={17} aria-hidden="true" />
+                  <span className="nav-label">{label}</span>
+                  {badge && count > 0 && (
+                    <span className="notification-badge">{count}</span>
+                  )}
+                </NavLink>
+              )
+            })}
+          </div>
+          <div className="sidebar-foot">
+            <button
+              type="button"
+              className="sidebar-collapse-btn"
+              onClick={toggleNav}
+              aria-controls="app-nav"
+              aria-expanded={!navCollapsed}
+              title={navCollapsed ? navToggleLabel : undefined}
+            >
+              {navCollapsed
+                ? <PanelLeftOpen className="nav-icon" size={17} strokeWidth={2} aria-hidden="true" />
+                : <PanelLeftClose className="nav-icon" size={17} strokeWidth={2} aria-hidden="true" />}
+              <span className="nav-label">{navToggleLabel}</span>
+            </button>
+          </div>
         </nav>
 
         <main className="content">

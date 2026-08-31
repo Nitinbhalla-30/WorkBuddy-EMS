@@ -23,7 +23,7 @@ import {
   listRecentMonths,
   monthKey
 } from '../utils/salary.js'
-import { Download, FileText, MoreHorizontal, Banknote, Pencil, X } from 'lucide-react'
+import { Download, FileText, MoreVertical, Banknote, Pencil, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
 
@@ -292,7 +292,7 @@ export default function AdminSalary() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(emp.id)}
                       aria-label="Employee actions"
-                     ><MoreHorizontal size={16} /></button>
+                     ><MoreVertical size={16} /></button>
                     {openMenuId === emp.id && (
                       <div className="task-menu-dropdown">
                         <button

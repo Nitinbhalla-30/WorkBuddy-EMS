@@ -18,7 +18,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { Eye, MoreHorizontal, MessageSquareText, Pencil, Trash2, Undo2, X } from 'lucide-react'
+import { Eye, MoreVertical, MessageSquareText, Pencil, Plus, Trash2, Undo2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TICKET_KIND_OPTS = [
@@ -150,12 +150,6 @@ export default function EmployeeTickets() {
           </h2>
           <p className="muted small" style={{ margin: '4px 0 0' }}>Raise and track your queries and confidential grievances</p>
         </div>
-        <button
-          className="btn btn-primary btn-tiny"
-          onClick={() => { setShowForm((s) => !s); setOpenId(null) }}
-        >
-          {showForm ? 'Close' : 'Raise new'}
-        </button>
       </div>
 
       {showForm && (
@@ -209,6 +203,18 @@ export default function EmployeeTickets() {
             { key: 'status', label: 'Status', value: table.filters.status || 'all', options: TICKET_STATUS_OPTS }
           ]}
           onFilterChange={table.setFilter}
+          actions={
+            <button
+              className="btn btn-primary btn-tiny"
+              onClick={() => { setShowForm((s) => !s); setOpenId(null) }}
+            >
+              {/* The icon follows the action: plus when it opens the form, cross when it closes it */}
+              {showForm
+                ? <X size={14} style={{ marginRight: 4 }} aria-hidden="true" />
+                : <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />}
+              {showForm ? 'Close' : 'Raise new'}
+            </button>
+          }
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
@@ -247,7 +253,7 @@ export default function EmployeeTickets() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(t.id)}
                       aria-label="Ticket actions"
-                     ><MoreHorizontal size={16} /></button>
+                     ><MoreVertical size={16} /></button>
                     {openMenuId === t.id && (
                       <div className="task-menu-dropdown">
                         <button

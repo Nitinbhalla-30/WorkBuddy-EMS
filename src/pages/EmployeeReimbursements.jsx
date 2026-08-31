@@ -27,7 +27,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { Eye, MoreHorizontal, Pencil, ReceiptText, Trash2, Undo2, X } from 'lucide-react'
+import { Eye, MoreVertical, Pencil, Plus, ReceiptText, Trash2, Undo2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const STATUS_FILTERS = [
@@ -323,7 +323,7 @@ export default function EmployeeReimbursements() {
               className="btn btn-primary btn-tiny"
               onClick={() => setShowForm(true)}
             >
-              Submit claim
+              <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Submit claim
             </button>
           }
         />
@@ -373,7 +373,7 @@ export default function EmployeeReimbursements() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(c.id)}
                       aria-label="Claim actions"
-                     ><MoreHorizontal size={16} /></button>
+                     ><MoreVertical size={16} /></button>
                     {openMenuId === c.id && (
                       <div className="task-menu-dropdown">
                         <button

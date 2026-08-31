@@ -28,7 +28,7 @@ import TeamChat from '../components/TeamChat.jsx'
 import TeamTasksPanel from './TeamTasks.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CircleCheck, CircleX, MessageCircle, MoreHorizontal, Users, X } from 'lucide-react'
+import { CircleCheck, CircleX, MessageCircle, MoreVertical, Users, X } from 'lucide-react'
 
 // Merged team module. Managers get three tabs: the team directory, the
 // team's tasks, and the team's paid-leave requests waiting for approval.
@@ -765,7 +765,7 @@ function TeamLeavesTab({ teamLeaves, openApproveLeave, openReject }) {
                     className="btn btn-tiny btn-light task-menu-button"
                     onClick={() => toggleMenu(lv.id)}
                     aria-label="Actions"
-                  ><MoreHorizontal size={16} /></button>
+                  ><MoreVertical size={16} /></button>
                   {openMenuId === lv.id && (
                     <div className="task-menu-dropdown">
                       <button
@@ -911,7 +911,7 @@ function TeamOvertimeTab({ teamOvertime, openApproveOvertime, openRejectOvertime
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(r.id)}
                         aria-label="Request actions"
-                      ><MoreHorizontal size={16} /></button>
+                      ><MoreVertical size={16} /></button>
                       {openMenuId === r.id && (
                         <div className="task-menu-dropdown">
                           <button

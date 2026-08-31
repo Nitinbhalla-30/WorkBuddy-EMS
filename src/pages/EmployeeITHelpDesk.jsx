@@ -27,7 +27,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import ITIssueThread from '../components/ITIssueThread.jsx'
 import Modal from '../components/Modal.jsx'
-import { Eye, MoreHorizontal, Pencil, RefreshCw, Trash2, Undo2, Wrench, X } from 'lucide-react'
+import { Eye, MoreVertical, Pencil, Plus, RefreshCw, Trash2, Undo2, Wrench, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const IT_STATUS_FILTER_OPTS = [
@@ -320,12 +320,6 @@ export default function EmployeeITHelpDesk() {
           </h2>
           <p className="muted small" style={{ margin: '4px 0 0' }}>Report and track your IT support requests</p>
         </div>
-        <button
-          className="btn btn-primary btn-tiny"
-          onClick={openCreateForm}
-        >
-          {showForm ? 'Close' : 'Report Issue'}
-        </button>
       </div>
 
       {showForm && (
@@ -452,6 +446,18 @@ export default function EmployeeITHelpDesk() {
             { key: 'status', label: 'Status', value: table.filters.status || 'all', options: IT_STATUS_FILTER_OPTS }
           ]}
           onFilterChange={table.setFilter}
+          actions={
+            <button
+              className="btn btn-primary btn-tiny"
+              onClick={openCreateForm}
+            >
+              {/* The icon follows the action: plus when it opens the form, cross when it closes it */}
+              {showForm
+                ? <X size={14} style={{ marginRight: 4 }} aria-hidden="true" />
+                : <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />}
+              {showForm ? 'Close' : 'Report Issue'}
+            </button>
+          }
         />
         <table className="table table-compact" style={{ tableLayout: 'fixed' }}>
           <colgroup>
@@ -524,7 +530,7 @@ export default function EmployeeITHelpDesk() {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(issue.id)}
                         aria-label="IT issue actions"
-                       ><MoreHorizontal size={16} /></button>
+                       ><MoreVertical size={16} /></button>
                       {openMenuId === issue.id && (
                         <div className="task-menu-dropdown">
                           <button

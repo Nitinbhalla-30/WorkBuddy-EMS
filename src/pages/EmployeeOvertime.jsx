@@ -20,7 +20,7 @@ import {
   overtimeStatusTagClass,
   calculateOvertimePay
 } from '../utils/overtime.js'
-import { MoreHorizontal, Pencil, Plus, Timer, Undo2, X } from 'lucide-react'
+import { MoreVertical, Pencil, Plus, Timer, Undo2, X } from 'lucide-react'
 
 export default function EmployeeOvertime() {
   const { user } = useAuth()
@@ -214,7 +214,7 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(r.id)}
                         aria-label="Request actions"
-                      ><MoreHorizontal size={16} /></button>
+                      ><MoreVertical size={16} /></button>
                       {openMenuId === r.id && (
                         <div className="task-menu-dropdown">
                           <button

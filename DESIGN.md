@@ -183,7 +183,7 @@ A focused palette led by Trust Teal, supported by slate neutrals for structure, 
 
 ## Layout
 
-The app shell is a fixed-viewport flex layout: 60px topbar + 235px sidebar + fluid content area. The sidebar collapses to a horizontal scroll bar on mobile (720px breakpoint). Content padding is 26px on desktop, reducing naturally on smaller viewports.
+The app shell is a fixed-viewport flex layout: 60px topbar + 235px sidebar + fluid content area. The sidebar can collapse to a 64px icon rail from a "Hide menu" row pinned to the bottom of the panel — icons, active state and unread badges survive the collapse, only the labels give way. The sidebar collapses to a horizontal scroll bar on mobile (720px breakpoint), where rail mode does not apply. Content padding is 26px on desktop, reducing naturally on smaller viewports.
 
 **Grid & density:** Stat cards use `auto-fit` grids (min 150px) that reflow from 4–5 columns on desktop to 2 columns on mobile. Tables are full-width with 11px × 12px cell padding — tight enough for data density, loose enough for readability. The spacing rhythm follows an 8px-based scale (4, 8, 12, 16, 20, 24, 32px) with occasional 10px and 14px for fine-tuning.
 
@@ -216,6 +216,8 @@ The overall feel is gently curved — never sharp or boxy, never overly rounded.
 - **Danger:** Alert Red background with white text. Hover deepens. Used for destructive actions only.
 - **Active/Pressed:** All buttons translate 1px down on `:active` — a tactile "push" feedback that confirms the click.
 - **Disabled:** 50% opacity, not-allowed cursor. No color change — the same button, just unavailable.
+- **Row action menu (three-dot):** lucide `MoreVertical` at 16px — dots stacked vertically, never the horizontal variant — inside `.btn.btn-tiny.btn-light.task-menu-button` (32px min-width hit area). App-wide convention on every table row that hides actions behind a menu (tasks, salary, leaves, shifts, cab, overtime, reimbursements, tickets, profiles, team).
+- **Toolbar primary action:** a table page's create/submit button (`btn btn-primary btn-tiny`) belongs in the `TableToolbar` actions slot — same line as the search field and filter dropdowns, pushed to the far right — never in the page title block. In that row every button is stretched to the fields' **42px height** (13px label, no leftover `btn-tiny` left margin) so it reads as one band of matching controls rather than a short button hanging at the bottom — and the same treatment applies to a page-level button sitting beside a card's section title (`.section-head-row .btn`, e.g. Cab Management's "Add vehicle", "Add driver", "Cancellation summary"). Create buttons carry a leading `Plus` icon at 14px; when the button toggles a form open/closed the icon follows the word (`Plus` → open, `X` → close). When a quick-filter chip shares the slot, the chip sits left (and stays a small pill) with the primary button rightmost.
 
 ### Cards / Containers
 - **Corner Style:** 12px radius — the system's standard container shape.
@@ -240,6 +242,9 @@ The overall feel is gently curved — never sharp or boxy, never overly rounded.
 - **Hover:** Subtle tinted background shift (#eef3f5 light / #1f2a30 dark) with text moving to slate ink.
 - **Active:** Surface Teal background (#e6f2f1) with Trust Teal text — the active item is unmistakable.
 - **Mobile:** Collapses to horizontal scroll bar at 720px breakpoint with nowrap labels.
+- **Collapsed rail:** 64px wide. The rail is sized so the icon column holds the *exact same pixel offset* as in the full sidebar (12px panel padding + 12px row padding) — nothing slides sideways while the panel animates its 220ms width change; only the labels clip away in 180ms and the right edge moves in. Labels are clipped to zero width rather than removed, so every link keeps its accessible name; `title` returns the name on hover.
+- **Rail badges:** The unread count moves to the icon's top-right corner as a 16px pill instead of trailing the label.
+- **Collapse control:** The last row of the sidebar, below a hairline divider, drawn with a nav row's own padding and height so its icon sits in the module icon column. Lucide `PanelLeftClose` / `PanelLeftOpen` at 17px next to the words "Hide menu" / "Expand menu", which clip away in the rail like any other label. The visible text is the accessible name; `aria-expanded` + `aria-controls` carry the state. Hidden below 720px.
 
 ### Stat Cards
 - **Shape:** 12px radius card with a 34px rounded-10 icon chip (the "stat chip") above the number.

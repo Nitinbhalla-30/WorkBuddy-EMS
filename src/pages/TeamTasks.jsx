@@ -31,7 +31,7 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import Avatar from '../components/Avatar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CircleCheck, Eye, MessageCircleQuestionMark, MoreHorizontal, Trash2, X } from 'lucide-react'
+import { CircleCheck, Eye, MessageCircleQuestionMark, MoreVertical, Plus, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
@@ -297,7 +297,7 @@ export default function TeamTasksPanel() {
               className="btn btn-primary btn-tiny"
               onClick={() => setShowForm(true)}
             >
-              Assign a task
+              <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Assign a task
             </button>
           }
         />
@@ -351,7 +351,7 @@ export default function TeamTasksPanel() {
                     <button
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(task.id)}
-                     aria-label="More actions"><MoreHorizontal size={16} /></button>
+                     aria-label="More actions"><MoreVertical size={16} /></button>
                     {openMenuId === task.id && (
                       <div className="task-menu-dropdown">
                         <button

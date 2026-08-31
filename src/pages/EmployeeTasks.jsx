@@ -34,7 +34,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { ListTodo, MessageCircleQuestionMark, MoreHorizontal, Pencil, Trash2, X } from 'lucide-react'
+import { ListTodo, MessageCircleQuestionMark, MoreVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
@@ -242,12 +242,6 @@ export default function EmployeeTasks() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span className="muted">{tasks.length} task(s)</span>
-          <button
-            className="btn btn-primary btn-tiny"
-            onClick={() => setShowForm(true)}
-          >
-            Add a task
-          </button>
         </div>
       </div>
 
@@ -367,17 +361,25 @@ export default function EmployeeTasks() {
           ]}
           onFilterChange={table.setFilter}
           actions={
-            table.filters.quick && table.filters.quick !== 'all' ? (
+            <>
+              {table.filters.quick && table.filters.quick !== 'all' ? (
+                <button
+                  type="button"
+                  className="quick-filter-chip"
+                  onClick={() => table.setFilter('quick', 'all')}
+                  aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
+                >
+                  {QUICK_FILTER_LABELS[table.filters.quick]}
+                  <X size={13} aria-hidden="true" />
+                </button>
+              ) : null}
               <button
-                type="button"
-                className="quick-filter-chip"
-                onClick={() => table.setFilter('quick', 'all')}
-                aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
+                className="btn btn-primary btn-tiny"
+                onClick={() => setShowForm(true)}
               >
-                {QUICK_FILTER_LABELS[table.filters.quick]}
-                <X size={13} aria-hidden="true" />
+                <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add a task
               </button>
-            ) : null
+            </>
           }
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
@@ -430,7 +432,7 @@ export default function EmployeeTasks() {
                     <button
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(task.id)}
-                     aria-label="More actions"><MoreHorizontal size={16} /></button>
+                     aria-label="More actions"><MoreVertical size={16} /></button>
                     {openMenuId === task.id && (
                       <div className="task-menu-dropdown">
                         {!isSelfAssigned(task) && (

@@ -22,7 +22,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { Eye, MessageSquareText, MoreHorizontal, X } from 'lucide-react'
+import { Eye, MessageSquareText, MoreVertical, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
 
@@ -195,7 +195,7 @@ export default function AdminTickets() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(t.id)}
                       aria-label="Ticket actions"
-                     ><MoreHorizontal size={16} /></button>
+                     ><MoreVertical size={16} /></button>
                     {openMenuId === t.id && (
                       <div className="task-menu-dropdown">
                         <button

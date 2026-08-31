@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { getSettings } from '../data/store.js'
 import { Clock, CheckCircle2, Megaphone, User, Lock, Eye, EyeOff, ChevronDown, ChevronUp, Loader2, Briefcase } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
-import CinematicThemeSwitcher from '../components/ui/cinematic-theme-switcher.tsx'
+import AnimatedThemeToggle from '../components/ui/animated-theme-toggle.tsx'
 import Modal from '../components/Modal.jsx'
 
 // Simple login for the test phase: Employee ID + PIN.
@@ -120,8 +120,8 @@ export default function Login() {
         <div className="login-card">
           <div className="login-card-head">
             <h2 className="login-brand">Welcome back</h2>
-            <div className="cinematic-theme-switcher-wrap cinematic-theme-switcher-wrap--login">
-              <CinematicThemeSwitcher />
+            <div className="theme-toggle-wrap">
+              <AnimatedThemeToggle />
             </div>
           </div>
           <p className="login-sub">Log in to WorkBuddy — {settings.companyName}</p>

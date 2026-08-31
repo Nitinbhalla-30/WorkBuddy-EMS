@@ -40,7 +40,7 @@ import {
   tripById,
   vehicleById
 } from '../utils/cab.js'
-import { CarFront, Check, Eye, MoreHorizontal, MoreVertical, Pencil, Send, Trash2, Undo2, X } from 'lucide-react'
+import { CarFront, Check, Eye, MoreVertical, Pencil, Plus, Send, Trash2, Undo2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TABS = ["Today's Cab", 'My Change Requests', 'Chat with Transport Desk']
@@ -378,7 +378,7 @@ export default function MyCab() {
                 className="btn btn-primary btn-tiny"
                 onClick={() => setShowForm(true)}
               >
-                Request temporary change
+                <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Request temporary change
               </button>
             }
           />
@@ -424,7 +424,7 @@ export default function MyCab() {
                         onClick={() => toggleMenu(r.id)}
                         aria-label="Request actions"
                       >
-                        <MoreHorizontal size={16} />
+                        <MoreVertical size={16} />
                       </button>
                       {openMenuId === r.id && (
                         <div className="task-menu-dropdown">

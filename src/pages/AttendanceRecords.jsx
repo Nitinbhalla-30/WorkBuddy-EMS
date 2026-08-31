@@ -38,7 +38,7 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
 import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
 import { downloadExcelXlsx } from '../utils/exportExcel.js'
-import { CircleCheck, CircleX, Clock, Download, Eye, MessageCircleQuestionMark, MoreHorizontal, X } from 'lucide-react'
+import { CircleCheck, CircleX, Clock, Download, Eye, MessageCircleQuestionMark, MoreVertical, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
 
@@ -721,7 +721,7 @@ export default function AttendanceRecords() {
                         className="btn btn-tiny btn-light task-menu-button corrections-menu-button"
                         onClick={() => toggleMenu(c.id)}
                         aria-label="Correction actions"
-                       ><MoreHorizontal size={16} /></button>
+                       ><MoreVertical size={16} /></button>
                       {openMenuId === c.id && (
                         <div className="task-menu-dropdown">
                           <button

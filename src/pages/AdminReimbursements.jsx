@@ -23,7 +23,7 @@ import Pagination from '../components/Pagination.jsx'
 import ReimbursementClaimDetail from '../components/ReimbursementClaimDetail.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CircleCheck, CircleX, Eye, ReceiptText, MoreHorizontal, Banknote, X } from 'lucide-react'
+import { CircleCheck, CircleX, Eye, ReceiptText, MoreVertical, Banknote, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
 
@@ -238,7 +238,7 @@ export default function AdminReimbursements() {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(c.id)}
                         aria-label="Claim actions"
-                       ><MoreHorizontal size={16} /></button>
+                       ><MoreVertical size={16} /></button>
                       {openMenuId === c.id && (
                         <div className="task-menu-dropdown">
                           <button

@@ -14,7 +14,7 @@ import Pagination from '../components/Pagination.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
-import { Eye, Megaphone, MoreHorizontal, Trash2, X } from 'lucide-react'
+import { Eye, Megaphone, MoreVertical, Plus, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
 
@@ -159,12 +159,6 @@ export default function AdminAnnouncements() {
           </h2>
           <p className="muted small" style={{ margin: '4px 0 0' }}>Company-wide updates, events, and policy changes</p>
         </div>
-        <button
-          className="btn btn-primary btn-tiny"
-          onClick={() => setShowForm((s) => !s)}
-        >
-          {showForm ? 'Close' : 'New Announcement'}
-        </button>
       </div>
 
       {showForm && (
@@ -228,6 +222,18 @@ export default function AdminAnnouncements() {
             { key: 'createdBy', label: 'Created By', value: table.filters.createdBy || 'all', options: createdByOpts }
           ]}
           onFilterChange={table.setFilter}
+          actions={
+            <button
+              className="btn btn-primary btn-tiny"
+              onClick={() => setShowForm((s) => !s)}
+            >
+              {/* The icon follows the action: plus when it opens the form, cross when it closes it */}
+              {showForm
+                ? <X size={14} style={{ marginRight: 4 }} aria-hidden="true" />
+                : <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />}
+              {showForm ? 'Close' : 'New Announcement'}
+            </button>
+          }
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
@@ -283,7 +289,7 @@ export default function AdminAnnouncements() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(announcement.id)}
                       aria-label="Announcement actions"
-                     ><MoreHorizontal size={16} /></button>
+                     ><MoreVertical size={16} /></button>
                     {openMenuId === announcement.id && (
                       <div className="task-menu-dropdown">
                         <button

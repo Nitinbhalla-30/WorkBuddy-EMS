@@ -20,7 +20,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableEmpty from '../components/TableEmpty.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CircleCheck, CircleX, MoreHorizontal, Pencil, Shuffle, Undo2, X } from 'lucide-react'
+import { CircleCheck, CircleX, MoreVertical, Pencil, Shuffle, Undo2, X } from 'lucide-react'
 
 const TABS = ['My Shift', 'Change Requests']
 
@@ -293,7 +293,7 @@ function ChangeRequestsTab({ userId }) {
                         className="btn btn-tiny btn-light task-menu-button"
                         onClick={() => toggleMenu(r.id)}
                         aria-label="Request actions"
-                      ><MoreHorizontal size={16} /></button>
+                      ><MoreVertical size={16} /></button>
                       {openMenuId === r.id && (
                         <div className="task-menu-dropdown">
                           <button

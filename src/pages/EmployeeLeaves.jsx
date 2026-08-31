@@ -37,7 +37,7 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { LEAVE_TYPES } from '../data/sampleData.js'
-import { AlarmClock, Award, CalendarDays, Eye, HeartPulse, MoreHorizontal, Pencil, Sun, Timer, Trash2, Undo2, X } from 'lucide-react'
+import { AlarmClock, Award, CalendarDays, Eye, HeartPulse, MoreVertical, Pencil, Plus, Sun, Timer, Trash2, Undo2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 // Icon per leave type for the balance cards.
@@ -418,7 +418,7 @@ export default function EmployeeLeaves() {
                 className="btn btn-primary btn-tiny"
                 onClick={() => setShowForm(true)}
               >
-                Apply for leave
+                <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Apply for leave
               </button>
             </>
           }
@@ -479,7 +479,7 @@ export default function EmployeeLeaves() {
                       className="btn btn-tiny btn-light task-menu-button"
                       onClick={() => toggleMenu(lv.id)}
                       aria-label="Leave actions"
-                     ><MoreHorizontal size={16} /></button>
+                     ><MoreVertical size={16} /></button>
                     {openMenuId === lv.id && (
                       <div className="task-menu-dropdown">
                         <button

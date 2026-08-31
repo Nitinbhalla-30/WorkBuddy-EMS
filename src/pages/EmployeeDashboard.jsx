@@ -47,7 +47,7 @@ import Modal from '../components/Modal.jsx'
 import AttendanceCorrectionForm from '../components/AttendanceCorrectionForm.jsx'
 import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
 import { formatTime12 } from '../utils/cab.js'
-import { Briefcase, Clock, Coffee, Download, Eye, LogIn, LogOut, MoreHorizontal, Pencil, Trash2, Undo2, X } from 'lucide-react'
+import { Briefcase, Clock, Coffee, Download, Eye, LogIn, LogOut, MoreVertical, Pencil, Plus, Trash2, Undo2, X } from 'lucide-react'
 import { downloadExcelXlsx } from '../utils/exportExcel.js'
 import { leaveTypeLabel } from '../utils/leaves.js'
 import TableEmpty from '../components/TableEmpty.jsx'
@@ -702,7 +702,7 @@ export default function EmployeeDashboard() {
                   className="btn btn-primary btn-tiny"
                   onClick={() => setShowCorrectionForm(true)}
                 >
-                  Request correction
+                  <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Request correction
                 </button>
               }
             />
@@ -751,7 +751,7 @@ export default function EmployeeDashboard() {
                           className="btn btn-tiny btn-light task-menu-button"
                           onClick={() => toggleMenu(c.id)}
                           aria-label="Correction actions"
-                         ><MoreHorizontal size={16} /></button>
+                         ><MoreVertical size={16} /></button>
                         {openMenuId === c.id && (
                           <div className="task-menu-dropdown">
                             <button

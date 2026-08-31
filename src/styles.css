@@ -898,8 +898,9 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   padding: 14px 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  overflow-y: auto;
+  /* The scroll happens in .sidebar-nav so the collapse control at the bottom
+     stays visible while the module list moves. */
+  overflow: hidden;
 }
 .nav-item {
   padding: 9px 12px;
@@ -914,12 +915,96 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   transition: background 0.15s ease, color 0.15s ease;
 }
 .nav-icon { flex-shrink: 0; }
-.nav-label { flex: 1; min-width: 0; white-space: nowrap; }
+.nav-label {
+  flex: 1;
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: max-width 0.18s ease, opacity 0.14s ease;
+}
 .nav-item:hover { background: var(--nav-hover-bg); color: var(--ink); }
 .nav-item.active {
   background: var(--surface-accent);
   color: var(--surface-accent-text);
   font-weight: 600;
+}
+
+.sidebar-nav {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.sidebar-nav::-webkit-scrollbar { width: 8px; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+.sidebar-nav::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* Collapse control — the last row of the sidebar, drawn with the same padding
+   and height as a nav row so its icon lines up with the module icon column. */
+.sidebar-foot {
+  flex-shrink: 0;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.sidebar-collapse-btn {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sidebar-collapse-btn:hover { background: var(--nav-hover-bg); color: var(--ink); }
+
+/* ---------- Sidebar collapse-to-rail ----------
+   The rail keeps every module icon and the unread badge; only the labels give
+   way. Labels stay in the DOM clipped (never display:none) so each link keeps
+   its accessible name, and title= puts the name back under the pointer.
+
+   The rail width is chosen so the icon column stays at exactly the same pixel
+   as in the full sidebar (12px sidebar padding + 12px row padding = 24px) —
+   nothing slides sideways while the panel animates. */
+.sidebar { transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1); }
+.sidebar--collapsed {
+  width: 64px;
+}
+/* A visible scrollbar would squeeze the row's right edge; the list still
+   scrolls by wheel and keyboard. */
+.sidebar--collapsed .sidebar-nav {
+  scrollbar-width: none;
+}
+.sidebar--collapsed .sidebar-nav::-webkit-scrollbar { width: 0; height: 0; }
+.sidebar--collapsed .nav-item {
+  position: relative;
+}
+.sidebar--collapsed .nav-label {
+  max-width: 0;
+  opacity: 0;
+}
+.sidebar--collapsed .nav-item .notification-badge {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  margin-left: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
 }
 
 .content {
@@ -1360,6 +1445,18 @@ textarea::placeholder {
   align-self: flex-end;
   height: 42px;
   margin: 0;
+}
+/* Buttons living in the filter row — or beside a card's section title, the other
+   place a page-level action sits — stand as tall as the 42px fields next to them
+   (a short button otherwise hangs off the bottom edge of the taller dropdowns),
+   and drop .btn-tiny's leftover left margin since those rows have their own gap. */
+.table-toolbar-right .btn,
+.table-toolbar-action,
+.section-head-row .btn {
+  height: 42px;
+  padding: 0 14px;
+  margin-left: 0;
+  font-size: 13px;
 }
 .table-toolbar-right {
   display: flex;
@@ -2505,10 +2602,37 @@ button.task-status-stat-card {
   .sidebar {
     width: 100%;
     flex-direction: row;
+    padding: 10px 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .sidebar-nav {
+    flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
-    flex-shrink: 0;
-    padding: 10px 12px;
+    min-width: 0;
+  }
+  /* Rail mode is a desktop affordance: the mobile nav strip wraps to a
+     horizontal scroller, where a collapse control has nothing to collapse. */
+  .sidebar-foot { display: none; }
+  .sidebar--collapsed {
+    width: 100%;
+  }
+  .sidebar--collapsed .sidebar-nav {
+    scrollbar-width: auto;
+  }
+  .sidebar--collapsed .sidebar-nav::-webkit-scrollbar { width: 8px; height: 8px; }
+  .sidebar--collapsed .nav-label {
+    max-width: 220px;
+    opacity: 1;
+  }
+  .sidebar--collapsed .nav-item .notification-badge {
+    position: static;
+    margin-left: 8px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
   }
   .nav-item { white-space: nowrap; flex-shrink: 0; }
   .body { flex-direction: column; }
@@ -2560,210 +2684,60 @@ button.task-status-stat-card {
   color: var(--ink);
 }
 
-/* ---------- Theme toggle ---------- */
-.theme-toggle {
-  display: inline-flex;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--input-bg);
-  flex-shrink: 0;
-}
-.theme-toggle-btn {
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  padding: 6px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  line-height: 1.2;
-}
-.theme-toggle-btn:hover {
-  background: var(--btn-hover-bg);
-  color: var(--ink);
-}
-.theme-toggle-btn.active {
-  background: var(--brand);
-  color: var(--on-brand);
-}
-
 /* ============================================================
-   Theme toggle — compact accessible sun/moon switch
+   Theme toggle — animated sun/moon morph
+   (component: src/components/ui/animated-theme-toggle.tsx)
+   The frame follows the topbar icon-button convention (.notif-bell-btn)
+   so the control reads as part of the app, not a pasted-in widget.
    ============================================================ */
-.cinematic-theme-switcher-wrap {
+.theme-toggle-wrap {
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
-/* --- Toggle button — premium redesign --- */
 .theme-toggle {
   position: relative;
-  width: 60px;
-  height: 32px;
-  border-radius: 16px;
-  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--btn-light-bg);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.35s ease, box-shadow 0.35s ease, transform 0.15s ease;
   -webkit-tap-highlight-color: transparent;
-  overflow: hidden;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.02s;
 }
-
-/* Light track — clean neutral */
-.theme-toggle[data-theme="light"] {
-  background: linear-gradient(135deg, #e8ecf0 0%, #dde3e9 40%, #d1d8df 100%);
-  border: 1px solid #c4cdd5;
-  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 4px rgba(0, 0, 0, 0.06);
+/* Tap target grows to 44px without changing the visual size. */
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
 }
-.theme-toggle[data-theme="light"]:hover {
-  background: linear-gradient(135deg, #dde3e9 0%, #d1d8df 40%, #c4cdd5 100%);
-  border-color: #b0bac3;
-  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+.theme-toggle:hover {
+  background: var(--btn-hover-bg);
+  border-color: var(--notif-bell-hover-border, var(--line));
+  color: var(--brand);
 }
-
-/* Dark track — deep night gradient with subtle teal accent */
-.theme-toggle[data-theme="dark"] {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #132f3e 100%);
-  border: 1px solid #334155;
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3);
+.theme-toggle:active {
+  transform: translateY(1px);
 }
-.theme-toggle[data-theme="dark"]:hover {
-  background: linear-gradient(135deg, #263244 0%, #162032 50%, #1a3a4a 100%);
-  border-color: #475569;
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.6), 0 2px 10px rgba(45, 212, 191, 0.12);
-}
-
-/* Focus ring */
 .theme-toggle:focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
-
-/* Press feedback */
-.theme-toggle:active {
-  transform: scale(0.95);
-}
-
-/* --- Track icons (sun left, moon right) --- */
-.theme-toggle-track {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 8px;
+/* Pre-hydration placeholder — same footprint, not interactive. */
+.theme-toggle--pending {
   pointer-events: none;
 }
-.theme-toggle-icon {
-  transition: opacity 0.35s ease, color 0.35s ease, transform 0.35s ease;
-}
-/* Light mode: sun visible, moon dim */
-.theme-toggle[data-theme="light"] .theme-toggle-icon--sun {
-  opacity: 1;
-  color: #475569;
-  transform: scale(1.1);
-}
-.theme-toggle[data-theme="light"] .theme-toggle-icon--moon {
-  opacity: 0.35;
-  color: #a8a29e;
-  transform: scale(0.85);
-}
-/* Dark mode: moon bright, sun dim */
-.theme-toggle[data-theme="dark"] .theme-toggle-icon--sun {
-  opacity: 0.3;
-  color: #64748b;
-  transform: scale(0.85);
-}
-.theme-toggle[data-theme="dark"] .theme-toggle-icon--moon {
-  opacity: 1;
-  color: #e2e8f0;
-  transform: scale(1.1);
-}
-
-/* --- Sliding knob — premium --- */
-.theme-toggle-knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.35s ease, box-shadow 0.35s ease;
-  pointer-events: none;
-}
-
-/* Light knob — clean white */
-.theme-toggle[data-theme="light"] .theme-toggle-knob {
-  background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
-  box-shadow:
-    0 2px 6px rgba(15, 23, 42, 0.12),
-    0 1px 3px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-
-/* Dark knob — cool slate with subtle teal reflection */
-.theme-toggle[data-theme="dark"] .theme-toggle-knob {
-  background: linear-gradient(145deg, #334155 0%, #1e293b 100%);
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.5),
-    0 1px 3px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-/* Knob icon colour */
-.theme-toggle-knob-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 0;
-}
-.theme-toggle[data-theme="light"] .theme-toggle-knob-icon { color: #475569; }
-.theme-toggle[data-theme="dark"] .theme-toggle-knob-icon { color: #fde68a; }
-
-/* --- View Transitions: circular reveal on theme change --- */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-::view-transition-old(root) {
-  z-index: 1;
-}
-::view-transition-new(root) {
-  z-index: 9999;
-}
-
-/* Old snapshot: full viewport circle shrinks to nothing */
-::view-transition-old(root) {
-  animation: vtCircleOut 0.85s cubic-bezier(0.4, 0, 0.2, 1) both;
-}
-/* New snapshot: circle at click-point expands to cover viewport */
-::view-transition-new(root) {
-  animation: vtCircleIn 0.85s cubic-bezier(0.4, 0, 0.2, 1) both;
-}
-
-@keyframes vtCircleIn {
-  from {
-    clip-path: circle(0px at var(--reveal-x, 50%) var(--reveal-y, 50%));
-  }
-  to {
-    clip-path: circle(var(--reveal-r, 150%) at var(--reveal-x, 50%) var(--reveal-y, 50%));
-  }
-}
-
-@keyframes vtCircleOut {
-  from {
-    clip-path: circle(var(--reveal-r, 150%) at var(--reveal-x, 50%) var(--reveal-y, 50%));
-  }
-  to {
-    clip-path: circle(0px at var(--reveal-x, 50%) var(--reveal-y, 50%));
-  }
+/* Login card header: centre the 40px button against the 24px title. */
+.login-card-head .theme-toggle {
+  margin-top: -5px;
 }
 
 /* ============================================================
