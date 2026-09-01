@@ -232,8 +232,12 @@ export function buildEmployeeNotifications(employeeId) {
         category: 'attendance',
         title: 'Attendance correction approved',
         body: `${correctionIssueLabel(c.issueType)} for ${c.date} was approved.`,
-        on: c.decidedOn,
-        href: '/me'
+        // The decision used to be stored as a bare date, which rendered as
+        // 12:00 AM; bestTime keeps old rows readable while new ones show the
+        // real approval time (see resolveAttendanceCorrection in the store).
+        on: bestTime(c.decidedOn, c.appliedOn),
+        // Land on the employee's correction list, not the punch-in tab behind it.
+        href: '/me?tab=corrections'
       })
     }
     if (c.status === 'rejected' && c.decidedOn) {
@@ -244,8 +248,8 @@ export function buildEmployeeNotifications(employeeId) {
         body: c.reviewNote
           ? `${correctionIssueLabel(c.issueType)} rejected: ${c.reviewNote}`
           : `${correctionIssueLabel(c.issueType)} was rejected.`,
-        on: c.decidedOn,
-        href: '/me'
+        on: bestTime(c.decidedOn, c.appliedOn),
+        href: '/me?tab=corrections'
       })
     }
     const last = lastMessage(c.messages)
@@ -255,8 +259,8 @@ export function buildEmployeeNotifications(employeeId) {
         category: 'attendance',
         title: 'HR asked about your correction',
         body: last.text,
-        on: last.on,
-        href: '/me'
+        on: bestTime(last.on, c.appliedOn),
+        href: '/me?tab=corrections'
       })
     }
   }
@@ -524,8 +528,9 @@ export function buildAdminNotifications() {
         category: 'attendance',
         title: 'Employee replied on correction',
         body: `${nameOf(c.employeeId)}: ${last.text}`,
-        on: last.on || c.requestedOn,
-        href: '/records'
+        on: bestTime(last.on, c.appliedOn),
+        // Land on the correction queue, not the attendance table behind it.
+        href: '/records?tab=corrections'
       })
     } else {
       push(items, {
@@ -533,8 +538,10 @@ export function buildAdminNotifications() {
         category: 'attendance',
         title: 'Attendance correction pending',
         body: `${nameOf(c.employeeId)} — ${correctionIssueLabel(c.issueType)} on ${c.date}.`,
-        on: c.requestedOn,
-        href: '/records'
+        // Corrections record the submission as `appliedOn`; `requestedOn` only
+        // exists on shift changes, so this item used to render without a time.
+        on: bestTime(c.appliedOn),
+        href: '/records?tab=corrections'
       })
     }
   }

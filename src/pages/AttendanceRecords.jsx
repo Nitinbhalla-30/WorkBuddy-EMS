@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useSearchParams } from 'react-router-dom'
 import {
   addAttendanceCorrectionMessage,
   attendanceMonthsLoaded,
@@ -80,6 +81,10 @@ function monthFilterOptions() {
   ]
 }
 
+// Which tab the page shows. Notification links point at `?tab=corrections` so
+// clicking one lands on the queue instead of the records table.
+const VALID_TABS = ['all', 'corrections']
+
 // All attendance records with filters by employee, period, department, and manager.
 export default function AttendanceRecords() {
   const { user } = useAuth()
@@ -87,10 +92,39 @@ export default function AttendanceRecords() {
   const employees = getEmployees().filter((e) => e.role === 'employee')
   const today = todayDateKey()
 
-  const [tab, setTab] = useState('all')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTab = VALID_TABS.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'all'
+  const [tab, setTab] = useState(initialTab)
+
+  // A manual click writes the tab back into the URL. Without this, an admin who
+  // arrives from a notification and then browses to the other tab by hand would
+  // find the next correction notification inert: its link already matches the
+  // address in the bar, so nothing changes and the page stays put.
+  function selectTab(next) {
+    setTab(next)
+    setSearchParams({ tab: next }, { replace: true })
+  }
+
+  // React to the URL tab parameter changing, which happens when a notification
+  // is clicked while this page is already open on the other tab.
+  const prevTabParam = useRef(searchParams.get('tab'))
+  const tabParam = searchParams.get('tab')
+  useEffect(() => {
+    // Only switch on an actual URL change, never on a manual tab click.
+    if (tabParam !== prevTabParam.current && VALID_TABS.includes(tabParam)) {
+      setTab(tabParam)
+    }
+    prevTabParam.current = tabParam
+  }, [tabParam])
+
   const [corrections, setCorrections] = useState(() => getAttendanceCorrections())
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openId, setOpenId] = useState(null)
+  // Approving straight from the three-dot menu asks for confirmation first, so
+  // this holds the request waiting on that box (`approving` covers the wait for
+  // an out-of-window month to download, during which a second click is possible).
+  const [approveId, setApproveId] = useState(null)
+  const [approving, setApproving] = useState(false)
   const [rejectMode, setRejectMode] = useState(false)
   const [rejectNote, setRejectNote] = useState('')
   // Bumped whenever extra attendance months land in the cache, so the memos
@@ -324,6 +358,7 @@ export default function AttendanceRecords() {
   } = usePagination(table.rows, 10)
 
   const openCorrection = corrections.find((c) => c.id === openId) || null
+  const approveTarget = corrections.find((c) => c.id === approveId) || null
   const pendingCorrectionCount = corrections.filter((c) => c.status === 'pending').length
 
   function nameOf(id) {
@@ -358,6 +393,17 @@ export default function AttendanceRecords() {
       closeReview()
     } catch (err) {
       console.warn('Could not approve attendance correction', err)
+    }
+  }
+
+  async function confirmApprove() {
+    if (!approveId) return
+    setApproving(true)
+    try {
+      await approveCorrection(approveId)
+    } finally {
+      setApproving(false)
+      setApproveId(null)
     }
   }
 
@@ -493,10 +539,10 @@ export default function AttendanceRecords() {
       </div>
 
       <div className="tabs">
-        <button type="button" className={`tab ${tab === 'all' ? 'tab-active' : ''}`} onClick={() => setTab('all')}>
+        <button type="button" className={`tab ${tab === 'all' ? 'tab-active' : ''}`} onClick={() => selectTab('all')}>
           All records
         </button>
-        <button type="button" className={`tab ${tab === 'corrections' ? 'tab-active' : ''}`} onClick={() => setTab('corrections')}>
+        <button type="button" className={`tab ${tab === 'corrections' ? 'tab-active' : ''}`} onClick={() => selectTab('corrections')}>
           Correction requests{pendingCorrectionCount > 0 ? ` (${pendingCorrectionCount})` : ''}
         </button>
       </div>
@@ -738,7 +784,7 @@ export default function AttendanceRecords() {
                             className="task-menu-item"
                             disabled={c.status !== 'pending'}
                             onClick={() => {
-                              approveCorrection(c.id)
+                              setApproveId(c.id)
                               closeMenu()
                             }}
                           >
@@ -815,25 +861,6 @@ export default function AttendanceRecords() {
               <div className="info-box">Reason: {openCorrection.reviewNote}</div>
             )}
 
-            {openCorrection.status === 'pending' && !rejectMode && (
-              <div className="button-row first">
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => approveCorrection(openCorrection.id)}
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => setRejectMode(true)}
-                >
-                  Reject
-                </button>
-              </div>
-            )}
-
             {openCorrection.status === 'pending' && rejectMode && (
               <div className="first">
                 <label className="field">
@@ -858,7 +885,7 @@ export default function AttendanceRecords() {
                   <button
                     type="button"
                     className="btn btn-light"
-                    onClick={() => { setRejectMode(false); setRejectNote('') }}
+                    onClick={closeReview}
                   >
                     Cancel
                   </button>
@@ -866,14 +893,45 @@ export default function AttendanceRecords() {
               </div>
             )}
 
-            <AttendanceCorrectionThread
-              correction={openCorrection}
-              viewerRole="admin"
-              viewerId={user.id}
-              nameOf={nameOf}
-              onReply={handleReply}
-              onClose={closeReview}
-            />
+            {/* Rejecting asks for a reason only — the question thread is a
+                separate step, reached from the menu's "Ask question". */}
+            {!rejectMode && (
+              <AttendanceCorrectionThread
+                correction={openCorrection}
+                viewerRole="admin"
+                viewerId={user.id}
+                nameOf={nameOf}
+                onReply={handleReply}
+                onClose={closeReview}
+              />
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {approveTarget && (
+        <Modal onClose={() => setApproveId(null)} title="Confirm Approve">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Approve</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setApproveId(null)} aria-label="Close" disabled={approving}><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              {approveTarget.suggestedTimeIn || approveTarget.suggestedTimeOut
+                ? <>This writes {nameOf(approveTarget.employeeId)}'s suggested times into the attendance
+                    record for {formatDate(approveTarget.date)} and closes the request.</>
+                : <>This request has no suggested times, so approving it only closes the request —
+                    no clock-in or clock-out time will change.</>}
+              {' '}You will not be able to change this decision afterwards.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-primary" disabled={approving} onClick={confirmApprove}>
+                {approving ? 'Approving…' : 'Approve'}
+              </button>
+              <button type="button" className="btn btn-light" onClick={() => setApproveId(null)} disabled={approving}>
+                Cancel
+              </button>
+            </div>
           </div>
         </Modal>
       )}

@@ -174,7 +174,7 @@ async function pushKeyToSupabase(key, attempt) {
       return
     }
     try {
-      const dbRecords = transformRowsToDb(records)
+      const dbRecords = transformRowsToDb(records, tableName)
       // Upsert in batches to avoid hitting the server's max-rows limit
       for (let i = 0; i < dbRecords.length; i += 1000) {
         const batch = dbRecords.slice(i, i + 1000)
@@ -214,6 +214,12 @@ async function pushKeyToSupabase(key, attempt) {
 }
 
 function scheduleRetryPush(key, attempt, message) {
+  // Surface a broken write on the first failure instead of only after the whole
+  // retry ladder: a schema mismatch (a column the table doesn't have) fails every
+  // attempt identically, so waiting 30s to warn about it only hides the cause.
+  if (attempt === 0) {
+    console.warn(`Supabase write failed for ${key}, retrying:`, message)
+  }
   if (attempt < 5) {
     setTimeout(() => pushKeyToSupabase(key, attempt + 1), 1000 * 2 ** attempt)
   } else {
@@ -279,6 +285,15 @@ function camelToSnake(str) {
 const APP_TO_DB_FIELD = {
   rejectReason: 'rejection_reason'
 }
+// ...unless a particular table names that field differently. `shift_change_requests`
+// calls the column `reject_reason`, while `leaves` and `overtime_requests` call the
+// same thing `rejection_reason`, so a single global mapping can't be right for both.
+// Sending a name the table doesn't have makes PostgREST reject the entire batch
+// (error PGRST204), which used to fail quietly and strand every shift-change write
+// in the browser. An entry here overrides APP_TO_DB_FIELD for that one table.
+const APP_TO_DB_FIELD_BY_TABLE = {
+  shift_change_requests: { rejectReason: 'reject_reason' }
+}
 const DB_TO_APP_FIELD = {
   rejection_reason: 'rejectReason'
 }
@@ -300,23 +315,25 @@ function transformRows(rows) {
   return rows.map(transformRow)
 }
 
-// Transform app row (camelCase) to database format (snake_case)
-function transformRowToDb(row) {
+// Transform app row (camelCase) to database format (snake_case). `tableName` is
+// optional and only used to look up per-table column-name exceptions.
+function transformRowToDb(row, tableName) {
   if (!row || typeof row !== 'object') return row
+  const overrides = tableName && APP_TO_DB_FIELD_BY_TABLE[tableName]
   const transformed = {}
   for (const [key, value] of Object.entries(row)) {
     // Skip created_at and other DB-only fields
     if (key === 'createdAt' || key === 'created_at') continue
-    const dbKey = APP_TO_DB_FIELD[key] || camelToSnake(key)
+    const dbKey = (overrides && overrides[key]) || APP_TO_DB_FIELD[key] || camelToSnake(key)
     transformed[dbKey] = value
   }
   return transformed
 }
 
 // Transform array of app rows to database format
-function transformRowsToDb(rows) {
+function transformRowsToDb(rows, tableName) {
   if (!Array.isArray(rows)) return rows
-  return rows.map(transformRowToDb)
+  return rows.map((row) => transformRowToDb(row, tableName))
 }
 
 // Supabase PostgREST has a server-side max-rows setting (default 1000) that
@@ -1014,7 +1031,9 @@ export function submitAttendanceCorrection({
     suggestedTimeIn: suggestedTimeIn || '',
     suggestedTimeOut: suggestedTimeOut || '',
     status: 'pending',
-    appliedOn: todayKey(),
+    // Full ISO datetimes, not todayKey(): the notification list shows the time
+    // of these moments, and a bare date always renders as 12:00 AM.
+    appliedOn: new Date().toISOString(),
     decidedBy: null,
     decidedOn: null,
     reviewNote: '',
@@ -1066,7 +1085,7 @@ export function withdrawAttendanceCorrection(id, employeeId) {
   const correction = all[idx]
   if (correction.employeeId !== employeeId) return null
   if (correction.status !== 'pending') return null
-  all[idx] = { ...correction, status: 'withdrawn', withdrawnOn: todayKey() }
+  all[idx] = { ...correction, status: 'withdrawn', withdrawnOn: new Date().toISOString() }
   write(KEYS.attendanceCorrections, all)
   return all[idx]
 }
@@ -1095,7 +1114,7 @@ export function addAttendanceCorrectionMessage(id, { byId, byRole, text }) {
         byId,
         byRole,
         text: trimmed,
-        on: todayKey()
+        on: new Date().toISOString()
       }
     ]
   }
@@ -1146,7 +1165,7 @@ export async function resolveAttendanceCorrection(id, status, decidedBy, reviewN
     ...correction,
     status,
     decidedBy: decidedBy || null,
-    decidedOn: todayKey(),
+    decidedOn: new Date().toISOString(),
     reviewNote: reviewNote || ''
   }
 
@@ -1383,7 +1402,7 @@ function upsertSingleReimbursement(claim) {
   if (!supabase || !tableName) return Promise.resolve({ ok: false, error: 'No server connection' })
   return supabase
     .from(tableName)
-    .upsert([transformRowToDb(claim)], { onConflict: 'id' })
+    .upsert([transformRowToDb(claim, tableName)], { onConflict: 'id' })
     .then(({ error }) => (error ? { ok: false, error: error.message } : { ok: true }))
     .catch((err) => ({ ok: false, error: (err && err.message) || String(err) }))
 }

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addAttendanceCorrectionMessage,
@@ -54,6 +55,10 @@ import TableEmpty from '../components/TableEmpty.jsx'
 
 const TABS = ['Today', 'Attendance History', 'Correction Request']
 
+// Slug for each tab, in the order above. Notification links use `?tab=corrections`
+// so clicking one lands on the list of requests instead of the punch-in screen.
+const TAB_SLUGS = ['today', 'history', 'corrections']
+
 // The employee's own screen: live buttons + their history.
 export default function EmployeeDashboard() {
   const { user } = useAuth()
@@ -79,7 +84,29 @@ export default function EmployeeDashboard() {
   const [withdrawCorrectionId, setWithdrawCorrectionId] = useState(null)
   const [selectedHistoryMonth, setSelectedHistoryMonth] = useState(() => monthKey())
   const [statsPeriod, setStatsPeriod] = useState('this-month')
-  const [tab, setTab] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const [tab, setTab] = useState(() => Math.max(0, TAB_SLUGS.indexOf(tabParam)))
+
+  // Manual clicks write the tab back into the URL. Without this, an employee who
+  // arrives from a notification and then browses to another tab by hand would
+  // find the next correction notification inert: its link already matches the
+  // address in the bar, so nothing changes and the page stays put.
+  function selectTab(next) {
+    setTab(next)
+    setSearchParams({ tab: TAB_SLUGS[next] }, { replace: true })
+  }
+
+  // Follow the URL when it changes on its own (a notification clicked while this
+  // page is already open, or the sidebar link, which carries no tab and so means
+  // "start again on Today").
+  const prevTabParam = useRef(tabParam)
+  useEffect(() => {
+    if (tabParam === prevTabParam.current) return
+    prevTabParam.current = tabParam
+    setTab(Math.max(0, TAB_SLUGS.indexOf(tabParam)))
+  }, [tabParam])
+
   const [corrections, setCorrections] = useState(() =>
     getAttendanceCorrectionsForEmployee(user.id)
   )
@@ -415,7 +442,7 @@ export default function EmployeeDashboard() {
           <button
             key={t}
             className={`tab ${i === tab ? 'tab-active' : ''}`}
-            onClick={() => setTab(i)}
+            onClick={() => selectTab(i)}
           >
             {t}
           </button>
