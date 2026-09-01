@@ -38,6 +38,7 @@ const KEYS = {
   leaves: 'hr_leaves',
   settings: 'hr_settings',
   tasks: 'hr_tasks',
+  deletedTasks: 'hr_deleted_tasks',
   profiles: 'hr_profiles',
   tickets: 'hr_tickets',
   vehicles: 'hr_vehicles',
@@ -110,6 +111,91 @@ function clearPendingWrites() {
   }
 }
 
+// ---- queued row deletes (optimized tables) ----
+// Pushes to an optimized table are upsert-only on purpose: a browser holding a
+// partial snapshot must never erase rows that other users still have. The flip
+// side is that removing a row locally — a manager deleting a task — is invisible
+// to Supabase, so the row comes straight back on the next sync, for the manager
+// who deleted it and for the employee it was assigned to. Deleted ids are
+// therefore queued here and flushed as an explicit DELETE by the next push for
+// that collection, which is the only way the removal reaches other users.
+// Persisted so a delete made moments before closing the tab still lands.
+const PENDING_DELETES_KEY = 'hr_pending_deletes'
+const pendingDeletes = {}
+
+function savePendingDeletes() {
+  try {
+    localStorage.setItem(PENDING_DELETES_KEY, JSON.stringify(pendingDeletes))
+  } catch {
+    // Ignore storage errors; the in-memory queue still applies this session.
+  }
+}
+function loadPendingDeletes() {
+  try {
+    const raw = localStorage.getItem(PENDING_DELETES_KEY)
+    if (!raw) return
+    for (const [key, ids] of Object.entries(JSON.parse(raw) || {})) {
+      if (Array.isArray(ids) && ids.length) pendingDeletes[key] = ids
+    }
+  } catch {
+    // Ignore parse errors.
+  }
+}
+
+function queueRowDelete(key, id) {
+  if (!supabase || !id) return
+  const ids = pendingDeletes[key] || (pendingDeletes[key] = [])
+  if (!ids.includes(id)) ids.push(id)
+  savePendingDeletes()
+}
+
+// Apply every queued DELETE for one collection. Resolves false when the server
+// refused, leaving the ids queued for the next attempt.
+async function flushRowDeletes(tableName, key) {
+  const ids = pendingDeletes[key]
+  if (!ids || ids.length === 0) return true
+  const { error } = await supabase.from(tableName).delete().in('id', ids)
+  if (error) {
+    console.warn(`Supabase delete failed for ${tableName}, retrying:`, error.message)
+    return false
+  }
+  // Drop the rows from the local copy too. Startup may have pulled them back
+  // from the server before this flush ran, and until it lands they are already
+  // gone for every other user.
+  const gone = new Set(ids)
+  if (Array.isArray(mem[key])) {
+    writeLocal(key, mem[key].filter((row) => !gone.has(row.id)))
+  }
+  delete pendingDeletes[key]
+  savePendingDeletes()
+  return true
+}
+
+// The delete log is authoritative: a task recorded there is gone, whatever the
+// server table still shows. Anything live with such an id is queued for deletion
+// and dropped from the local copy. This heals rows removed before explicit
+// DELETEs existed, and rows a browser holding an older snapshot re-upserted.
+// Resolves true when it found something to clean up.
+function healDeletedTaskRows() {
+  const deleted = getDeletedTasks()
+  if (deleted.length === 0) return false
+  const gone = new Set(deleted.map((t) => t.id))
+  const all = read(KEYS.tasks, [])
+  const stranded = all.filter((t) => gone.has(t.id))
+  if (stranded.length === 0) return false
+  for (const task of stranded) queueRowDelete(KEYS.tasks, task.id)
+  writeLocal(KEYS.tasks, all.filter((t) => !gone.has(t.id)))
+  return true
+}
+
+// Send every queued DELETE now. Safe to call from a page load or a refresh: the
+// ids are what make the removal visible to other users.
+function flushQueuedRowDeletes() {
+  for (const key of Object.keys(pendingDeletes)) {
+    if (pendingDeletes[key]?.length) pushKeyToSupabase(key, 0)
+  }
+}
+
 function readLocal(key, fallback) {
   try {
     const raw = localStorage.getItem(key)
@@ -157,12 +243,30 @@ function supabaseSeen() {
 
 // Push one collection to Supabase, retrying a few times with backoff so a
 // temporary outage never silently drops the change.
-async function pushKeyToSupabase(key, attempt) {
+//
+// Calls are chained per collection: a debounced or retried push that overtook
+// the one before it could otherwise land a stale row after its DELETE and bring
+// a deleted task back to life for everyone.
+const pushChain = {}
+
+function pushKeyToSupabase(key, attempt = 0) {
+  const run = () => runPush(key, attempt)
+  pushChain[key] = (pushChain[key] || Promise.resolve()).then(run, run)
+  return pushChain[key]
+}
+
+async function runPush(key, attempt) {
   pendingWrites.add(key)
   savePendingWrites()
   const tableName = OPTIMIZED_TABLES[key]
   
   if (tableName) {
+    // Row deletes go first: the local collection may now be empty, and the
+    // "nothing to push" shortcut below would otherwise strand the queue.
+    if (!(await flushRowDeletes(tableName, key))) {
+      scheduleRetryPush(key, attempt, 'delete failed')
+      return
+    }
     // Write to optimized table using upsert (not delete-all + insert) to
     // prevent data loss when memory holds only a partial snapshot.
     const records = mem[key]
@@ -192,24 +296,27 @@ async function pushKeyToSupabase(key, attempt) {
       scheduleRetryPush(key, attempt, err.message)
     }
   } else {
-    // Write to app_store for non-optimized collections
-    supabase
-      .from('app_store')
-      .upsert(
-        { key, value: mem[key], updated_at: new Date().toISOString() },
-        { onConflict: 'key' }
-      )
-      .then(({ error }) => {
-        if (error) {
-          scheduleRetryPush(key, attempt, error.message)
-        } else {
-          pendingWrites.delete(key)
-          savePendingWrites()
-          remoteReady = true
-          markSupabaseSeen()
-        }
-      })
-      .catch(() => scheduleRetryPush(key, attempt, 'network error'))
+    // Write to app_store for non-optimized collections. Awaited (rather than a
+    // detached .then chain) so the per-collection push above really does wait
+    // for this write before starting the next one.
+    try {
+      const { error } = await supabase
+        .from('app_store')
+        .upsert(
+          { key, value: mem[key], updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        )
+      if (error) {
+        scheduleRetryPush(key, attempt, error.message)
+      } else {
+        pendingWrites.delete(key)
+        savePendingWrites()
+        remoteReady = true
+        markSupabaseSeen()
+      }
+    } catch (err) {
+      scheduleRetryPush(key, attempt, err.message || 'network error')
+    }
   }
 }
 
@@ -552,8 +659,14 @@ export async function refreshStoreFromSupabase(onlyKeys) {
       appStoreData = res.data || []
     }
     
-    // Load small collections from app_store
-    if (appStoreData && appStoreData.some((row) => row.key === KEYS.employees)) {
+    // Load small collections from app_store. The directory check guards against
+    // a partial remote read clobbering a fresh browser's cache, but it only
+    // makes sense when the caller actually asked for the directory — a screen
+    // pulling one other collection (e.g. deleted tasks, which the "Task deleted"
+    // notification is built from) must still get its rows applied.
+    const askedForEmployees = !wants || wants.has(KEYS.employees)
+    const hasDirectory = appStoreData.some((row) => row.key === KEYS.employees)
+    if (appStoreData.length > 0 && (!askedForEmployees || hasDirectory)) {
       applyAppStoreRows(appStoreData)
     }
     
@@ -598,10 +711,19 @@ export async function refreshStoreFromSupabase(onlyKeys) {
     await Promise.all(fetchPromises)
     
     migrateReimbursementTimestamps()
-    
+
+    // A browser that was still holding a pre-delete snapshot can re-upsert a
+    // task another user had removed. The delete log wins: those rows are dropped
+    // here and the DELETE is re-sent, so no board shows a dead task.
+    if (healDeletedTaskRows()) flushQueuedRowDeletes()
+
     if (mem[KEYS.employees]) {
       remoteReady = true
       markSupabaseSeen()
+      // Fresh data can change what the notification feed should say — a manager
+      // deleting a task, for instance — so the bell rebuilds now instead of
+      // waiting for the next page load.
+      window.dispatchEvent(new Event('storeRefreshed'))
       return true
     }
     return false
@@ -617,6 +739,7 @@ const DEFAULTS = {
   [KEYS.leaves]: [],
   [KEYS.settings]: DEFAULT_SETTINGS,
   [KEYS.tasks]: [],
+  [KEYS.deletedTasks]: [],
   [KEYS.profiles]: [],
   [KEYS.tickets]: [],
   [KEYS.vehicles]: [],
@@ -666,7 +789,8 @@ const APP_STORE_KEYS = [
   KEYS.teamConversations,
   KEYS.teamClearedChats,
   KEYS.shifts,
-  KEYS.shiftHistory
+  KEYS.shiftHistory,
+  KEYS.deletedTasks
 ]
 
 // The minimum the login screen needs: the directory used to check an ID + PIN,
@@ -795,6 +919,13 @@ async function loadRemainingData() {
     markSupabaseSeen()
     migrateReimbursementTimestamps()
 
+    // Tasks deleted before explicit DELETEs existed are still sitting in the
+    // server table, because upserts alone never removed them; a delete queued in
+    // an earlier session may never have landed either. Both are collected and
+    // pushed now, so the row finally disappears for the employee as well.
+    healDeletedTaskRows()
+    flushQueuedRowDeletes()
+
     // Covers a fresh install (no employees found anywhere) and keys introduced
     // by newer versions of the app.
     seedIfEmpty()
@@ -835,6 +966,7 @@ export function initStore() {
     // Restore the list of unpushed writes first: both phases skip those keys so
     // a local edit is never overwritten by stale remote data.
     loadPendingWrites()
+    loadPendingDeletes()
     try {
       await loadCriticalData()
     } catch (err) {
@@ -1624,6 +1756,7 @@ export function addTask({ title, description, assigneeId, createdById, dueDate, 
     priority: priority || 'medium',
     status: 'todo',
     createdOn: todayKey(),
+    createdAt: new Date().toISOString(),
     messages: []
   }
   all.push(task)
@@ -1683,9 +1816,12 @@ export function updateTaskByAdmin(taskId, { title, description, assigneeId, dueD
   return all[idx]
 }
 
-// Remove a task.
+// Remove a task. Optimized tables only ever receive upserts, so the row also
+// has to be queued for an explicit DELETE — otherwise it stays in the server
+// table and reappears for the assignee (and the manager) on their next sync.
 export function deleteTask(taskId) {
   const all = getTasks().filter((t) => t.id !== taskId)
+  queueRowDelete(KEYS.tasks, taskId)
   write(KEYS.tasks, all)
 }
 
@@ -1696,6 +1832,46 @@ export function deleteTaskByAssignee(taskId, employeeId) {
   if (!isSelfAssignedTask(task)) return false
   deleteTask(taskId)
   return true
+}
+
+// Manager deletes a task they assigned to a teammate.
+// Returns the deleted task info for notification purposes.
+export function deleteTaskByManager(taskId, managerId) {
+  const task = getTaskById(taskId)
+  if (!task) return null
+  if (task.createdById !== managerId) return null
+  // A task the manager assigned to themself is just their own — no teammate to
+  // tell, so it goes through the plain removal path.
+  if (isSelfAssignedTask(task)) {
+    deleteTask(taskId)
+    return task
+  }
+
+  // Remember what was deleted so the assignee gets a "Task deleted" alert. One
+  // entry per task: deleting the same task twice must not raise it twice.
+  const deletedTasks = getDeletedTasks().filter((t) => t.id !== taskId)
+  deletedTasks.push({
+    ...task,
+    deletedAt: new Date().toISOString(),
+    deletedBy: managerId
+  })
+
+  // Drop records past the notification window while we are in here, so the
+  // list cannot grow without limit.
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  write(KEYS.deletedTasks, deletedTasks.filter(
+    (t) => new Date(t.deletedAt) > sevenDaysAgo
+  ))
+
+  deleteTask(taskId)
+  return task
+}
+
+// Records of tasks a manager removed, kept so the assignee can be told. Lives
+// in app_store, so every user's notification feed can see it.
+export function getDeletedTasks() {
+  return read(KEYS.deletedTasks, [])
 }
 
 // Employee status change with self vs manager-assigned rules.
@@ -1717,7 +1893,7 @@ export function updateTaskStatusByEmployee(taskId, employeeId, status) {
   all[idx] = {
     ...task,
     status,
-    completedOn: status === 'done' ? todayKey() : ''
+    completedOn: status === 'done' ? new Date().toISOString() : null
   }
   write(KEYS.tasks, all)
   return all[idx]
@@ -1736,7 +1912,7 @@ export function approveTaskClosure(taskId, managerId) {
     ...task,
     status: 'closed',
     closedBy: managerId,
-    closedOn: todayKey()
+    closedOn: new Date().toISOString()
   }
   write(KEYS.tasks, all)
   return all[idx]
@@ -1775,7 +1951,7 @@ export function addTaskMessageByAdmin(taskId, { byId, text }) {
     ...task,
     messages: [
       ...(task.messages || []),
-      { id: `TSM${Date.now()}`, byId, text: trimmed, on: todayKey() }
+      { id: `TSM${Date.now()}`, byId, text: trimmed, on: new Date().toISOString() }
     ]
   }
   write(KEYS.tasks, all)
@@ -1787,6 +1963,8 @@ export function getTaskById(taskId) {
 }
 
 // Add a message to a task Q&A thread (assignee or task creator only).
+// `on` is a full timestamp so the alert raised for the other participant can be
+// ordered and shown with the real time, like correction messages.
 export function addTaskMessage(taskId, { byId, text }) {
   const all = getTasks()
   const idx = all.findIndex((t) => t.id === taskId)
@@ -1802,7 +1980,7 @@ export function addTaskMessage(taskId, { byId, text }) {
     ...task,
     messages: [
       ...(task.messages || []),
-      { id: `TSM${Date.now()}`, byId, text: trimmed, on: todayKey() }
+      { id: `TSM${Date.now()}`, byId, text: trimmed, on: new Date().toISOString() }
     ]
   }
   write(KEYS.tasks, all)

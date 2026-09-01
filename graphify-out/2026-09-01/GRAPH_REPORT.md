@@ -1,7 +1,7 @@
 # Graph Report - WorkBuddy EMS  (2026-09-01)
 
 ## Corpus Check
-- 110 files · ~101,016 words
+- 110 files · ~101,058 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -33,7 +33,7 @@
 - TaskStatusChart.tsx
 - compilerOptions
 - TripsTab
-- CabManagement.jsx
+- bump
 - write
 - MyCab
 - AdminAnnouncements
@@ -49,13 +49,13 @@
 - next-themes
 - EmployeeITHelpDesk.jsx
 - package.json
-- monthKey
+- AttendanceRecords.jsx
 - attendance.js
 - Product
 - leaflet
 - notifications.js
 - check-leaves.mjs
-- RequestsTab
+- CabManagement.jsx
 - tailwind-merge
 - DriversTab
 - vite.config.js
@@ -71,7 +71,7 @@
 - AttendanceRecords
 - getDriverRunSheet
 - EmployeeDashboard.jsx
-- AttendanceRecords.jsx
+- downloadExcelXlsx
 - tasks
 - public.attendance_corrections
 
@@ -133,8 +133,8 @@ Cohesion: 0.17
 Nodes (23): applyAppStoreRows(), applyAttendanceWindow(), attendanceWindowMonths(), ensureAttendanceForDate(), ensureAttendanceMonths(), ensureAttendanceRange(), fetchAllFromTable(), fetchAttendanceWindow() (+15 more)
 
 ### Community 7 - "store.js"
-Cohesion: 0.06
-Nodes (43): DEFAULT_SETTINGS, DEFAULT_SHIFTS, APP_STORE_KEYS, APP_TO_DB_FIELD, APP_TO_DB_FIELD_BY_TABLE, ATTENDANCE_WINDOW_MONTHS, attendanceLoadedMonths, camelToSnake() (+35 more)
+Cohesion: 0.05
+Nodes (45): DEFAULT_SETTINGS, DEFAULT_SHIFTS, APP_STORE_KEYS, APP_TO_DB_FIELD, APP_TO_DB_FIELD_BY_TABLE, ATTENDANCE_WINDOW_MONTHS, attendanceLoadedMonths, camelToSnake() (+37 more)
 
 ### Community 8 - "NotificationBell"
 Cohesion: 0.23
@@ -173,12 +173,12 @@ Cohesion: 0.08
 Nodes (24): DOM, DOM.Iterable, ES2020, src, compilerOptions, allowImportingTsExtensions, allowJs, baseUrl (+16 more)
 
 ### Community 17 - "TripsTab"
-Cohesion: 0.21
-Nodes (12): addTrip(), deleteTrip(), getTrips(), updateTrip(), CabManagement(), bump(), nameOf(), TripsTab() (+4 more)
+Cohesion: 0.22
+Nodes (10): addTrip(), deleteTrip(), getTrips(), updateTrip(), TripsTab(), confirmDelete(), normalize(), submitAdd() (+2 more)
 
-### Community 18 - "CabManagement.jsx"
-Cohesion: 0.18
-Nodes (15): DropdownSelect(), addCabMessage(), clearCabChatAdmin(), getCabClearedAtAdmin(), getCabMessages(), getCabMessagesForEmployee(), getCabUnreadByEmployee(), markCabThreadRead() (+7 more)
+### Community 18 - "bump"
+Cohesion: 0.20
+Nodes (15): addCabMessage(), clearCabChatAdmin(), getCabClearedAtAdmin(), getCabMessages(), getCabMessagesForEmployee(), getCabUnreadByEmployee(), markCabThreadRead(), CabManagement() (+7 more)
 
 ### Community 19 - "write"
 Cohesion: 0.08
@@ -186,7 +186,7 @@ Nodes (40): addShift(), approveShiftChange(), assignEmployeeShift(), deleteShift
 
 ### Community 20 - "MyCab"
 Cohesion: 0.11
-Nodes (28): clearCabChat(), createCabRequest(), deleteCabRequest(), getCabClearedAt(), getCabRequests(), getCabRequestsForEmployee(), updateCabRequest(), StopCard() (+20 more)
+Nodes (27): clearCabChat(), createCabRequest(), deleteCabRequest(), getCabClearedAt(), getCabRequests(), getCabRequestsForEmployee(), updateCabRequest(), StopCard() (+19 more)
 
 ### Community 21 - "AdminAnnouncements"
 Cohesion: 0.20
@@ -232,9 +232,9 @@ Nodes (29): ITIssueThread(), addITIssueComment(), createITIssue(), getITStaff(),
 Cohesion: 0.33
 Nodes (5): description, name, private, type, version
 
-### Community 36 - "monthKey"
-Cohesion: 0.29
-Nodes (11): filterRecordsForStatsPeriod(), lastMonthKey(), monthKey(), monthKeysBetween(), monthsForStatsPeriod(), pad(), recordInPeriod(), resolveJoinDate() (+3 more)
+### Community 36 - "AttendanceRecords.jsx"
+Cohesion: 0.17
+Nodes (19): attendanceMonthsLoaded(), CORRECTION_STATUS_FILTER_OPTS, monthFilterOptions(), PERIOD_FILTER_OPTS, STATUS_FILTER_OPTS, VALID_TABS, filterRecordsForStatsPeriod(), lastMonthKey() (+11 more)
 
 ### Community 38 - "attendance.js"
 Cohesion: 0.28
@@ -245,16 +245,16 @@ Cohesion: 0.17
 Nodes (11): Accessibility & Inclusion, Brand Commitments, Capabilities and Constraints, Evidence on Hand, Operating Context, Platform, Positioning, Product (+3 more)
 
 ### Community 41 - "notifications.js"
-Cohesion: 0.13
-Nodes (35): assignITIssue(), getAnnouncementsForEmployee(), getDismissedNotificationIds(), getITIssues(), getITIssuesForEmployee(), getOvertimeRequestsForEmployee(), getProfiles(), getReadNotificationIds() (+27 more)
+Cohesion: 0.14
+Nodes (33): assignITIssue(), getAnnouncementsForEmployee(), getDismissedNotificationIds(), getITIssues(), getITIssuesForEmployee(), getOvertimeRequestsForEmployee(), getProfiles(), getReadNotificationIds() (+25 more)
 
 ### Community 42 - "check-leaves.mjs"
 Cohesion: 0.25
 Nodes (6): __dirname, envContent, envVars, __filename, LEAVE_TYPES, supabase
 
-### Community 43 - "RequestsTab"
-Cohesion: 0.53
-Nodes (6): setCabRequestStatus(), RequestsTab(), decide(), handleApprove(), handleReject(), requestStatusLabel()
+### Community 43 - "CabManagement.jsx"
+Cohesion: 0.26
+Nodes (9): DropdownSelect(), setCabRequestStatus(), EMPTY_TRIP_FORM, RequestsTab(), decide(), handleApprove(), handleReject(), TABS (+1 more)
 
 ### Community 45 - "DriversTab"
 Cohesion: 0.22
@@ -277,24 +277,24 @@ Cohesion: 0.50
 Nodes (3): Deploying — pushing to `main` is the deploy, Graphify knowledge graph (query-first), WorkBuddy EMS — Agent Instructions
 
 ### Community 55 - "EmployeeDashboard"
-Cohesion: 0.16
-Nodes (12): applyCorrectionToAttendance(), findOrCreateAttendanceRecord(), upsertRecord(), EmployeeDashboard(), closeMenu(), endBreak(), guard(), handleClickOutside() (+4 more)
+Cohesion: 0.13
+Nodes (20): addAttendanceCorrectionMessage(), getAttendanceCorrections(), getAttendanceCorrectionsForEmployee(), submitAttendanceCorrection(), updateAttendanceCorrection(), upsertRecord(), withdrawAttendanceCorrection(), EmployeeDashboard() (+12 more)
 
 ### Community 62 - "AttendanceRecords"
 Cohesion: 0.15
-Nodes (13): resolveAttendanceCorrection(), AttendanceRecords(), approveCorrection(), closeMenu(), closeReview(), confirmApprove(), exportAttendanceExcel(), handleClickOutside() (+5 more)
+Nodes (14): applyCorrectionToAttendance(), findOrCreateAttendanceRecord(), resolveAttendanceCorrection(), AttendanceRecords(), approveCorrection(), closeMenu(), closeReview(), confirmApprove() (+6 more)
 
 ### Community 63 - "getDriverRunSheet"
 Cohesion: 0.28
 Nodes (8): getCabAssignmentForEmployee(), getCabAssignments(), getDriverRunSheet(), buildStops(), personInfo(), setCabAssignment(), AssignTab(), save()
 
 ### Community 64 - "EmployeeDashboard.jsx"
-Cohesion: 0.12
-Nodes (18): AttendanceCorrectionForm(), AttendanceCorrectionThread(), addAttendanceCorrectionMessage(), getAttendanceCorrections(), getAttendanceCorrectionsForEmployee(), getAttendanceForEmployee(), getTodayRecord(), submitAttendanceCorrection() (+10 more)
+Cohesion: 0.18
+Nodes (7): AttendanceCorrectionForm(), AttendanceCorrectionThread(), getAttendanceForEmployee(), getTodayRecord(), TAB_SLUGS, TABS, ATTENDANCE_STATS_PERIODS
 
-### Community 67 - "AttendanceRecords.jsx"
-Cohesion: 0.20
-Nodes (12): attendanceMonthsLoaded(), exportSalariesExcel(), CORRECTION_STATUS_FILTER_OPTS, monthFilterOptions(), PERIOD_FILTER_OPTS, STATUS_FILTER_OPTS, VALID_TABS, monthKeyOffset() (+4 more)
+### Community 67 - "downloadExcelXlsx"
+Cohesion: 0.28
+Nodes (6): exportSalariesExcel(), exportAttendanceExcel(), recordStatus(), dateToExcelSerial(), displayValue(), downloadExcelXlsx()
 
 ## Knowledge Gaps
 - **193 isolated node(s):** `$schema`, `style`, `rsc`, `tsx`, `config` (+188 more)
@@ -304,11 +304,11 @@ Nodes (12): attendanceMonthsLoaded(), exportSalariesExcel(), CORRECTION_STATUS_F
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `formatDate()` connect `App.jsx` to `leaves.js`, `EmployeeTickets`, `EmployeeReimbursements.jsx`, `AdminTasks`, `getEmployeeById`, `EmployeeTasks`, `CabManagement.jsx`, `write`, `MyCab`, `AdminAnnouncements`, `todayKey`, `TeamTasksPanel`, `tasks.js`, `EmployeeITHelpDesk.jsx`, `attendance.js`, `RequestsTab`, `EmployeeDashboard`, `AttendanceRecords`, `EmployeeDashboard.jsx`, `AttendanceRecords.jsx`?**
+- **Why does `formatDate()` connect `App.jsx` to `leaves.js`, `EmployeeTickets`, `EmployeeReimbursements.jsx`, `AdminTasks`, `getEmployeeById`, `EmployeeTasks`, `write`, `MyCab`, `AdminAnnouncements`, `todayKey`, `TeamTasksPanel`, `tasks.js`, `EmployeeITHelpDesk.jsx`, `AttendanceRecords.jsx`, `attendance.js`, `CabManagement.jsx`, `EmployeeDashboard`, `AttendanceRecords`, `EmployeeDashboard.jsx`?**
   _High betweenness centrality (0.062) - this node is a cross-community bridge._
-- **Why does `useTableControls()` connect `App.jsx` to `leaves.js`, `EmployeeTickets`, `EmployeeReimbursements.jsx`, `AdminTasks`, `getEmployeeById`, `EmployeeTasks`, `getOvertimeRequests`, `TripsTab`, `CabManagement.jsx`, `write`, `MyCab`, `AdminAnnouncements`, `todayKey`, `TeamTasksPanel`, `EmployeeITHelpDesk.jsx`, `attendance.js`, `DriversTab`, `VehiclesTab`, `EmployeeDashboard`, `AttendanceRecords`, `getDriverRunSheet`, `EmployeeDashboard.jsx`, `AttendanceRecords.jsx`?**
+- **Why does `useTableControls()` connect `App.jsx` to `leaves.js`, `EmployeeTickets`, `EmployeeReimbursements.jsx`, `AdminTasks`, `getEmployeeById`, `EmployeeTasks`, `getOvertimeRequests`, `TripsTab`, `write`, `MyCab`, `AdminAnnouncements`, `todayKey`, `TeamTasksPanel`, `EmployeeITHelpDesk.jsx`, `AttendanceRecords.jsx`, `attendance.js`, `CabManagement.jsx`, `DriversTab`, `VehiclesTab`, `EmployeeDashboard`, `AttendanceRecords`, `getDriverRunSheet`, `EmployeeDashboard.jsx`?**
   _High betweenness centrality (0.057) - this node is a cross-community bridge._
-- **Why does `usePagination()` connect `App.jsx` to `leaves.js`, `EmployeeTickets`, `EmployeeReimbursements.jsx`, `AdminTasks`, `getEmployeeById`, `EmployeeTasks`, `getOvertimeRequests`, `TripsTab`, `CabManagement.jsx`, `write`, `MyCab`, `AdminAnnouncements`, `todayKey`, `TeamTasksPanel`, `EmployeeITHelpDesk.jsx`, `attendance.js`, `RequestsTab`, `DriversTab`, `VehiclesTab`, `EmployeeDashboard`, `AttendanceRecords`, `getDriverRunSheet`, `EmployeeDashboard.jsx`, `AttendanceRecords.jsx`?**
+- **Why does `usePagination()` connect `App.jsx` to `leaves.js`, `EmployeeTickets`, `EmployeeReimbursements.jsx`, `AdminTasks`, `getEmployeeById`, `EmployeeTasks`, `getOvertimeRequests`, `TripsTab`, `write`, `MyCab`, `AdminAnnouncements`, `todayKey`, `TeamTasksPanel`, `EmployeeITHelpDesk.jsx`, `AttendanceRecords.jsx`, `attendance.js`, `CabManagement.jsx`, `DriversTab`, `VehiclesTab`, `EmployeeDashboard`, `AttendanceRecords`, `getDriverRunSheet`, `EmployeeDashboard.jsx`?**
   _High betweenness centrality (0.055) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `useTableControls()` (e.g. with `setFilter()` and `toggleSort()`) actually correct?**
   _`useTableControls()` has 2 INFERRED edges - model-reasoned connections that need verification._

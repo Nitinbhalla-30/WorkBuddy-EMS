@@ -36,11 +36,16 @@ export default function NotificationBell({ employeeId, viewerRole = 'employee' }
 
   useEffect(() => {
     function onTeamMessage() { refresh() }
+    // A screen that re-pulled the shared store (My Tasks on focus, a manager's
+    // queue, ...) can change what this feed should show.
+    function onStoreRefreshed() { refresh() }
     window.addEventListener('teamMessageReceived', onTeamMessage)
     window.addEventListener('teamMessageSent', onTeamMessage)
+    window.addEventListener('storeRefreshed', onStoreRefreshed)
     return () => {
       window.removeEventListener('teamMessageReceived', onTeamMessage)
       window.removeEventListener('teamMessageSent', onTeamMessage)
+      window.removeEventListener('storeRefreshed', onStoreRefreshed)
     }
   }, [])
 

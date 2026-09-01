@@ -75,6 +75,15 @@ export function chartBucketKey(task) {
   return 'todo'
 }
 
+// Quick filter bucket: uses actual status, not chart visualization logic.
+// This ensures the quick filter shows tasks with the exact status the user clicked.
+export function quickFilterBucketKey(task) {
+  const status = task.status === 'pending_closure' ? 'done' : task.status
+  if (status === 'done' || status === 'closed') return 'done'
+  if (status === 'inprogress') return 'inprogress'
+  return 'todo'
+}
+
 export function closureNotice(task, nameOf) {
   if (isManagerAssignedDone(task) && task.completedOn) {
     return `Marked done on ${formatDate(task.completedOn)}. Waiting for ${nameOf(task.createdById)} to approve.`

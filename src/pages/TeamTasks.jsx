@@ -4,10 +4,12 @@ import {
   addTask,
   addTaskMessage,
   approveTaskClosure,
-  deleteTask,
+  deleteTaskByManager,
   getEmployeeById,
   getTasks,
   getTeamMembers,
+  refreshStoreFromSupabase,
+  STORE_KEYS,
   updateTaskStatusByManager
 } from '../data/store.js'
 import { TASK_STATUSES, TASK_PRIORITIES } from '../data/sampleData.js'
@@ -31,7 +33,7 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import Avatar from '../components/Avatar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { CircleCheck, Eye, MessageCircleQuestionMark, MoreVertical, Plus, Trash2, X } from 'lucide-react'
+import { CircleCheck, Eye, MoreVertical, Plus, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
@@ -66,6 +68,24 @@ export default function TeamTasksPanel() {
     () => getTasks().filter((t) => t.createdById === user.id),
     [user.id, refresh]
   )
+
+  // Pull the latest tasks from Supabase so status changes made by employees
+  // show up even if this tab's initial load was stale.
+  useEffect(() => {
+    let cancelled = false
+    async function refreshTasks() {
+      await refreshStoreFromSupabase([STORE_KEYS.tasks])
+      if (!cancelled) bump()
+    }
+    refreshTasks()
+    window.addEventListener('storage', refreshTasks)
+    window.addEventListener('focus', refreshTasks)
+    return () => {
+      cancelled = true
+      window.removeEventListener('storage', refreshTasks)
+      window.removeEventListener('focus', refreshTasks)
+    }
+  }, [user.id])
 
   const table = useTableControls(tasks, {
     getSearchText: (t) => {
@@ -135,7 +155,7 @@ export default function TeamTasksPanel() {
 
   function confirmDelete() {
     if (deleteId) {
-      deleteTask(deleteId)
+      deleteTaskByManager(deleteId, user.id)
       setDeleteId(null)
       bump()
     }
@@ -334,7 +354,7 @@ export default function TeamTasksPanel() {
                     <span>{nameOf(task.assigneeId)}</span>
                   </div>
                 </td>
-                <td><strong>{task.title}</strong></td>
+                <td className="cell-ellipsis" title={task.title || undefined}><strong>{task.title}</strong></td>
                 <td className="cell-ellipsis" title={task.description || undefined}>{task.description || <span className="muted">--</span>}</td>
                 <td>
                   <span className={`tag ${getPriorityClass(task.priority)}`}>
@@ -362,22 +382,8 @@ export default function TeamTasksPanel() {
                           }}
                         >
                           <Eye size={14} aria-hidden="true" />
-                          View details
+                          Open
                         </button>
-                        {/* For a task the manager assigned to themself only
-                            Delete remains; marking done happens in My Tasks. */}
-                        {!isSelfAssigned(task) && (
-                          <button
-                            className="task-menu-item"
-                            onClick={() => {
-                              setOpenTaskId(task.id)
-                              closeMenu()
-                            }}
-                          >
-                            <MessageCircleQuestionMark size={14} aria-hidden="true" />
-                            Ask question
-                          </button>
-                        )}
                         {canManagerApproveDone(task, user.id) && (
                           <button
                             className="task-menu-item"

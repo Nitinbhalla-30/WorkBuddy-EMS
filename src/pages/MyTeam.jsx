@@ -336,128 +336,124 @@ export default function MyTeam() {
               }]}
               onFilterChange={table.setFilter}
             />
-            <div style={{ overflowX: 'auto' }}>
-            <table className="table" style={{ tableLayout: 'fixed', minWidth: 1500 }}>
-              <colgroup>
-                {user.isManager ? (
-                  <>
-                    <col style={{ width: '180px' }} />
-                    <col style={{ width: '80px' }} />
-                    <col style={{ width: '120px' }} />
-                    <col style={{ width: '260px' }} />
-                    <col style={{ width: '140px' }} />
-                    <col style={{ width: '130px' }} />
-                    <col style={{ width: '110px' }} />
-                    <col style={{ width: '110px' }} />
-                    <col style={{ width: '110px' }} />
-                    <col style={{ width: '100px' }} />
-                    <col style={{ width: '190px' }} />
-                  </>
-                ) : (
-                  <>
-                    <col style={{ width: '220px' }} />
-                    <col style={{ width: '80px' }} />
-                    <col style={{ width: '140px' }} />
-                    <col style={{ width: '280px' }} />
-                    <col style={{ width: '180px' }} />
-                    <col style={{ width: '160px' }} />
-                  </>
-                )}
-              </colgroup>
-              <thead>
-                <tr>
-                  <SortableTh
-                    label="Name"
-                    keyName="name"
-                    sortKey={table.sortKey}
-                    sortDir={table.sortDir}
-                    onSort={table.toggleSort}
-                  />
-                  <th>Message</th>
-                  <SortableTh
-                    label="Mobile"
-                    keyName="mobile"
-                    sortKey={table.sortKey}
-                    sortDir={table.sortDir}
-                    onSort={table.toggleSort}
-                  />
-                  <SortableTh
-                    label="Email"
-                    keyName="email"
-                    sortKey={table.sortKey}
-                    sortDir={table.sortDir}
-                    onSort={table.toggleSort}
-                  />
-                  <SortableTh
-                    label="Designation"
-                    keyName="designation"
-                    sortKey={table.sortKey}
-                    sortDir={table.sortDir}
-                    onSort={table.toggleSort}
-                  />
-                  <SortableTh
-                    label="Reports to"
-                    keyName="reportsTo"
-                    sortKey={table.sortKey}
-                    sortDir={table.sortDir}
-                    onSort={table.toggleSort}
-                  />
-                  {user.isManager && (
-                    <>
-                      <SortableTh
-                        label="Avg time in"
-                        keyName="avgTimeIn"
-                        sortKey={table.sortKey}
-                        sortDir={table.sortDir}
-                        onSort={table.toggleSort}
-                        className="th-wrap"
-                      />
-                      <SortableTh
-                        label="Avg time out"
-                        keyName="avgTimeOut"
-                        sortKey={table.sortKey}
-                        sortDir={table.sortDir}
-                        onSort={table.toggleSort}
-                        className="th-wrap"
-                      />
-                      <SortableTh
-                        label="Avg worked hours"
-                        keyName="avgWorked"
-                        sortKey={table.sortKey}
-                        sortDir={table.sortDir}
-                        onSort={table.toggleSort}
-                        className="th-wrap"
-                      />
-                      <SortableTh
-                        label="Avg break time"
-                        keyName="avgBreak"
-                        sortKey={table.sortKey}
-                        sortDir={table.sortDir}
-                        onSort={table.toggleSort}
-                        className="th-wrap"
-                      />
-                      <SortableTh
-                        label="Tasks"
-                        keyName="tasks"
-                        sortKey={table.sortKey}
-                        sortDir={table.sortDir}
-                        onSort={table.toggleSort}
-                      />
-                    </>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {table.count === 0 && (
+            {user.isManager ? (
+              <div style={{ overflowX: 'auto' }}>
+              <table className="table" style={{ tableLayout: 'fixed', minWidth: 1500 }}>
+                <colgroup>
+                  <col style={{ width: '180px' }} />
+                  <col style={{ width: '80px' }} />
+                  <col style={{ width: '120px' }} />
+                  <col style={{ width: '260px' }} />
+                  <col style={{ width: '140px' }} />
+                  <col style={{ width: '130px' }} />
+                  <col style={{ width: '110px' }} />
+                  <col style={{ width: '110px' }} />
+                  <col style={{ width: '110px' }} />
+                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '190px' }} />
+                </colgroup>
+                <thead>
                   <tr>
-                    <td colSpan={user.isManager ? 11 : 6} className="muted">
-                      {teammates.length === 0 ? emptyMessage : 'No team members match your search.'}
-                    </td>
+                    <SortableTh label="Name" keyName="name" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+                    <th>Message</th>
+                    <SortableTh label="Mobile" keyName="mobile" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+                    <SortableTh label="Email" keyName="email" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+                    <SortableTh label="Designation" keyName="designation" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+                    <SortableTh label="Reports to" keyName="reportsTo" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+                    <SortableTh label="Avg time in" keyName="avgTimeIn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
+                    <SortableTh label="Avg time out" keyName="avgTimeOut" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
+                    <SortableTh label="Avg worked hours" keyName="avgWorked" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
+                    <SortableTh label="Avg break time" keyName="avgBreak" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
+                    <SortableTh label="Tasks" keyName="tasks" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
                   </tr>
-                )}
-                {pageRows.map((m) => {
-                  const st = memberStats[m.id] || {}
-                  return (
+                </thead>
+                <tbody>
+                  {table.count === 0 && (
+                    <tr>
+                      <td colSpan={11} className="muted">
+                        {teammates.length === 0 ? emptyMessage : 'No team members match your search.'}
+                      </td>
+                    </tr>
+                  )}
+                  {pageRows.map((m) => {
+                    const st = memberStats[m.id] || {}
+                    return (
+                      <tr key={m.id}>
+                        <td>
+                          <div className="person-cell">
+                            <Avatar src={m.photoUrl} name={m.name} size={34} />
+                            <span>{m.id === user.id ? `${m.name} (me)` : m.name}</span>
+                          </div>
+                        </td>
+                        <td className="team-msg-cell">
+                          <button
+                            type="button"
+                            className="team-msg-btn"
+                            onClick={() => setOpenChatId(m.id)}
+                            aria-label={`Message ${m.name}`}
+                            title={`Message ${m.name}`}
+                          >
+                            <MessageCircle size={16} />
+                          </button>
+                        </td>
+                        <td className="cell-nowrap">
+                          {m.mobile
+                            ? <a href={`tel:${m.mobile}`} className="phone-link">{m.mobile}</a>
+                            : <span className="muted">--</span>}
+                        </td>
+                        <td className="cell-ellipsis">
+                          {m.email
+                            ? <a href={`mailto:${m.email}`} className="phone-link">{m.email}</a>
+                            : <span className="muted">--</span>}
+                        </td>
+                        <td className="cell-ellipsis">{m.designation || <span className="muted">--</span>}</td>
+                        <td className="cell-ellipsis">{m.reportsTo || <span className="muted">--</span>}</td>
+                        <td className="cell-nowrap">{st.avgTimeIn}</td>
+                        <td className="cell-nowrap">{st.avgTimeOut}</td>
+                        <td className="cell-nowrap">{st.avgWorked}</td>
+                        <td className="cell-nowrap">{st.avgBreak}</td>
+                        <td>
+                          <div className="team-task-counts">
+                            <span className="tag tag-absent">{st.todoCount} To do</span>
+                            <span className="tag tag-late">{st.inprogressCount} In progress</span>
+                            <span className="tag tag-ok">{st.doneCount} Done</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              </div>
+            ) : (
+              <table className="table" style={{ tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: '220px' }} />
+                  <col style={{ width: '80px' }} />
+                  <col style={{ width: '140px' }} />
+                  <col style={{ width: '280px' }} />
+                  <col style={{ width: '180px' }} />
+                  <col style={{ width: '160px' }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <SortableTh label="Name" keyName="name" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+                    <th>Message</th>
+                    <SortableTh label="Mobile" keyName="mobile" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+                    <SortableTh label="Email" keyName="email" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+                    <SortableTh label="Designation" keyName="designation" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+                    <SortableTh label="Reports to" keyName="reportsTo" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {table.count === 0 && (
+                    <tr>
+                      <td colSpan={6} className="muted">
+                        {teammates.length === 0 ? emptyMessage : 'No team members match your search.'}
+                      </td>
+                    </tr>
+                  )}
+                  {pageRows.map((m) => (
                     <tr key={m.id}>
                       <td>
                         <div className="person-cell">
@@ -488,27 +484,11 @@ export default function MyTeam() {
                       </td>
                       <td className="cell-ellipsis">{m.designation || <span className="muted">--</span>}</td>
                       <td className="cell-ellipsis">{m.reportsTo || <span className="muted">--</span>}</td>
-                      {user.isManager && (
-                        <>
-                          <td className="cell-nowrap">{st.avgTimeIn}</td>
-                          <td className="cell-nowrap">{st.avgTimeOut}</td>
-                          <td className="cell-nowrap">{st.avgWorked}</td>
-                          <td className="cell-nowrap">{st.avgBreak}</td>
-                          <td>
-                            <div className="team-task-counts">
-                              <span className="tag tag-absent">{st.todoCount} To do</span>
-                              <span className="tag tag-late">{st.inprogressCount} In progress</span>
-                              <span className="tag tag-ok">{st.doneCount} Done</span>
-                            </div>
-                          </td>
-                        </>
-                      )}
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-            </div>
+                  ))}
+                </tbody>
+              </table>
+            )}
             <Pagination
               page={page}
               totalPages={totalPages}

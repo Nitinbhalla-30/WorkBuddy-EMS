@@ -26,23 +26,23 @@ export default function ReimbursementClaimDetail({
     : submitted
 
   return (
-    <div className="claim-detail">
-      <div className="claim-detail-head">
-        <div className="claim-detail-heading">
-          <h3 className="claim-detail-title">{categoryLabel(claim.category)}</h3>
-          <div className="claim-detail-sub">{subtitle}</div>
+    <div>
+      <div className="modal-header">
+        <div>
+          <h3 className="section-title first" style={{ margin: 0 }}>{categoryLabel(claim.category)}</h3>
+          <div className="muted small">{subtitle}</div>
         </div>
-        <div className="claim-detail-head-right">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className={`tag ${statusTagClass(claim.status)}`}>
             {statusLabel(claim.status)}
           </span>
           <button
             type="button"
-            className="claim-detail-close"
+            className="btn btn-tiny btn-light"
             onClick={onClose}
             aria-label="Close"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
       </div>
@@ -76,16 +76,14 @@ export default function ReimbursementClaimDetail({
         </div>
       )}
 
-      <div className="claim-thread-wrap">
-        <ReimbursementThread
-          claim={claim}
-          viewerRole={viewerRole}
-          viewerId={viewerId}
-          nameOf={nameOf}
-          onReply={onReply}
-          onClose={onClose}
-        />
-      </div>
+      <ReimbursementThread
+        claim={claim}
+        viewerRole={viewerRole}
+        viewerId={viewerId}
+        nameOf={nameOf}
+        onReply={onReply}
+        onClose={onClose}
+      />
     </div>
   )
 }

@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CalendarX2, CircleCheck, Hourglass, ListTodo } from 'lucide-react'
 import { DonutChart } from '@/components/ui/donut-chart'
-import { TASK_CHART_BUCKETS, chartBucketKey, isOverdue } from '@/utils/tasks.js'
+import { TASK_CHART_BUCKETS, chartBucketKey, isOverdue, quickFilterBucketKey } from '@/utils/tasks.js'
 import { cn } from '@/lib/utils'
 
 export type TaskStatusKey = 'todo' | 'inprogress' | 'done'
@@ -38,7 +38,9 @@ export function TaskStatusChart({
       done: 0
     }
     for (const t of tasks) {
-      const bucket = chartBucketKey(t) as TaskStatusKey
+      // Use actual status for stat card counts, not chart visualization logic.
+      // This ensures stat cards update correctly when employee changes status.
+      const bucket = quickFilterBucketKey(t) as TaskStatusKey
       counts[bucket] += 1
     }
     return TASK_CHART_BUCKETS.map((bucket) => ({

@@ -5,6 +5,7 @@ import {
   getAnnouncementsForEmployee,
   getAttendanceCorrections,
   getAttendanceCorrectionsForEmployee,
+  getDeletedTasks,
   getDismissedNotificationIds,
   getEmployeeById,
   getITIssues,
@@ -208,8 +209,8 @@ export function buildEmployeeNotifications(employeeId) {
         id: `task-assigned-${task.id}`,
         category: 'task',
         title: 'Task assigned to you',
-        body: `${nameOf(task.createdById)} assigned “${task.title}”.`,
-        on: task.createdOn,
+        body: `${nameOf(task.createdById)} assigned "${task.title}".`,
+        on: bestTime(task.createdAt, task.createdOn),
         href: '/my-tasks'
       })
     }
@@ -218,8 +219,59 @@ export function buildEmployeeNotifications(employeeId) {
         id: `task-closed-${task.id}`,
         category: 'task',
         title: 'Task closed',
-        body: `“${task.title}” was approved and closed by ${nameOf(task.closedBy)}.`,
-        on: task.closedOn,
+        body: `"${task.title}" was approved and closed by ${nameOf(task.closedBy)}.`,
+        on: bestTime(task.closedOn, task.createdAt, task.createdOn),
+        href: '/my-tasks'
+      })
+    }
+  }
+  
+  // Everything happening on the tasks this person is one half of (they either
+  // assigned or were assigned): an employee marking a task done needs the
+  // manager to approve it, and a message in the Q&A thread is an alert for the
+  // other half — the manager when the assignee asks, the assignee when the
+  // manager answers. A task someone assigned to themself involves nobody else.
+  for (const task of getTasks()) {
+    if (task.createdById === task.assigneeId) continue
+    const isCreator = task.createdById === employeeId
+    const isAssignee = task.assigneeId === employeeId
+    if (!isCreator && !isAssignee) continue
+
+    if (isCreator && task.status === 'done' && task.completedOn) {
+      push(items, {
+        id: `task-done-${task.id}`,
+        category: 'task',
+        title: 'Task marked done',
+        body: `${nameOf(task.assigneeId)} completed "${task.title}". Approve closure.`,
+        on: bestTime(task.completedOn, task.createdAt, task.createdOn),
+        href: '/my-team?tab=tasks'
+      })
+    }
+
+    // Only the newest message is announced, and it is announced under its own
+    // id, so every new question or reply raises a fresh unread alert instead of
+    // reviving an old one (same convention as leaves and queries).
+    const last = lastMessage(task.messages)
+    if (!last?.text || last.byId === employeeId) continue
+    push(items, {
+      id: `task-message-${task.id}-${last.id}`,
+      category: 'task',
+      title: isAssignee ? `Reply on "${task.title}"` : `Question on "${task.title}"`,
+      body: `${nameOf(last.byId)}: ${last.text}`,
+      on: bestTime(last.on, task.createdAt, task.createdOn),
+      href: isAssignee ? '/my-tasks' : '/my-team?tab=tasks'
+    })
+  }
+
+  // Notify employees when a manager deletes a task that was assigned to them.
+  for (const task of getDeletedTasks()) {
+    if (task.assigneeId === employeeId && task.deletedBy !== employeeId) {
+      push(items, {
+        id: `task-deleted-${task.id}`,
+        category: 'task',
+        title: 'Task deleted',
+        body: `${nameOf(task.deletedBy)} deleted the task "${task.title}".`,
+        on: task.deletedAt,
         href: '/my-tasks'
       })
     }
@@ -472,8 +524,9 @@ export function buildEmployeeNotifications(employeeId) {
   return items
 }
 
-// Action items and replies HR/Admin should know about.
-export function buildAdminNotifications() {
+// Action items and replies HR/Admin should know about. `adminId` is the HR user
+// reading the feed, needed to work out which side of a task thread they are on.
+export function buildAdminNotifications(adminId) {
   const items = []
 
   for (const lv of getLeaves()) {
@@ -590,11 +643,29 @@ export function buildAdminNotifications() {
         id: `task-done-${task.id}`,
         category: 'task',
         title: 'Task marked done',
-        body: `${nameOf(task.assigneeId)} completed “${task.title}”. Approve closure.`,
-        on: task.completedOn,
-        href: '/tasks'
+        body: `${nameOf(task.assigneeId)} completed "${task.title}". Approve closure.`,
+        on: bestTime(task.completedOn, task.createdAt, task.createdOn),
+        href: '/my-team?tab=tasks'
       })
     }
+  }
+
+  // HR assigns tasks and posts follow-ups from the Tasks screen, so a message
+  // from the other side of a thread HR is part of has to reach them too.
+  for (const task of getTasks()) {
+    if (isSelfAssigned(task)) continue
+    const isAssignee = task.assigneeId === adminId
+    if (!isAssignee && task.createdById !== adminId) continue
+    const last = lastMessage(task.messages)
+    if (!last?.text || last.byId === adminId) continue
+    push(items, {
+      id: `task-message-${task.id}-${last.id}`,
+      category: 'task',
+      title: isAssignee ? `Reply on "${task.title}"` : `Question on "${task.title}"`,
+      body: `${nameOf(last.byId)}: ${last.text}`,
+      on: bestTime(last.on, task.createdAt, task.createdOn),
+      href: '/tasks'
+    })
   }
 
   for (const issue of getITIssues()) {
@@ -635,7 +706,7 @@ export function buildAdminNotifications() {
       title: 'Overtime request pending',
       body: `${nameOf(req.employeeId)} logged ${req.hours}h overtime for ${monthLabel(req.monthKey)} — manager approved, final approval needed.`,
       on: req.managerDecidedOn || req.requestedOn,
-      href: '/overtime'
+      href: '/overtime?tab=requests'
     })
   }
 
@@ -645,7 +716,7 @@ export function buildAdminNotifications() {
 
 function buildNotifications(userId, viewerRole) {
   if (viewerRole === 'admin') {
-    const actionItems = buildAdminNotifications()
+    const actionItems = buildAdminNotifications(userId)
     const announcementItems = []
     for (const a of getAnnouncementsForEmployee(userId)) {
       if (!isAnnouncementRead(userId, a.id)) {
@@ -669,8 +740,16 @@ function buildNotifications(userId, viewerRole) {
 export function getNotificationFeed(userId, viewerRole = 'employee') {
   const readIds = new Set(getReadNotificationIds(userId))
   const dismissedIds = new Set(getDismissedNotificationIds(userId))
+  // An id is both the list key and the handle for read/dismissed state, so the
+  // same alert reaching the feed twice (e.g. a task recorded as deleted in two
+  // sync passes) is shown once.
+  const seenIds = new Set()
   const all = buildNotifications(userId, viewerRole)
-    .filter((n) => !dismissedIds.has(n.id))
+    .filter((n) => {
+      if (dismissedIds.has(n.id) || seenIds.has(n.id)) return false
+      seenIds.add(n.id)
+      return true
+    })
     .map((n) => ({
       ...n,
       unread: !readIds.has(n.id)

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   approveOvertime,
   getEmployeeById,
@@ -25,10 +26,29 @@ import {
 import { CircleCheck, CircleX, MoreVertical, Timer, X } from 'lucide-react'
 
 const TABS = ['Requests', 'Summary']
+const TAB_SLUGS = ['requests', 'summary']
 
 export default function AdminOvertime() {
-  const [tab, setTab] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const initialTab = Math.max(0, TAB_SLUGS.indexOf(tabParam))
+  const [tab, setTab] = useState(initialTab)
   const [refresh, setRefresh] = useState(0)
+
+  // React to URL tab parameter changes (e.g., clicking a notification while
+  // already on Overtime but on a different tab).
+  const prevTabParam = useRef(tabParam)
+  useEffect(() => {
+    if (tabParam !== prevTabParam.current) {
+      setTab(Math.max(0, TAB_SLUGS.indexOf(tabParam)))
+      prevTabParam.current = tabParam
+    }
+  }, [tabParam])
+
+  function selectTab(i) {
+    setTab(i)
+    setSearchParams({ tab: TAB_SLUGS[i] }, { replace: true })
+  }
 
   function bump() { setRefresh((n) => n + 1) }
 
@@ -45,7 +65,7 @@ export default function AdminOvertime() {
 
       <div className="tabs">
         {TABS.map((t, i) => (
-          <button key={t} className={`tab ${i === tab ? 'tab-active' : ''}`} onClick={() => setTab(i)}>
+          <button key={t} className={`tab ${i === tab ? 'tab-active' : ''}`} onClick={() => selectTab(i)}>
             {t}
             {t === 'Requests' ? ` (${getOvertimeRequests().filter((r) => r.status === 'pending' && r.stage === 'hr').length})` : ''}
           </button>

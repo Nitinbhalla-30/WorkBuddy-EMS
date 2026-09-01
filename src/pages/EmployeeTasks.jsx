@@ -6,6 +6,8 @@ import {
   deleteTaskByAssignee,
   getEmployeeById,
   getTasksForAssignee,
+  refreshStoreFromSupabase,
+  STORE_KEYS,
   updateTaskByAssignee,
   updateTaskStatusByEmployee
 } from '../data/store.js'
@@ -16,12 +18,12 @@ import {
   canEmployeeAskQuestion,
   canEmployeeDeleteTask,
   canEmployeeEditTask,
-  chartBucketKey,
   closureNotice,
   employeeStatusOptions,
   isEmployeeStatusLocked,
   isOverdue,
   isSelfAssigned,
+  quickFilterBucketKey,
   statusLabel,
   statusTagClass
 } from '../utils/tasks.js'
@@ -34,7 +36,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { ListTodo, MessageCircleQuestionMark, MoreVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Eye, ListTodo, MoreVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
@@ -52,12 +54,12 @@ const ASSIGNED_DURING_FILTER_OPTS = [
   { value: 'ytd', label: 'Year to Date' }
 ]
 
-// Whether a task's assigned-on date (YYYY-MM-DD) falls inside the chosen
-// "Assigned During" window.
+// Whether a task's assigned-on date falls inside the chosen "Assigned During"
+// window. Handles both date-only ("YYYY-MM-DD") and full ISO datetime strings.
 function inAssignedDuring(dateKey, val) {
   if (!val || val === 'all') return true
   if (!dateKey) return false
-  const d = new Date(`${dateKey}T00:00:00`)
+  const d = dateKey.includes('T') ? new Date(dateKey) : new Date(`${dateKey}T00:00:00`)
   const now = new Date()
   if (val === 'this-month') {
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
@@ -85,6 +87,27 @@ export default function EmployeeTasks() {
     () => getTasksForAssignee(user.id),
     [user.id, refresh]
   )
+
+  // Pull the latest tasks from Supabase so a manager's change — including a
+  // task they deleted — reaches this board without a reload. `deletedTasks` is
+  // fetched alongside because that is what the "Task deleted" alert reads.
+  useEffect(() => {
+    let cancelled = false
+    async function refreshTasks() {
+      await refreshStoreFromSupabase([STORE_KEYS.tasks, STORE_KEYS.deletedTasks])
+      if (!cancelled) bump()
+    }
+    refreshTasks()
+    window.addEventListener('storage', refreshTasks)
+    window.addEventListener('focus', refreshTasks)
+    return () => {
+      cancelled = true
+      window.removeEventListener('storage', refreshTasks)
+      window.removeEventListener('focus', refreshTasks)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id])
+
   const table = useTableControls(tasks, {
     getSearchText: (t) => {
       const creator = getEmployeeById(t.createdById)
@@ -105,7 +128,7 @@ export default function EmployeeTasks() {
       status: (t, val) => t.status === val,
       priority: (t, val) => t.priority === val,
       assignedDuring: (t, val) => inAssignedDuring(t.createdOn, val),
-      quick: (t, val) => (val === 'overdue' ? isOverdue(t) : chartBucketKey(t) === val)
+      quick: (t, val) => (val === 'overdue' ? isOverdue(t) : quickFilterBucketKey(t) === val)
     }
   })
   const {
@@ -444,8 +467,8 @@ export default function EmployeeTasks() {
                             }}
                             disabled={!canEmployeeAskQuestion(task)}
                           >
-                            <MessageCircleQuestionMark size={14} aria-hidden="true" />
-                            Ask question
+                            <Eye size={14} aria-hidden="true" />
+                            Open
                           </button>
                         )}
                         {canEmployeeEditTask(task, user.id) && (

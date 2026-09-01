@@ -313,14 +313,16 @@ export default function AdminReimbursements() {
 
       {openClaim && (
         <Modal onClose={() => setOpenId(null)} title="Reimbursement claim">
-          <ReimbursementClaimDetail
-            claim={openClaim}
-            viewerRole="admin"
-            viewerId={user.id}
-            nameOf={nameOf}
-            onReply={handleReply}
-            onClose={() => setOpenId(null)}
-          />
+          <div className="modal-form modal-form-wide">
+            <ReimbursementClaimDetail
+              claim={openClaim}
+              viewerRole="admin"
+              viewerId={user.id}
+              nameOf={nameOf}
+              onReply={handleReply}
+              onClose={() => setOpenId(null)}
+            />
+          </div>
         </Modal>
       )}
 

@@ -14,10 +14,10 @@ import { TASK_PRIORITIES, TASK_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import {
   QUICK_FILTER_LABELS,
-  chartBucketKey,
   isOverdue,
   priorityLabel,
   priorityTagClass,
+  quickFilterBucketKey,
   statusLabel
 } from '../utils/tasks.js'
 import TaskForm from '../components/TaskForm.jsx'
@@ -89,7 +89,7 @@ export default function AdminTasks() {
       assignee: (t, val) => t.assigneeId === val,
       status: (t, val) => t.status === val,
       priority: (t, val) => t.priority === val,
-      quick: (t, val) => (val === 'overdue' ? isOverdue(t) : chartBucketKey(t) === val)
+      quick: (t, val) => (val === 'overdue' ? isOverdue(t) : quickFilterBucketKey(t) === val)
     }
   })
   const {

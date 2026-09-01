@@ -2712,42 +2712,6 @@
       "norm_label": "updatetrip()"
     },
     {
-      "label": "CabManagement()",
-      "file_type": "code",
-      "source_file": "src/pages/CabManagement.jsx",
-      "source_location": "L53",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_cabmanagement_cabmanagement",
-      "community": 17,
-      "community_name": "TripsTab",
-      "norm_label": "cabmanagement()"
-    },
-    {
-      "label": "bump()",
-      "file_type": "code",
-      "source_file": "src/pages/CabManagement.jsx",
-      "source_location": "L69",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_cabmanagement_cabmanagement_bump",
-      "community": 17,
-      "community_name": "TripsTab",
-      "norm_label": "bump()"
-    },
-    {
-      "label": "nameOf()",
-      "file_type": "code",
-      "source_file": "src/pages/CabManagement.jsx",
-      "source_location": "L71",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_cabmanagement_cabmanagement_nameof",
-      "community": 17,
-      "community_name": "TripsTab",
-      "norm_label": "nameof()"
-    },
-    {
       "label": "TripsTab()",
       "file_type": "code",
       "source_file": "src/pages/CabManagement.jsx",
@@ -2856,16 +2820,16 @@
       "norm_label": "tripformfields()"
     },
     {
-      "label": "DropdownSelect()",
+      "label": "vehicleById()",
       "file_type": "code",
-      "source_file": "src/components/DropdownSelect.jsx",
-      "source_location": "L5",
+      "source_file": "src/utils/cab.js",
+      "source_location": "L39",
       "_callable": true,
       "_origin": "ast",
-      "id": "src_components_dropdownselect_dropdownselect",
-      "community": 18,
-      "community_name": "CabManagement.jsx",
-      "norm_label": "dropdownselect()"
+      "id": "src_utils_cab_vehiclebyid",
+      "community": 17,
+      "community_name": "TripsTab",
+      "norm_label": "vehiclebyid()"
     },
     {
       "label": "addCabMessage()",
@@ -2876,7 +2840,7 @@
       "_origin": "ast",
       "id": "src_data_store_addcabmessage",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "addcabmessage()"
     },
     {
@@ -2888,7 +2852,7 @@
       "_origin": "ast",
       "id": "src_data_store_clearcabchatadmin",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "clearcabchatadmin()"
     },
     {
@@ -2900,7 +2864,7 @@
       "_origin": "ast",
       "id": "src_data_store_getcabclearedatadmin",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "getcabclearedatadmin()"
     },
     {
@@ -2912,7 +2876,7 @@
       "_origin": "ast",
       "id": "src_data_store_getcabmessages",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "getcabmessages()"
     },
     {
@@ -2924,7 +2888,7 @@
       "_origin": "ast",
       "id": "src_data_store_getcabmessagesforemployee",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "getcabmessagesforemployee()"
     },
     {
@@ -2936,7 +2900,7 @@
       "_origin": "ast",
       "id": "src_data_store_getcabunreadbyemployee",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "getcabunreadbyemployee()"
     },
     {
@@ -2948,8 +2912,44 @@
       "_origin": "ast",
       "id": "src_data_store_markcabthreadread",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "markcabthreadread()"
+    },
+    {
+      "label": "CabManagement()",
+      "file_type": "code",
+      "source_file": "src/pages/CabManagement.jsx",
+      "source_location": "L53",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_cabmanagement_cabmanagement",
+      "community": 18,
+      "community_name": "bump",
+      "norm_label": "cabmanagement()"
+    },
+    {
+      "label": "bump()",
+      "file_type": "code",
+      "source_file": "src/pages/CabManagement.jsx",
+      "source_location": "L69",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_cabmanagement_cabmanagement_bump",
+      "community": 18,
+      "community_name": "bump",
+      "norm_label": "bump()"
+    },
+    {
+      "label": "nameOf()",
+      "file_type": "code",
+      "source_file": "src/pages/CabManagement.jsx",
+      "source_location": "L71",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_cabmanagement_cabmanagement_nameof",
+      "community": 18,
+      "community_name": "bump",
+      "norm_label": "nameof()"
     },
     {
       "label": "MessagesTab()",
@@ -2960,7 +2960,7 @@
       "_origin": "ast",
       "id": "src_pages_cabmanagement_messagestab",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "messagestab()"
     },
     {
@@ -2972,7 +2972,7 @@
       "_origin": "ast",
       "id": "src_pages_cabmanagement_messagestab_chooseemployee",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "chooseemployee()"
     },
     {
@@ -2984,7 +2984,7 @@
       "_origin": "ast",
       "id": "src_pages_cabmanagement_messagestab_handleclearchat",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "handleclearchat()"
     },
     {
@@ -2996,7 +2996,7 @@
       "_origin": "ast",
       "id": "src_pages_cabmanagement_messagestab_handlekeydown",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "handlekeydown()"
     },
     {
@@ -3008,7 +3008,7 @@
       "_origin": "ast",
       "id": "src_pages_cabmanagement_messagestab_ondocclick",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "ondocclick()"
     },
     {
@@ -3020,20 +3020,8 @@
       "_origin": "ast",
       "id": "src_pages_cabmanagement_messagestab_send",
       "community": 18,
-      "community_name": "CabManagement.jsx",
+      "community_name": "bump",
       "norm_label": "send()"
-    },
-    {
-      "label": "PersonCell()",
-      "file_type": "code",
-      "source_file": "src/pages/CabManagement.jsx",
-      "source_location": "L615",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_cabmanagement_personcell",
-      "community": 18,
-      "community_name": "CabManagement.jsx",
-      "norm_label": "personcell()"
     },
     {
       "label": "addShift()",
@@ -4366,18 +4354,6 @@
       "community": 20,
       "community_name": "MyCab",
       "norm_label": "triplabel()"
-    },
-    {
-      "label": "vehicleById()",
-      "file_type": "code",
-      "source_file": "src/utils/cab.js",
-      "source_location": "L39",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_utils_cab_vehiclebyid",
-      "community": 20,
-      "community_name": "MyCab",
-      "norm_label": "vehiclebyid()"
     },
     {
       "label": "createAnnouncement()",
@@ -6432,6 +6408,30 @@
       "norm_label": "itissuestatuslabel()"
     },
     {
+      "label": "attendanceMonthsLoaded()",
+      "file_type": "code",
+      "source_file": "src/data/store.js",
+      "source_location": "L534",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_data_store_attendancemonthsloaded",
+      "community": 36,
+      "community_name": "AttendanceRecords.jsx",
+      "norm_label": "attendancemonthsloaded()"
+    },
+    {
+      "label": "monthFilterOptions()",
+      "file_type": "code",
+      "source_file": "src/pages/AttendanceRecords.jsx",
+      "source_location": "L75",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_attendancerecords_monthfilteroptions",
+      "community": 36,
+      "community_name": "AttendanceRecords.jsx",
+      "norm_label": "monthfilteroptions()"
+    },
+    {
       "label": "filterRecordsForStatsPeriod()",
       "file_type": "code",
       "source_file": "src/utils/attendance.js",
@@ -6440,7 +6440,7 @@
       "_origin": "ast",
       "id": "src_utils_attendance_filterrecordsforstatsperiod",
       "community": 36,
-      "community_name": "monthKey",
+      "community_name": "AttendanceRecords.jsx",
       "norm_label": "filterrecordsforstatsperiod()"
     },
     {
@@ -6452,7 +6452,7 @@
       "_origin": "ast",
       "id": "src_utils_attendance_lastmonthkey",
       "community": 36,
-      "community_name": "monthKey",
+      "community_name": "AttendanceRecords.jsx",
       "norm_label": "lastmonthkey()"
     },
     {
@@ -6464,8 +6464,20 @@
       "_origin": "ast",
       "id": "src_utils_attendance_monthkey",
       "community": 36,
-      "community_name": "monthKey",
+      "community_name": "AttendanceRecords.jsx",
       "norm_label": "monthkey()"
+    },
+    {
+      "label": "monthKeyOffset()",
+      "file_type": "code",
+      "source_file": "src/utils/attendance.js",
+      "source_location": "L138",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_utils_attendance_monthkeyoffset",
+      "community": 36,
+      "community_name": "AttendanceRecords.jsx",
+      "norm_label": "monthkeyoffset()"
     },
     {
       "label": "monthKeysBetween()",
@@ -6476,8 +6488,20 @@
       "_origin": "ast",
       "id": "src_utils_attendance_monthkeysbetween",
       "community": 36,
-      "community_name": "monthKey",
+      "community_name": "AttendanceRecords.jsx",
       "norm_label": "monthkeysbetween()"
+    },
+    {
+      "label": "monthLabel()",
+      "file_type": "code",
+      "source_file": "src/utils/attendance.js",
+      "source_location": "L125",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_utils_attendance_monthlabel",
+      "community": 36,
+      "community_name": "AttendanceRecords.jsx",
+      "norm_label": "monthlabel()"
     },
     {
       "label": "monthsForStatsPeriod()",
@@ -6488,7 +6512,7 @@
       "_origin": "ast",
       "id": "src_utils_attendance_monthsforstatsperiod",
       "community": 36,
-      "community_name": "monthKey",
+      "community_name": "AttendanceRecords.jsx",
       "norm_label": "monthsforstatsperiod()"
     },
     {
@@ -6500,7 +6524,7 @@
       "_origin": "ast",
       "id": "src_utils_attendance_pad",
       "community": 36,
-      "community_name": "monthKey",
+      "community_name": "AttendanceRecords.jsx",
       "norm_label": "pad()"
     },
     {
@@ -6512,7 +6536,7 @@
       "_origin": "ast",
       "id": "src_utils_attendance_recordinperiod",
       "community": 36,
-      "community_name": "monthKey",
+      "community_name": "AttendanceRecords.jsx",
       "norm_label": "recordinperiod()"
     },
     {
@@ -6524,7 +6548,7 @@
       "_origin": "ast",
       "id": "src_utils_attendance_resolvejoindate",
       "community": 36,
-      "community_name": "monthKey",
+      "community_name": "AttendanceRecords.jsx",
       "norm_label": "resolvejoindate()"
     },
     {
@@ -6536,7 +6560,7 @@
       "_origin": "ast",
       "id": "src_utils_attendance_statsperiodlabel",
       "community": 36,
-      "community_name": "monthKey",
+      "community_name": "AttendanceRecords.jsx",
       "norm_label": "statsperiodlabel()"
     },
     {
@@ -6548,7 +6572,7 @@
       "_origin": "ast",
       "id": "src_utils_attendance_todaydatekey",
       "community": 36,
-      "community_name": "monthKey",
+      "community_name": "AttendanceRecords.jsx",
       "norm_label": "todaydatekey()"
     },
     {
@@ -6560,7 +6584,7 @@
       "_origin": "ast",
       "id": "src_utils_attendance_yesterdaykey",
       "community": 36,
-      "community_name": "monthKey",
+      "community_name": "AttendanceRecords.jsx",
       "norm_label": "yesterdaykey()"
     },
     {
@@ -7740,18 +7764,6 @@
       "norm_label": "setitissuestatus()"
     },
     {
-      "label": "setTicketStatus()",
-      "file_type": "code",
-      "source_file": "src/data/store.js",
-      "source_location": "L2205",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_data_store_setticketstatus",
-      "community": 41,
-      "community_name": "notifications.js",
-      "norm_label": "setticketstatus()"
-    },
-    {
       "label": "handleSaveAssignment()",
       "file_type": "code",
       "source_file": "src/pages/AdminITHelpDesk.jsx",
@@ -7774,18 +7786,6 @@
       "community": 41,
       "community_name": "notifications.js",
       "norm_label": "handlestatuschange()"
-    },
-    {
-      "label": "handleSetStatus()",
-      "file_type": "code",
-      "source_file": "src/pages/AdminTickets.jsx",
-      "source_location": "L102",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_admintickets_admintickets_handlesetstatus",
-      "community": 41,
-      "community_name": "notifications.js",
-      "norm_label": "handlesetstatus()"
     },
     {
       "label": "leaveTypeLabel()",
@@ -7968,6 +7968,18 @@
       "norm_label": "main()"
     },
     {
+      "label": "DropdownSelect()",
+      "file_type": "code",
+      "source_file": "src/components/DropdownSelect.jsx",
+      "source_location": "L5",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_components_dropdownselect_dropdownselect",
+      "community": 43,
+      "community_name": "CabManagement.jsx",
+      "norm_label": "dropdownselect()"
+    },
+    {
       "label": "setCabRequestStatus()",
       "file_type": "code",
       "source_file": "src/data/store.js",
@@ -7976,8 +7988,20 @@
       "_origin": "ast",
       "id": "src_data_store_setcabrequeststatus",
       "community": 43,
-      "community_name": "RequestsTab",
+      "community_name": "CabManagement.jsx",
       "norm_label": "setcabrequeststatus()"
+    },
+    {
+      "label": "PersonCell()",
+      "file_type": "code",
+      "source_file": "src/pages/CabManagement.jsx",
+      "source_location": "L615",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_cabmanagement_personcell",
+      "community": 43,
+      "community_name": "CabManagement.jsx",
+      "norm_label": "personcell()"
     },
     {
       "label": "RequestsTab()",
@@ -7988,7 +8012,7 @@
       "_origin": "ast",
       "id": "src_pages_cabmanagement_requeststab",
       "community": 43,
-      "community_name": "RequestsTab",
+      "community_name": "CabManagement.jsx",
       "norm_label": "requeststab()"
     },
     {
@@ -8000,7 +8024,7 @@
       "_origin": "ast",
       "id": "src_pages_cabmanagement_requeststab_decide",
       "community": 43,
-      "community_name": "RequestsTab",
+      "community_name": "CabManagement.jsx",
       "norm_label": "decide()"
     },
     {
@@ -8012,7 +8036,7 @@
       "_origin": "ast",
       "id": "src_pages_cabmanagement_requeststab_handleapprove",
       "community": 43,
-      "community_name": "RequestsTab",
+      "community_name": "CabManagement.jsx",
       "norm_label": "handleapprove()"
     },
     {
@@ -8024,7 +8048,7 @@
       "_origin": "ast",
       "id": "src_pages_cabmanagement_requeststab_handlereject",
       "community": 43,
-      "community_name": "RequestsTab",
+      "community_name": "CabManagement.jsx",
       "norm_label": "handlereject()"
     },
     {
@@ -8036,7 +8060,7 @@
       "_origin": "ast",
       "id": "src_utils_cab_requeststatuslabel",
       "community": 43,
-      "community_name": "RequestsTab",
+      "community_name": "CabManagement.jsx",
       "norm_label": "requeststatuslabel()"
     },
     {
@@ -9012,28 +9036,64 @@
       "norm_label": "togglemenu()"
     },
     {
-      "label": "applyCorrectionToAttendance()",
+      "label": "addAttendanceCorrectionMessage()",
       "file_type": "code",
       "source_file": "src/data/store.js",
-      "source_location": "L1285",
+      "source_location": "L1237",
       "_callable": true,
       "_origin": "ast",
-      "id": "src_data_store_applycorrectiontoattendance",
+      "id": "src_data_store_addattendancecorrectionmessage",
       "community": 55,
       "community_name": "EmployeeDashboard",
-      "norm_label": "applycorrectiontoattendance()"
+      "norm_label": "addattendancecorrectionmessage()"
     },
     {
-      "label": "findOrCreateAttendanceRecord()",
+      "label": "getAttendanceCorrections()",
       "file_type": "code",
       "source_file": "src/data/store.js",
-      "source_location": "L1268",
+      "source_location": "L1149",
       "_callable": true,
       "_origin": "ast",
-      "id": "src_data_store_findorcreateattendancerecord",
+      "id": "src_data_store_getattendancecorrections",
       "community": 55,
       "community_name": "EmployeeDashboard",
-      "norm_label": "findorcreateattendancerecord()"
+      "norm_label": "getattendancecorrections()"
+    },
+    {
+      "label": "getAttendanceCorrectionsForEmployee()",
+      "file_type": "code",
+      "source_file": "src/data/store.js",
+      "source_location": "L1153",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_data_store_getattendancecorrectionsforemployee",
+      "community": 55,
+      "community_name": "EmployeeDashboard",
+      "norm_label": "getattendancecorrectionsforemployee()"
+    },
+    {
+      "label": "submitAttendanceCorrection()",
+      "file_type": "code",
+      "source_file": "src/data/store.js",
+      "source_location": "L1159",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_data_store_submitattendancecorrection",
+      "community": 55,
+      "community_name": "EmployeeDashboard",
+      "norm_label": "submitattendancecorrection()"
+    },
+    {
+      "label": "updateAttendanceCorrection()",
+      "file_type": "code",
+      "source_file": "src/data/store.js",
+      "source_location": "L1195",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_data_store_updateattendancecorrection",
+      "community": 55,
+      "community_name": "EmployeeDashboard",
+      "norm_label": "updateattendancecorrection()"
     },
     {
       "label": "upsertRecord()",
@@ -9046,6 +9106,18 @@
       "community": 55,
       "community_name": "EmployeeDashboard",
       "norm_label": "upsertrecord()"
+    },
+    {
+      "label": "withdrawAttendanceCorrection()",
+      "file_type": "code",
+      "source_file": "src/data/store.js",
+      "source_location": "L1224",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_data_store_withdrawattendancecorrection",
+      "community": 55,
+      "community_name": "EmployeeDashboard",
+      "norm_label": "withdrawattendancecorrection()"
     },
     {
       "label": "EmployeeDashboard()",
@@ -9082,6 +9154,18 @@
       "community": 55,
       "community_name": "EmployeeDashboard",
       "norm_label": "closemenu()"
+    },
+    {
+      "label": "confirmCorrectionWithdraw()",
+      "file_type": "code",
+      "source_file": "src/pages/EmployeeDashboard.jsx",
+      "source_location": "L364",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_employeedashboard_employeedashboard_confirmcorrectionwithdraw",
+      "community": 55,
+      "community_name": "EmployeeDashboard",
+      "norm_label": "confirmcorrectionwithdraw()"
     },
     {
       "label": "correctionStatusClass()",
@@ -9144,6 +9228,42 @@
       "norm_label": "handleclickoutside()"
     },
     {
+      "label": "handleCorrectionEdit()",
+      "file_type": "code",
+      "source_file": "src/pages/EmployeeDashboard.jsx",
+      "source_location": "L352",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_employeedashboard_employeedashboard_handlecorrectionedit",
+      "community": 55,
+      "community_name": "EmployeeDashboard",
+      "norm_label": "handlecorrectionedit()"
+    },
+    {
+      "label": "handleCorrectionReply()",
+      "file_type": "code",
+      "source_file": "src/pages/EmployeeDashboard.jsx",
+      "source_location": "L380",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_employeedashboard_employeedashboard_handlecorrectionreply",
+      "community": 55,
+      "community_name": "EmployeeDashboard",
+      "norm_label": "handlecorrectionreply()"
+    },
+    {
+      "label": "handleCorrectionSubmit()",
+      "file_type": "code",
+      "source_file": "src/pages/EmployeeDashboard.jsx",
+      "source_location": "L345",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_employeedashboard_employeedashboard_handlecorrectionsubmit",
+      "community": 55,
+      "community_name": "EmployeeDashboard",
+      "norm_label": "handlecorrectionsubmit()"
+    },
+    {
       "label": "handleCorrectionWithdraw()",
       "file_type": "code",
       "source_file": "src/pages/EmployeeDashboard.jsx",
@@ -9180,6 +9300,18 @@
       "norm_label": "marktimeout()"
     },
     {
+      "label": "refreshCorrections()",
+      "file_type": "code",
+      "source_file": "src/pages/EmployeeDashboard.jsx",
+      "source_location": "L285",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_employeedashboard_employeedashboard_refreshcorrections",
+      "community": 55,
+      "community_name": "EmployeeDashboard",
+      "norm_label": "refreshcorrections()"
+    },
+    {
       "label": "selectTab()",
       "file_type": "code",
       "source_file": "src/pages/EmployeeDashboard.jsx",
@@ -9214,18 +9346,6 @@
       "community": 55,
       "community_name": "EmployeeDashboard",
       "norm_label": "togglemenu()"
-    },
-    {
-      "label": "combineDateAndTime()",
-      "file_type": "code",
-      "source_file": "src/utils/attendance.js",
-      "source_location": "L323",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_utils_attendance_combinedateandtime",
-      "community": 55,
-      "community_name": "EmployeeDashboard",
-      "norm_label": "combinedateandtime()"
     },
     {
       "label": "applyAppStoreRows()",
@@ -9504,6 +9624,30 @@
       "norm_label": "transformrows()"
     },
     {
+      "label": "applyCorrectionToAttendance()",
+      "file_type": "code",
+      "source_file": "src/data/store.js",
+      "source_location": "L1285",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_data_store_applycorrectiontoattendance",
+      "community": 62,
+      "community_name": "AttendanceRecords",
+      "norm_label": "applycorrectiontoattendance()"
+    },
+    {
+      "label": "findOrCreateAttendanceRecord()",
+      "file_type": "code",
+      "source_file": "src/data/store.js",
+      "source_location": "L1268",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_data_store_findorcreateattendancerecord",
+      "community": 62,
+      "community_name": "AttendanceRecords",
+      "norm_label": "findorcreateattendancerecord()"
+    },
+    {
       "label": "resolveAttendanceCorrection()",
       "file_type": "code",
       "source_file": "src/data/store.js",
@@ -9576,42 +9720,6 @@
       "norm_label": "confirmapprove()"
     },
     {
-      "label": "exportAttendanceExcel()",
-      "file_type": "code",
-      "source_file": "src/pages/AttendanceRecords.jsx",
-      "source_location": "L460",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_attendancerecords_attendancerecords_exportattendanceexcel",
-      "community": 62,
-      "community_name": "AttendanceRecords",
-      "norm_label": "exportattendanceexcel()"
-    },
-    {
-      "label": "minutesToFraction()",
-      "file_type": "code",
-      "source_file": "src/pages/AttendanceRecords.jsx",
-      "source_location": "L498",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_attendancerecords_attendancerecords_exportattendanceexcel_minutestofraction",
-      "community": 62,
-      "community_name": "AttendanceRecords",
-      "norm_label": "minutestofraction()"
-    },
-    {
-      "label": "timeToFraction()",
-      "file_type": "code",
-      "source_file": "src/pages/AttendanceRecords.jsx",
-      "source_location": "L487",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_attendancerecords_attendancerecords_exportattendanceexcel_timetofraction",
-      "community": 62,
-      "community_name": "AttendanceRecords",
-      "norm_label": "timetofraction()"
-    },
-    {
       "label": "handleClickOutside()",
       "file_type": "code",
       "source_file": "src/pages/AttendanceRecords.jsx",
@@ -9646,18 +9754,6 @@
       "community": 62,
       "community_name": "AttendanceRecords",
       "norm_label": "openreview()"
-    },
-    {
-      "label": "recordStatus()",
-      "file_type": "code",
-      "source_file": "src/pages/AttendanceRecords.jsx",
-      "source_location": "L227",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_attendancerecords_attendancerecords_recordstatus",
-      "community": 62,
-      "community_name": "AttendanceRecords",
-      "norm_label": "recordstatus()"
     },
     {
       "label": "refreshCorrections()",
@@ -9730,6 +9826,18 @@
       "community": 62,
       "community_name": "AttendanceRecords",
       "norm_label": "togglemenu()"
+    },
+    {
+      "label": "combineDateAndTime()",
+      "file_type": "code",
+      "source_file": "src/utils/attendance.js",
+      "source_location": "L323",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_utils_attendance_combinedateandtime",
+      "community": 62,
+      "community_name": "AttendanceRecords",
+      "norm_label": "combinedateandtime()"
     },
     {
       "label": "correctionIssueLabel()",
@@ -9912,42 +10020,6 @@
       "norm_label": "send()"
     },
     {
-      "label": "addAttendanceCorrectionMessage()",
-      "file_type": "code",
-      "source_file": "src/data/store.js",
-      "source_location": "L1237",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_data_store_addattendancecorrectionmessage",
-      "community": 64,
-      "community_name": "EmployeeDashboard.jsx",
-      "norm_label": "addattendancecorrectionmessage()"
-    },
-    {
-      "label": "getAttendanceCorrections()",
-      "file_type": "code",
-      "source_file": "src/data/store.js",
-      "source_location": "L1149",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_data_store_getattendancecorrections",
-      "community": 64,
-      "community_name": "EmployeeDashboard.jsx",
-      "norm_label": "getattendancecorrections()"
-    },
-    {
-      "label": "getAttendanceCorrectionsForEmployee()",
-      "file_type": "code",
-      "source_file": "src/data/store.js",
-      "source_location": "L1153",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_data_store_getattendancecorrectionsforemployee",
-      "community": 64,
-      "community_name": "EmployeeDashboard.jsx",
-      "norm_label": "getattendancecorrectionsforemployee()"
-    },
-    {
       "label": "getAttendanceForEmployee()",
       "file_type": "code",
       "source_file": "src/data/store.js",
@@ -9972,114 +10044,6 @@
       "norm_label": "gettodayrecord()"
     },
     {
-      "label": "submitAttendanceCorrection()",
-      "file_type": "code",
-      "source_file": "src/data/store.js",
-      "source_location": "L1159",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_data_store_submitattendancecorrection",
-      "community": 64,
-      "community_name": "EmployeeDashboard.jsx",
-      "norm_label": "submitattendancecorrection()"
-    },
-    {
-      "label": "updateAttendanceCorrection()",
-      "file_type": "code",
-      "source_file": "src/data/store.js",
-      "source_location": "L1195",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_data_store_updateattendancecorrection",
-      "community": 64,
-      "community_name": "EmployeeDashboard.jsx",
-      "norm_label": "updateattendancecorrection()"
-    },
-    {
-      "label": "withdrawAttendanceCorrection()",
-      "file_type": "code",
-      "source_file": "src/data/store.js",
-      "source_location": "L1224",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_data_store_withdrawattendancecorrection",
-      "community": 64,
-      "community_name": "EmployeeDashboard.jsx",
-      "norm_label": "withdrawattendancecorrection()"
-    },
-    {
-      "label": "confirmCorrectionWithdraw()",
-      "file_type": "code",
-      "source_file": "src/pages/EmployeeDashboard.jsx",
-      "source_location": "L364",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_employeedashboard_employeedashboard_confirmcorrectionwithdraw",
-      "community": 64,
-      "community_name": "EmployeeDashboard.jsx",
-      "norm_label": "confirmcorrectionwithdraw()"
-    },
-    {
-      "label": "handleCorrectionEdit()",
-      "file_type": "code",
-      "source_file": "src/pages/EmployeeDashboard.jsx",
-      "source_location": "L352",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_employeedashboard_employeedashboard_handlecorrectionedit",
-      "community": 64,
-      "community_name": "EmployeeDashboard.jsx",
-      "norm_label": "handlecorrectionedit()"
-    },
-    {
-      "label": "handleCorrectionReply()",
-      "file_type": "code",
-      "source_file": "src/pages/EmployeeDashboard.jsx",
-      "source_location": "L380",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_employeedashboard_employeedashboard_handlecorrectionreply",
-      "community": 64,
-      "community_name": "EmployeeDashboard.jsx",
-      "norm_label": "handlecorrectionreply()"
-    },
-    {
-      "label": "handleCorrectionSubmit()",
-      "file_type": "code",
-      "source_file": "src/pages/EmployeeDashboard.jsx",
-      "source_location": "L345",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_employeedashboard_employeedashboard_handlecorrectionsubmit",
-      "community": 64,
-      "community_name": "EmployeeDashboard.jsx",
-      "norm_label": "handlecorrectionsubmit()"
-    },
-    {
-      "label": "refreshCorrections()",
-      "file_type": "code",
-      "source_file": "src/pages/EmployeeDashboard.jsx",
-      "source_location": "L285",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_pages_employeedashboard_employeedashboard_refreshcorrections",
-      "community": 64,
-      "community_name": "EmployeeDashboard.jsx",
-      "norm_label": "refreshcorrections()"
-    },
-    {
-      "label": "attendanceMonthsLoaded()",
-      "file_type": "code",
-      "source_file": "src/data/store.js",
-      "source_location": "L534",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "src_data_store_attendancemonthsloaded",
-      "community": 67,
-      "community_name": "AttendanceRecords.jsx",
-      "norm_label": "attendancemonthsloaded()"
-    },
-    {
       "label": "exportSalariesExcel()",
       "file_type": "code",
       "source_file": "src/pages/AdminSalary.jsx",
@@ -10088,44 +10052,56 @@
       "_origin": "ast",
       "id": "src_pages_adminsalary_adminsalary_exportsalariesexcel",
       "community": 67,
-      "community_name": "AttendanceRecords.jsx",
+      "community_name": "downloadExcelXlsx",
       "norm_label": "exportsalariesexcel()"
     },
     {
-      "label": "monthFilterOptions()",
+      "label": "exportAttendanceExcel()",
       "file_type": "code",
       "source_file": "src/pages/AttendanceRecords.jsx",
-      "source_location": "L75",
+      "source_location": "L460",
       "_callable": true,
       "_origin": "ast",
-      "id": "src_pages_attendancerecords_monthfilteroptions",
+      "id": "src_pages_attendancerecords_attendancerecords_exportattendanceexcel",
       "community": 67,
-      "community_name": "AttendanceRecords.jsx",
-      "norm_label": "monthfilteroptions()"
+      "community_name": "downloadExcelXlsx",
+      "norm_label": "exportattendanceexcel()"
     },
     {
-      "label": "monthKeyOffset()",
+      "label": "minutesToFraction()",
       "file_type": "code",
-      "source_file": "src/utils/attendance.js",
-      "source_location": "L138",
+      "source_file": "src/pages/AttendanceRecords.jsx",
+      "source_location": "L498",
       "_callable": true,
       "_origin": "ast",
-      "id": "src_utils_attendance_monthkeyoffset",
+      "id": "src_pages_attendancerecords_attendancerecords_exportattendanceexcel_minutestofraction",
       "community": 67,
-      "community_name": "AttendanceRecords.jsx",
-      "norm_label": "monthkeyoffset()"
+      "community_name": "downloadExcelXlsx",
+      "norm_label": "minutestofraction()"
     },
     {
-      "label": "monthLabel()",
+      "label": "timeToFraction()",
       "file_type": "code",
-      "source_file": "src/utils/attendance.js",
-      "source_location": "L125",
+      "source_file": "src/pages/AttendanceRecords.jsx",
+      "source_location": "L487",
       "_callable": true,
       "_origin": "ast",
-      "id": "src_utils_attendance_monthlabel",
+      "id": "src_pages_attendancerecords_attendancerecords_exportattendanceexcel_timetofraction",
       "community": 67,
-      "community_name": "AttendanceRecords.jsx",
-      "norm_label": "monthlabel()"
+      "community_name": "downloadExcelXlsx",
+      "norm_label": "timetofraction()"
+    },
+    {
+      "label": "recordStatus()",
+      "file_type": "code",
+      "source_file": "src/pages/AttendanceRecords.jsx",
+      "source_location": "L227",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_attendancerecords_attendancerecords_recordstatus",
+      "community": 67,
+      "community_name": "downloadExcelXlsx",
+      "norm_label": "recordstatus()"
     },
     {
       "label": "dateToExcelSerial()",
@@ -10136,7 +10112,7 @@
       "_origin": "ast",
       "id": "src_utils_exportexcel_datetoexcelserial",
       "community": 67,
-      "community_name": "AttendanceRecords.jsx",
+      "community_name": "downloadExcelXlsx",
       "norm_label": "datetoexcelserial()"
     },
     {
@@ -10148,7 +10124,7 @@
       "_origin": "ast",
       "id": "src_utils_exportexcel_displayvalue",
       "community": 67,
-      "community_name": "AttendanceRecords.jsx",
+      "community_name": "downloadExcelXlsx",
       "norm_label": "displayvalue()"
     },
     {
@@ -10160,7 +10136,7 @@
       "_origin": "ast",
       "id": "src_utils_exportexcel_downloadexcelxlsx",
       "community": 67,
-      "community_name": "AttendanceRecords.jsx",
+      "community_name": "downloadExcelXlsx",
       "norm_label": "downloadexcelxlsx()"
     },
     {
@@ -10356,6 +10332,18 @@
       "norm_label": "setcabcancellation()"
     },
     {
+      "label": "setTicketStatus()",
+      "file_type": "code",
+      "source_file": "src/data/store.js",
+      "source_location": "L2205",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_data_store_setticketstatus",
+      "community": 7,
+      "community_name": "store.js",
+      "norm_label": "setticketstatus()"
+    },
+    {
       "label": "snakeToCamel()",
       "file_type": "code",
       "source_file": "src/data/store.js",
@@ -10414,6 +10402,18 @@
       "community": 7,
       "community_name": "store.js",
       "norm_label": "upsertsinglereimbursement()"
+    },
+    {
+      "label": "handleSetStatus()",
+      "file_type": "code",
+      "source_file": "src/pages/AdminTickets.jsx",
+      "source_location": "L102",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "src_pages_admintickets_admintickets_handlesetstatus",
+      "community": 7,
+      "community_name": "store.js",
+      "norm_label": "handlesetstatus()"
     },
     {
       "label": "toggleCancellation()",
@@ -11347,50 +11347,6 @@
       "community": 16,
       "community_name": "compilerOptions",
       "norm_label": "src"
-    },
-    {
-      "label": "DropdownSelect.jsx",
-      "file_type": "code",
-      "source_file": "src/components/DropdownSelect.jsx",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "src_components_dropdownselect",
-      "community": 18,
-      "community_name": "CabManagement.jsx",
-      "norm_label": "dropdownselect.jsx"
-    },
-    {
-      "label": "CabManagement.jsx",
-      "file_type": "code",
-      "source_file": "src/pages/CabManagement.jsx",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "src_pages_cabmanagement",
-      "community": 18,
-      "community_name": "CabManagement.jsx",
-      "norm_label": "cabmanagement.jsx"
-    },
-    {
-      "label": "EMPTY_TRIP_FORM",
-      "file_type": "code",
-      "source_file": "src/pages/CabManagement.jsx",
-      "source_location": "L607",
-      "_origin": "ast",
-      "id": "src_pages_cabmanagement_empty_trip_form",
-      "community": 18,
-      "community_name": "CabManagement.jsx",
-      "norm_label": "empty_trip_form"
-    },
-    {
-      "label": "TABS",
-      "file_type": "code",
-      "source_file": "src/pages/CabManagement.jsx",
-      "source_location": "L50",
-      "_origin": "ast",
-      "id": "src_pages_cabmanagement_tabs",
-      "community": 18,
-      "community_name": "CabManagement.jsx",
-      "norm_label": "tabs"
     },
     {
       "label": "TicketForm.jsx",
@@ -12710,6 +12666,61 @@
       "norm_label": "version"
     },
     {
+      "label": "AttendanceRecords.jsx",
+      "file_type": "code",
+      "source_file": "src/pages/AttendanceRecords.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_pages_attendancerecords",
+      "community": 36,
+      "community_name": "AttendanceRecords.jsx",
+      "norm_label": "attendancerecords.jsx"
+    },
+    {
+      "label": "CORRECTION_STATUS_FILTER_OPTS",
+      "file_type": "code",
+      "source_file": "src/pages/AttendanceRecords.jsx",
+      "source_location": "L63",
+      "_origin": "ast",
+      "id": "src_pages_attendancerecords_correction_status_filter_opts",
+      "community": 36,
+      "community_name": "AttendanceRecords.jsx",
+      "norm_label": "correction_status_filter_opts"
+    },
+    {
+      "label": "PERIOD_FILTER_OPTS",
+      "file_type": "code",
+      "source_file": "src/pages/AttendanceRecords.jsx",
+      "source_location": "L46",
+      "_origin": "ast",
+      "id": "src_pages_attendancerecords_period_filter_opts",
+      "community": 36,
+      "community_name": "AttendanceRecords.jsx",
+      "norm_label": "period_filter_opts"
+    },
+    {
+      "label": "STATUS_FILTER_OPTS",
+      "file_type": "code",
+      "source_file": "src/pages/AttendanceRecords.jsx",
+      "source_location": "L55",
+      "_origin": "ast",
+      "id": "src_pages_attendancerecords_status_filter_opts",
+      "community": 36,
+      "community_name": "AttendanceRecords.jsx",
+      "norm_label": "status_filter_opts"
+    },
+    {
+      "label": "VALID_TABS",
+      "file_type": "code",
+      "source_file": "src/pages/AttendanceRecords.jsx",
+      "source_location": "L86",
+      "_origin": "ast",
+      "id": "src_pages_attendancerecords_valid_tabs",
+      "community": 36,
+      "community_name": "AttendanceRecords.jsx",
+      "norm_label": "valid_tabs"
+    },
+    {
       "label": "AdminDashboard.jsx",
       "file_type": "code",
       "source_file": "src/pages/AdminDashboard.jsx",
@@ -13932,6 +13943,50 @@
       "norm_label": "supabase"
     },
     {
+      "label": "DropdownSelect.jsx",
+      "file_type": "code",
+      "source_file": "src/components/DropdownSelect.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_components_dropdownselect",
+      "community": 43,
+      "community_name": "CabManagement.jsx",
+      "norm_label": "dropdownselect.jsx"
+    },
+    {
+      "label": "CabManagement.jsx",
+      "file_type": "code",
+      "source_file": "src/pages/CabManagement.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_pages_cabmanagement",
+      "community": 43,
+      "community_name": "CabManagement.jsx",
+      "norm_label": "cabmanagement.jsx"
+    },
+    {
+      "label": "EMPTY_TRIP_FORM",
+      "file_type": "code",
+      "source_file": "src/pages/CabManagement.jsx",
+      "source_location": "L607",
+      "_origin": "ast",
+      "id": "src_pages_cabmanagement_empty_trip_form",
+      "community": 43,
+      "community_name": "CabManagement.jsx",
+      "norm_label": "empty_trip_form"
+    },
+    {
+      "label": "TABS",
+      "file_type": "code",
+      "source_file": "src/pages/CabManagement.jsx",
+      "source_location": "L50",
+      "_origin": "ast",
+      "id": "src_pages_cabmanagement_tabs",
+      "community": 43,
+      "community_name": "CabManagement.jsx",
+      "norm_label": "tabs"
+    },
+    {
       "label": "tailwind-merge",
       "file_type": "code",
       "source_file": "package.json",
@@ -14409,61 +14464,6 @@
       "norm_label": "supabase-fix-task-timestamps.sql"
     },
     {
-      "label": "AttendanceRecords.jsx",
-      "file_type": "code",
-      "source_file": "src/pages/AttendanceRecords.jsx",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "src_pages_attendancerecords",
-      "community": 67,
-      "community_name": "AttendanceRecords.jsx",
-      "norm_label": "attendancerecords.jsx"
-    },
-    {
-      "label": "CORRECTION_STATUS_FILTER_OPTS",
-      "file_type": "code",
-      "source_file": "src/pages/AttendanceRecords.jsx",
-      "source_location": "L63",
-      "_origin": "ast",
-      "id": "src_pages_attendancerecords_correction_status_filter_opts",
-      "community": 67,
-      "community_name": "AttendanceRecords.jsx",
-      "norm_label": "correction_status_filter_opts"
-    },
-    {
-      "label": "PERIOD_FILTER_OPTS",
-      "file_type": "code",
-      "source_file": "src/pages/AttendanceRecords.jsx",
-      "source_location": "L46",
-      "_origin": "ast",
-      "id": "src_pages_attendancerecords_period_filter_opts",
-      "community": 67,
-      "community_name": "AttendanceRecords.jsx",
-      "norm_label": "period_filter_opts"
-    },
-    {
-      "label": "STATUS_FILTER_OPTS",
-      "file_type": "code",
-      "source_file": "src/pages/AttendanceRecords.jsx",
-      "source_location": "L55",
-      "_origin": "ast",
-      "id": "src_pages_attendancerecords_status_filter_opts",
-      "community": 67,
-      "community_name": "AttendanceRecords.jsx",
-      "norm_label": "status_filter_opts"
-    },
-    {
-      "label": "VALID_TABS",
-      "file_type": "code",
-      "source_file": "src/pages/AttendanceRecords.jsx",
-      "source_location": "L86",
-      "_origin": "ast",
-      "id": "src_pages_attendancerecords_valid_tabs",
-      "community": 67,
-      "community_name": "AttendanceRecords.jsx",
-      "norm_label": "valid_tabs"
-    },
-    {
       "label": "exportExcel.js",
       "file_type": "code",
       "source_file": "src/utils/exportExcel.js",
@@ -14471,7 +14471,7 @@
       "_origin": "ast",
       "id": "src_utils_exportexcel",
       "community": 67,
-      "community_name": "AttendanceRecords.jsx",
+      "community_name": "downloadExcelXlsx",
       "norm_label": "exportexcel.js"
     },
     {
@@ -29669,7 +29669,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/TeamTasks.jsx",
-      "source_location": "L387",
+      "source_location": "L401",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_teamtasks_teamtaskspanel",
