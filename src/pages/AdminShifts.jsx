@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   addShift,
@@ -30,12 +30,29 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import { CircleCheck, CircleX, MoreVertical, Pencil, Plus, Shuffle, Trash2, X } from 'lucide-react'
 
 const TABS = ['Shifts', 'Employee Assignments', 'Change Requests']
+const TAB_SLUGS = ['shifts', 'assignments', 'change-requests']
 
 // Admin page to define shifts, assign them to employees, and handle shift change requests.
 export default function AdminShifts() {
-  const [searchParams] = useSearchParams()
-  const initialTab = searchParams.get('tab') === 'change-requests' ? 2 : 0
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const initialTab = Math.max(0, TAB_SLUGS.indexOf(tabParam))
   const [tab, setTab] = useState(initialTab)
+
+  // React to URL tab parameter changes (e.g., clicking a notification while
+  // already on Shift Management but on a different tab).
+  const prevTabParam = useRef(tabParam)
+  useEffect(() => {
+    if (tabParam !== prevTabParam.current) {
+      setTab(Math.max(0, TAB_SLUGS.indexOf(tabParam)))
+      prevTabParam.current = tabParam
+    }
+  }, [tabParam])
+
+  function selectTab(i) {
+    setTab(i)
+    setSearchParams({ tab: TAB_SLUGS[i] }, { replace: true })
+  }
   const [refresh, setRefresh] = useState(0)
   const trigger = () => setRefresh((n) => n + 1)
 
@@ -80,7 +97,7 @@ export default function AdminShifts() {
           <button
             key={t}
             className={`tab ${i === tab ? 'tab-active' : ''}`}
-            onClick={() => setTab(i)}
+            onClick={() => selectTab(i)}
           >
             {t}
             {t === 'Change Requests' ? ` (${getShiftChangeRequests().filter((r) => r.status === 'pending').length})` : ''}

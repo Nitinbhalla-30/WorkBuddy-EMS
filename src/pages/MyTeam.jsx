@@ -54,6 +54,11 @@ export default function MyTeam() {
     prevTabParam.current = tabParam
   }, [tabParam])
 
+  function selectTab(t) {
+    setTab(t)
+    setSearchParams({ tab: t }, { replace: true })
+  }
+
   const teammates = useMemo(() => getMyTeamDirectory(user.id), [user.id])
 
   // Per-teammate numbers for the directory table: this month's attendance
@@ -271,28 +276,28 @@ export default function MyTeam() {
           <button
             type="button"
             className={`tab ${tab === 'team' ? 'tab-active' : ''}`}
-            onClick={() => setTab('team')}
+            onClick={() => selectTab('team')}
           >
             My Team
           </button>
           <button
             type="button"
             className={`tab ${tab === 'tasks' ? 'tab-active' : ''}`}
-            onClick={() => setTab('tasks')}
+            onClick={() => selectTab('tasks')}
           >
             My Team Tasks
           </button>
           <button
             type="button"
             className={`tab ${tab === 'leaves' ? 'tab-active' : ''}`}
-            onClick={() => setTab('leaves')}
+            onClick={() => selectTab('leaves')}
           >
             My Team Leave Request{teamLeaves.length > 0 ? ` (${teamLeaves.length})` : ''}
           </button>
           <button
             type="button"
             className={`tab ${tab === 'overtime' ? 'tab-active' : ''}`}
-            onClick={() => setTab('overtime')}
+            onClick={() => selectTab('overtime')}
           >
             My Team Overtime{teamOvertime.length > 0 ? ` (${teamOvertime.length})` : ''}
           </button>

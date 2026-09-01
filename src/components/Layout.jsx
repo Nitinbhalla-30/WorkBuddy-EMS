@@ -108,9 +108,9 @@ export default function Layout() {
   const navToggleLabel = navCollapsed ? 'Expand menu' : 'Hide menu'
 
   const employeeNav = [
+    { to: '/me', label: 'My Attendance', icon: Clock },
     { to: '/my-profile', label: 'My Details', icon: CircleUser },
     { to: '/my-shifts', label: 'My Shifts', icon: Shuffle },
-    { to: '/me', label: 'My Attendance', icon: Clock },
     { to: '/my-leaves', label: 'My Leaves', icon: CalendarDays },
     { to: '/my-salary', label: 'My Salary', icon: Banknote },
     { to: '/my-reimbursements', label: 'My Reimbursements', icon: ReceiptText },

@@ -283,7 +283,8 @@ function camelToSnake(str) {
 // Known field-name mismatches between app (camelCase) and database (snake_case).
 // camelToSnake produces the wrong name for these, so we map them explicitly.
 const APP_TO_DB_FIELD = {
-  rejectReason: 'rejection_reason'
+  rejectionReason: 'rejection_reason',
+  rejectReason: 'reject_reason'
 }
 // ...unless a particular table names that field differently. `shift_change_requests`
 // calls the column `reject_reason`, while `leaves` and `overtime_requests` call the
@@ -292,27 +293,37 @@ const APP_TO_DB_FIELD = {
 // (error PGRST204), which used to fail quietly and strand every shift-change write
 // in the browser. An entry here overrides APP_TO_DB_FIELD for that one table.
 const APP_TO_DB_FIELD_BY_TABLE = {
-  shift_change_requests: { rejectReason: 'reject_reason' }
+  shift_change_requests: { rejectReason: 'reject_reason' },
+  overtime_requests: { rejectReason: 'rejection_reason' }
 }
 const DB_TO_APP_FIELD = {
-  rejection_reason: 'rejectReason'
+  reject_reason: 'rejectReason'
+}
+// Table-specific overrides for DB→app field mapping. Used when the same DB
+// column name maps to different app field names across tables (e.g. both
+// `leaves` and `overtime_requests` have `rejection_reason`, but the app uses
+// `rejectionReason` for leaves and `rejectReason` for overtime).
+const DB_TO_APP_FIELD_BY_TABLE = {
+  leaves: { rejection_reason: 'rejectionReason' },
+  overtime_requests: { rejection_reason: 'rejectReason' }
 }
 
 // Transform database row (snake_case) to app format (camelCase)
-function transformRow(row) {
+function transformRow(row, tableName) {
   if (!row || typeof row !== 'object') return row
+  const overrides = tableName && DB_TO_APP_FIELD_BY_TABLE[tableName]
   const transformed = {}
   for (const [key, value] of Object.entries(row)) {
-    const appKey = DB_TO_APP_FIELD[key] || snakeToCamel(key)
+    const appKey = (overrides && overrides[key]) || DB_TO_APP_FIELD[key] || snakeToCamel(key)
     transformed[appKey] = value
   }
   return transformed
 }
 
 // Transform array of database rows
-function transformRows(rows) {
+function transformRows(rows, tableName) {
   if (!Array.isArray(rows)) return rows
-  return rows.map(transformRow)
+  return rows.map((row) => transformRow(row, tableName))
 }
 
 // Transform app row (camelCase) to database format (snake_case). `tableName` is
@@ -560,7 +571,7 @@ export async function refreshStoreFromSupabase(onlyKeys) {
         const data = await fetchAllFromTable(tableName)
         if (data) {
           // Transform snake_case to camelCase
-          const transformedData = transformRows(data)
+          const transformedData = transformRows(data, tableName)
           mem[key] = transformedData
           try {
             localStorage.setItem(key, JSON.stringify(transformedData))
@@ -754,7 +765,7 @@ async function loadRemainingData() {
           const data = await fetchAllFromTable(tableName)
           if (data) {
             // Transform snake_case to camelCase
-            const transformedData = transformRows(data)
+            const transformedData = transformRows(data, tableName)
             mem[key] = transformedData
             try {
               localStorage.setItem(key, JSON.stringify(transformedData))

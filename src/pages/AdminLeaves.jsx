@@ -50,7 +50,7 @@ export default function AdminLeaves() {
   const [allLeaves, setAllLeaves] = useState(() => getLeaves())
   const [openId, setOpenId] = useState(null)
   const [approveId, setApproveId] = useState(null)
-  const [rejectMode, setRejectMode] = useState(false)
+  const [rejectId, setRejectId] = useState(null)
   const [rejectNote, setRejectNote] = useState('')
   const [openMenuId, setOpenMenuId] = useState(null)
 
@@ -128,7 +128,7 @@ export default function AdminLeaves() {
   }
 
   function refresh() {
-    setAllLeaves(getLeaves())
+    setAllLeaves([...getLeaves()])
   }
 
   function toggleMenu(id) {
@@ -139,17 +139,21 @@ export default function AdminLeaves() {
     setOpenMenuId(null)
   }
 
-  function openReview(id, startReject = false) {
+  function openReview(id) {
     setOpenId(id)
-    setRejectMode(startReject)
     setRejectNote('')
     closeMenu()
   }
 
   function closeReview() {
     setOpenId(null)
-    setRejectMode(false)
     setRejectNote('')
+  }
+
+  function requestReject(id) {
+    setRejectId(id)
+    setRejectNote('')
+    closeMenu()
   }
 
   function handleApprove(id = approveId || openLeave?.id) {
@@ -167,10 +171,11 @@ export default function AdminLeaves() {
   }
 
   function handleReject() {
-    if (!openLeave || !rejectNote.trim()) return
-    setLeaveStatus(openLeave.id, 'rejected', user.id, rejectNote.trim())
+    if (!rejectId || !rejectNote.trim()) return
+    setLeaveStatus(rejectId, 'rejected', user.id, rejectNote.trim())
     refresh()
-    closeReview()
+    setRejectId(null)
+    setRejectNote('')
   }
 
   function handleReply(text) {
@@ -327,7 +332,7 @@ export default function AdminLeaves() {
                             type="button"
                             className="task-menu-item task-menu-item-danger"
                             disabled={lv.status !== 'pending'}
-                            onClick={() => openReview(lv.id, true)}
+                            onClick={() => requestReject(lv.id)}
                           >
                             <CircleX size={14} aria-hidden="true" />
                             Reject
@@ -411,38 +416,6 @@ export default function AdminLeaves() {
               onReply={handleReply}
               onClose={openLeave.status === 'pending' ? undefined : closeReview}
             />
-
-            {openLeave.status === 'pending' && rejectMode && (
-              <div className="first">
-                <label className="field">
-                  <span>Rejection reason (required)</span>
-                  <textarea
-                    className="reply-input"
-                    rows={3}
-                    value={rejectNote}
-                    onChange={(e) => setRejectNote(e.target.value)}
-                    placeholder="Explain why this leave request is being rejected"
-                  />
-                </label>
-                <div className="button-row">
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    disabled={!rejectNote.trim()}
-                    onClick={handleReject}
-                  >
-                    Confirm reject
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-light"
-                    onClick={closeReview}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </Modal>
       )}
@@ -463,6 +436,38 @@ export default function AdminLeaves() {
               <div className="button-row">
                 <button type="button" className="btn btn-primary" onClick={() => handleApprove()}>Approve</button>
                 <button type="button" className="btn btn-light" onClick={() => setApproveId(null)}>Cancel</button>
+              </div>
+            </div>
+          </Modal>
+        )
+      })()}
+
+      {rejectId && (() => {
+        const lv = leaves.find((l) => l.id === rejectId)
+        const emp = lv ? getEmployeeById(lv.employeeId) : null
+        return (
+          <Modal onClose={() => setRejectId(null)} title="Reject leave request">
+            <div className="modal-form">
+              <div className="modal-header">
+                <h3 className="section-title first">Reject request</h3>
+                <button type="button" className="btn btn-tiny btn-light" onClick={() => setRejectId(null)} aria-label="Close"><X size={15} /></button>
+              </div>
+              <p className="hint first">
+                {emp ? emp.name : 'Employee'}{lv ? ` — ${leaveTypeLabelWithPart(lv)}, ${formatDate(lv.fromDate)}` : ''}
+              </p>
+              <label className="field">
+                <span>Reason</span>
+                <textarea
+                  className="reply-input"
+                  rows={3}
+                  value={rejectNote}
+                  onChange={(e) => setRejectNote(e.target.value)}
+                  placeholder="Explain why this leave request is being rejected"
+                />
+              </label>
+              <div className="button-row">
+                <button type="button" className="btn btn-danger" disabled={!rejectNote.trim()} onClick={handleReject}>Reject</button>
+                <button type="button" className="btn btn-light" onClick={() => setRejectId(null)}>Cancel</button>
               </div>
             </div>
           </Modal>

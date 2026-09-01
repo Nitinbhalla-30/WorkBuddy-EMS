@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -23,13 +23,30 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import { CircleCheck, CircleX, MoreVertical, Pencil, Shuffle, Undo2, X } from 'lucide-react'
 
 const TABS = ['My Shift', 'Change Requests']
+const TAB_SLUGS = ['my-shift', 'change-requests']
 
 // Employee's own shift management page.
 export default function EmployeeShifts() {
   const { user } = useAuth()
-  const [searchParams] = useSearchParams()
-  const initialTab = searchParams.get('tab') === 'change-requests' ? 1 : 0
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const initialTab = Math.max(0, TAB_SLUGS.indexOf(tabParam))
   const [tab, setTab] = useState(initialTab)
+
+  // React to URL tab parameter changes (e.g., clicking a notification while
+  // already on My Shifts but on a different tab).
+  const prevTabParam = useRef(tabParam)
+  useEffect(() => {
+    if (tabParam !== prevTabParam.current) {
+      setTab(Math.max(0, TAB_SLUGS.indexOf(tabParam)))
+      prevTabParam.current = tabParam
+    }
+  }, [tabParam])
+
+  function selectTab(i) {
+    setTab(i)
+    setSearchParams({ tab: TAB_SLUGS[i] }, { replace: true })
+  }
 
   return (
     <div>
@@ -47,7 +64,7 @@ export default function EmployeeShifts() {
           <button
             key={t}
             className={`tab ${i === tab ? 'tab-active' : ''}`}
-            onClick={() => setTab(i)}
+            onClick={() => selectTab(i)}
           >
             {t}
           </button>

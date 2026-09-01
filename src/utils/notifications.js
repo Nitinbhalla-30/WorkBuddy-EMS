@@ -104,7 +104,7 @@ export function buildEmployeeNotifications(employeeId) {
         category: 'leave',
         title: 'Leave approved',
         body: `Your ${leavePhrase(lv.type)} was approved.`,
-        on: bestTime(lv.decidedOn, lv.createdAt, lv.appliedOn),
+        on: toDisplayTime(lv.decidedOn),
         href: '/my-leaves'
       })
     }
@@ -116,7 +116,7 @@ export function buildEmployeeNotifications(employeeId) {
         body: lv.rejectionReason
           ? `Your ${leavePhrase(lv.type)} was rejected: ${lv.rejectionReason}`
           : `Your ${leavePhrase(lv.type)} was rejected.`,
-        on: bestTime(lv.decidedOn, lv.createdAt, lv.appliedOn),
+        on: toDisplayTime(lv.decidedOn),
         href: '/my-leaves'
       })
     }
@@ -145,7 +145,7 @@ export function buildEmployeeNotifications(employeeId) {
         category: 'leave',
         title: 'Leave awaiting your approval',
         body: `${getEmployeeById(lv.employeeId)?.name || 'An employee'} applied for ${leavePhrase(lv.type)}.`,
-        on: lv.createdAt || lv.appliedOn,
+        on: bestTime(lv.createdAt, lv.appliedOn),
         href: '/my-team?tab=leaves'
       })
     }
@@ -156,7 +156,7 @@ export function buildEmployeeNotifications(employeeId) {
         category: 'leave',
         title: 'Manager approved your leave',
         body: `Your ${leavePhrase(lv.type)} was approved by your manager and sent to HR for final approval.`,
-        on: bestTime(lv.managerDecidedOn, lv.createdAt, lv.appliedOn),
+        on: toDisplayTime(lv.managerDecidedOn),
         href: '/my-leaves'
       })
     }
@@ -166,7 +166,7 @@ export function buildEmployeeNotifications(employeeId) {
         category: 'leave',
         title: 'Leave sent to HR',
         body: `Your ${leavePhrase(lv.type)} moved to HR for final approval.`,
-        on: bestTime(lv.escalatedOn, lv.createdAt, lv.appliedOn),
+        on: toDisplayTime(lv.escalatedOn),
         href: '/my-leaves'
       })
     }
@@ -485,7 +485,7 @@ export function buildAdminNotifications() {
         category: 'leave',
         title: 'Employee replied on leave',
         body: `${nameOf(lv.employeeId)}: ${last.text}`,
-        on: last.on || lv.appliedOn,
+        on: bestTime(last.on, lv.appliedOn),
         href: '/leave-requests'
       })
     } else {
@@ -501,7 +501,7 @@ export function buildAdminNotifications() {
         category: 'leave',
         title: 'Leave request pending',
         body: `${nameOf(lv.employeeId)} applied for ${leavePhrase(lv.type)}${stageNote}.`,
-        on: lv.managerDecidedOn || lv.escalatedOn || lv.createdAt || lv.appliedOn,
+        on: bestTime(lv.managerDecidedOn, lv.escalatedOn, lv.createdAt, lv.appliedOn),
         href: '/leave-requests'
       })
     }
