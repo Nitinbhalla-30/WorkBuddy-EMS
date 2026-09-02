@@ -133,13 +133,13 @@ export default function AdminTickets() {
         />
         <table className="table">
           <colgroup>
-            <col style={{ width: '14%' }} />
-            <col style={{ width: '22%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '14%' }} />
-            <col style={{ width: '13%' }} />
-            <col style={{ width: '8%' }} />
+            <col style={{ width: '14%' }} /> {/* From */}
+            <col style={{ width: '22%' }} /> {/* Subject */}
+            <col style={{ width: '9%' }} />  {/* Type */}
+            <col style={{ width: '23%' }} /> {/* Category */}
+            <col style={{ width: '11%' }} /> {/* Status */}
+            <col style={{ width: '13%' }} /> {/* Updated */}
+            <col style={{ width: '8%' }} />  {/* Action */}
           </colgroup>
           <thead>
             <tr>
@@ -158,14 +158,24 @@ export default function AdminTickets() {
             )}
             {ticketsPage.map((t) => {
               const ticketEmp = !t.anonymous ? getEmployeeById(t.employeeId) : null
+              const category = categoryLabel(t.category)
+              const fromName = raisedByName(t, nameOf)
               return (
               <tr key={t.id}>
                 <td>
                   <div className="person-cell">
-                    {!t.anonymous && <Avatar src={ticketEmp?.photoUrl} name={raisedByName(t, nameOf)} size={34} />}
+                    {/* Anonymous tickets have no employee behind them, so the avatar
+                        falls back to the initials of the name "Anonymous" — the same
+                        brand circle the named rows get. ticketEmp is deliberately null
+                        for them, which is what triggers that fallback. */}
+                    <Avatar src={ticketEmp?.photoUrl} name={fromName} size={34} />
                     <div>
-                      {raisedByName(t, nameOf)}
-                      {!t.anonymous && <div className="muted small">{t.employeeId}</div>}
+                      {fromName}
+                      {/* The employee-id line stays (invisible for anonymous) so every
+                          row is the same height and the pagination bar doesn't twitch. */}
+                      <div className={t.anonymous ? 'muted small reserve-space' : 'muted small'}>
+                        {t.anonymous ? '\u00A0' : t.employeeId}
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -174,18 +184,31 @@ export default function AdminTickets() {
                   {t.confidential && <span className="tag tag-high" style={{ marginLeft: 8 }}>Confidential</span>}
                 </td>
                 <td>{kindLabel(t.kind)}</td>
-                <td>{categoryLabel(t.category)}</td>
+                <td className="cell-ellipsis" title={category}>
+                  {category}
+                </td>
                 <td>
-                  <select
-                    className="btn-tiny"
-                    value={t.status}
-                    aria-label={`Set status for ${t.subject}`}
-                    onChange={(e) => handleSetStatus(t.id, e.target.value)}
-                  >
-                    {TICKET_STATUSES.map((s) => (
-                      <option key={s.key} value={s.key}>{s.label}</option>
-                    ))}
-                  </select>
+                  {t.status === 'withdrawn' ? (
+                    // Withdrawn by the employee — the status is locked, so show
+                    // the same read-only tag the employee sees instead of the picker.
+                    <span
+                      className={`tag ${statusTagClass(t.status)}`}
+                      title="Withdrawn by the employee. The status can no longer be changed."
+                    >
+                      {statusLabel(t.status)}
+                    </span>
+                  ) : (
+                    <select
+                      className="btn-tiny"
+                      value={t.status}
+                      aria-label={`Set status for ${t.subject}`}
+                      onChange={(e) => handleSetStatus(t.id, e.target.value)}
+                    >
+                      {TICKET_STATUSES.map((s) => (
+                        <option key={s.key} value={s.key}>{s.label}</option>
+                      ))}
+                    </select>
+                  )}
                 </td>
                 <td>{formatDate(t.updatedOn)}</td>
                 <td>

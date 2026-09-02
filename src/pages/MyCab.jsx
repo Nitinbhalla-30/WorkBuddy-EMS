@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addCabMessage,
@@ -16,7 +17,7 @@ import {
   getVehicles,
   setCabCancellation,
   updateCabRequest,
-  deleteCabRequest
+  withdrawCabRequest
 } from '../data/store.js'
 import { formatDate } from '../utils/attendance.js'
 import Pagination from '../components/Pagination.jsx'
@@ -40,16 +41,22 @@ import {
   tripById,
   vehicleById
 } from '../utils/cab.js'
-import { CarFront, Check, Eye, MoreVertical, Pencil, Plus, Send, Trash2, Undo2, X } from 'lucide-react'
+import {
+  ArrowRight, CarFront, Check, Clock, DoorClosed, Eye,
+  MapPin, MessageCircle, MoreVertical, Navigation, Pencil, Phone, Plus, Send,
+  Settings2, Sunrise, Sunset, Trash2, Undo2, User, X
+} from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
-const TABS = ["Today's Cab", 'My Change Requests', 'Chat with Transport Desk']
+const TABS = ["Today's Cab", 'My Change Requests']
+const TAB_SLUGS = ['today', 'change-requests']
 
 const REQUEST_STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
   { value: 'pending', label: 'Pending' },
   { value: 'approved', label: 'Approved' },
-  { value: 'rejected', label: 'Rejected' }
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'withdrawn', label: 'Withdrawn' }
 ]
 
 function requestChangeSummary(r) {
@@ -60,13 +67,17 @@ function requestChangeSummary(r) {
   return parts
 }
 
-// Employee's "My Cab" page: three tabs — today's cab reference with
-// pickup/drop cards, change requests, and chat with the transport desk.
+// Employee's "My Cab" page: two tabs — today's cab reference with
+// pickup/drop cards, and change requests. Chat with the transport desk
+// opens as a slide-over from the Today's Cab tab (same pattern as My Team).
 export default function MyCab() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
   const [refresh, setRefresh] = useState(0)
   const [showForm, setShowForm] = useState(false)
-  const [tab, setTab] = useState(0)
+  const [tab, setTab] = useState(Math.max(0, TAB_SLUGS.indexOf(tabParam)))
+  const [chatOpen, setChatOpen] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openRequestId, setOpenRequestId] = useState(null)
   const [editRequestId, setEditRequestId] = useState(null)
@@ -96,7 +107,7 @@ export default function MyCab() {
 
   function confirmWithdraw() {
     if (withdrawRequestId) {
-      deleteCabRequest(withdrawRequestId)
+      withdrawCabRequest(withdrawRequestId)
       setRefresh((n) => n + 1)
       if (openRequestId === withdrawRequestId) setOpenRequestId(null)
       if (editRequestId === withdrawRequestId) setEditRequestId(null)
@@ -117,6 +128,21 @@ export default function MyCab() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [openMenuId])
+
+  // React to URL tab changes (e.g. opening a "Cab change approved" notification
+  // while already on My Cab) so the right tab is selected.
+  const prevTabParam = useRef(tabParam)
+  useEffect(() => {
+    if (tabParam !== prevTabParam.current) {
+      setTab(Math.max(0, TAB_SLUGS.indexOf(tabParam)))
+      prevTabParam.current = tabParam
+    }
+  }, [tabParam])
+
+  function selectTab(i) {
+    setTab(i)
+    setSearchParams({ tab: TAB_SLUGS[i] }, { replace: true })
+  }
 
   // Today's date key, e.g. "2026-08-05"
   const todayKey = new Date().toISOString().slice(0, 10)
@@ -209,7 +235,7 @@ export default function MyCab() {
     profile.personal.dropSameAsPickup !== false ? pickupPoint : profile.personal.dropPoint
 
   return (
-    <div className={tab === 2 ? 'chat-fill-page' : undefined}>
+    <div>
       <div className="page-head">
         <div>
           <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
@@ -217,6 +243,14 @@ export default function MyCab() {
           </h2>
           <p className="muted small" style={{ margin: '4px 0 0' }}>Track your cab assignment, pickup and drop preferences</p>
         </div>
+        <button
+          type="button"
+          className="btn btn-light cab-chat-open-btn"
+          onClick={() => setChatOpen(true)}
+        >
+          <MessageCircle size={15} aria-hidden="true" />
+          Chat with Transport Desk
+        </button>
       </div>
 
       <div className="tabs">
@@ -224,10 +258,9 @@ export default function MyCab() {
           <button
             key={t}
             className={`tab ${i === tab ? 'tab-active' : ''}`}
-            onClick={() => setTab(i)}
+            onClick={() => selectTab(i)}
           >
             {t}
-            {i === 1 && requests.length > 0 ? ` (${requests.length})` : ''}
           </button>
         ))}
       </div>
@@ -243,32 +276,40 @@ export default function MyCab() {
           {/* Today's cancellation panel — only shown when a cab is assigned */}
           {assignment && (
             <div className="cab-cancellation-panel">
-              <div className="cab-cancellation-title">Today&rsquo;s cab preference</div>
-              <p className="hint first">
-                Let the driver know if you don&rsquo;t need a pickup or drop today.
-                Toggle a button below and the driver&rsquo;s list updates automatically.
-                Changes are locked {cutoffHours} hour{cutoffHours === 1 ? '' : 's'} before your shift
-                starts (pickup) and ends (drop).
-              </p>
-              <div className="cab-cancellation-actions">
-                <button
-                  id="btn-skip-pickup"
-                  className={`btn cab-cancel-btn ${skipPickup ? 'cab-cancel-btn-active' : 'btn-light'}`}
-                  aria-pressed={skipPickup}
-                  disabled={!pickupOpen}
-                  onClick={() => toggleCancellation('pickup')}
-                >
-                  {skipPickup ? (<><Check size={14} /> Skipping pickup today</>) : 'Skip pickup today'}
-                </button>
-                <button
-                  id="btn-skip-drop"
-                  className={`btn cab-cancel-btn ${skipDrop ? 'cab-cancel-btn-active' : 'btn-light'}`}
-                  aria-pressed={skipDrop}
-                  disabled={!dropOpen}
-                  onClick={() => toggleCancellation('drop')}
-                >
-                  {skipDrop ? (<><Check size={14} /> Skipping drop today</>) : 'Skip drop today'}
-                </button>
+              <div className="cab-pref-main">
+                <div className="cab-pref-heading">
+                  <span className="stat-chip"><Settings2 size={16} /></span>
+                  <div>
+                    <div className="cab-cancellation-title">Today&rsquo;s cab preference</div>
+                    <p className="hint" style={{ margin: '2px 0 0' }}>
+                      Let the driver know if you don&rsquo;t need a pickup or drop today — the driver&rsquo;s list updates automatically.
+                    </p>
+                  </div>
+                </div>
+                <div className="cab-cancellation-actions">
+                  <button
+                    id="btn-skip-pickup"
+                    className={`btn cab-cancel-btn ${skipPickup ? 'cab-cancel-btn-active' : 'btn-light'}`}
+                    aria-pressed={skipPickup}
+                    disabled={!pickupOpen}
+                    onClick={() => toggleCancellation('pickup')}
+                  >
+                    {skipPickup ? (<><Check size={14} /> Skipping pickup today</>) : 'Skip pickup today'}
+                  </button>
+                  <button
+                    id="btn-skip-drop"
+                    className={`btn cab-cancel-btn ${skipDrop ? 'cab-cancel-btn-active' : 'btn-light'}`}
+                    aria-pressed={skipDrop}
+                    disabled={!dropOpen}
+                    onClick={() => toggleCancellation('drop')}
+                  >
+                    {skipDrop ? (<><Check size={14} /> Skipping drop today</>) : 'Skip drop today'}
+                  </button>
+                </div>
+              </div>
+              <div className="cab-pref-lock">
+                <Clock size={13} aria-hidden="true" />
+                <span>Changes lock {cutoffHours} hour{cutoffHours === 1 ? '' : 's'} before your shift starts (pickup) and ends (drop).</span>
               </div>
               {(!pickupOpen || !dropOpen || skipPickup || skipDrop) && (
                 <div className="cab-cancellation-notice">
@@ -298,60 +339,46 @@ export default function MyCab() {
           {assignment && (
             <div className="cab-grid">
               {/* Pickup card */}
-              <div className={`card cab-card${skipPickup ? ' cab-card-skipped' : ''}`}>
-                <h3 className="section-title first">
-                  Pickup (Home &rarr; Office)
-                  {skipPickup && <span className="tag tag-medium cab-skip-tag">Skipped today</span>}
-                </h3>
-                <div className="cab-detail"><span>Pickup time</span><strong>{formatTime12(pickupTrip?.time)}</strong></div>
-                <div className="cab-detail"><span>Office starts</span><strong>{formatTime12(pickupTrip?.shiftStart)}</strong></div>
-                <div className="cab-detail"><span>Vehicle</span><strong>{pickupVehicle?.number || '--'}</strong></div>
-                <div className="cab-detail"><span>Driver</span><strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Avatar name={pickupDriver?.name} size={28} />{pickupDriver?.name || '--'}</strong></div>
-                <div className="cab-detail"><span>Driver mobile</span><strong>{pickupDriver?.mobile ? <a href={`tel:${pickupDriver.mobile}`} className="phone-link">{pickupDriver.mobile}</a> : '--'}</strong></div>
-                <div className="cab-detail"><span>Your address</span><strong>{homeAddress}</strong></div>
-                <div className="cab-detail"><span>Your gate</span><strong>{homeGate}</strong></div>
-                <div className="cab-detail">
-                  <span>Pickup point</span>
-                  <strong>
-                    {pickupPoint
-                      ? <a href={googleMapsUrl(pickupPoint)} target="_blank" rel="noreferrer">Open in Google Maps</a>
-                      : 'Not set'}
-                    <span className="tip" data-tip="To change this location, update it in My Details.">&#9432;</span>
-                  </strong>
-                </div>
-                <div className="cab-detail cab-supervisor">
-                  <span>Cab late / driver not answering? Call</span>
-                  <strong>{pickupTrip?.supervisorName || '--'} {pickupTrip?.supervisorMobile ? <a href={`tel:${pickupTrip.supervisorMobile}`} className="phone-link">({pickupTrip.supervisorMobile})</a> : ''}</strong>
-                </div>
-              </div>
+              <CabLegCard
+                kind="pickup"
+                skipped={skipPickup}
+                heroLabel="Pickup time"
+                heroTime={pickupTrip?.time}
+                heroSub={pickupTrip?.shiftStart ? `Office starts at ${formatTime12(pickupTrip.shiftStart)}` : null}
+                rows={[
+                  { icon: CarFront, label: 'Vehicle', value: pickupVehicle?.number || '--' },
+                  { icon: User, label: 'Driver', avatar: pickupDriver?.name, value: pickupDriver?.name || '--' },
+                  { icon: Phone, label: 'Driver mobile', value: pickupDriver?.mobile ? <a href={`tel:${pickupDriver.mobile}`} className="phone-link">{pickupDriver.mobile}</a> : '--' },
+                  { icon: MapPin, label: 'Your address', value: homeAddress },
+                  { icon: DoorClosed, label: 'Your gate', value: homeGate },
+                  { icon: Navigation, label: 'Pickup point',
+                    value: pickupPoint
+                      ? <a href={googleMapsUrl(pickupPoint)} target="_blank" rel="noreferrer" title="Open in Google Maps">Open in Google Maps</a>
+                      : <span className="muted">Not set</span> },
+                ]}
+                supervisor={{ name: pickupTrip?.supervisorName, mobile: pickupTrip?.supervisorMobile }}
+              />
 
               {/* Drop card */}
-              <div className={`card cab-card${skipDrop ? ' cab-card-skipped' : ''}`}>
-                <h3 className="section-title first">
-                  Drop (Office &rarr; Home)
-                  {skipDrop && <span className="tag tag-medium cab-skip-tag">Skipped today</span>}
-                </h3>
-                <div className="cab-detail"><span>Office ends</span><strong>{formatTime12(dropTrip?.shiftEnd)}</strong></div>
-                <div className="cab-detail"><span>Cab leaves office</span><strong>{formatTime12(dropTrip?.time)}</strong></div>
-                <div className="cab-detail"><span>Vehicle</span><strong>{dropVehicle?.number || '--'}</strong></div>
-                <div className="cab-detail"><span>Driver</span><strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Avatar name={dropDriver?.name} size={28} />{dropDriver?.name || '--'}</strong></div>
-                <div className="cab-detail"><span>Driver mobile</span><strong>{dropDriver?.mobile ? <a href={`tel:${dropDriver.mobile}`} className="phone-link">{dropDriver.mobile}</a> : '--'}</strong></div>
-                <div className="cab-detail"><span>Drop address</span><strong>{homeAddress}</strong></div>
-                <div className="cab-detail"><span>Office gate</span><strong>{dropTrip?.officeGate || '--'}</strong></div>
-                <div className="cab-detail">
-                  <span>Drop point</span>
-                  <strong>
-                    {dropPoint
-                      ? <a href={googleMapsUrl(dropPoint)} target="_blank" rel="noreferrer">Open in Google Maps</a>
-                      : 'Not set'}
-                    <span className="tip" data-tip="To change this location, update it in My Details.">&#9432;</span>
-                  </strong>
-                </div>
-                <div className="cab-detail cab-supervisor">
-                  <span>Cab late / driver not answering? Call</span>
-                  <strong>{dropTrip?.supervisorName || '--'} {dropTrip?.supervisorMobile ? <a href={`tel:${dropTrip.supervisorMobile}`} className="phone-link">({dropTrip.supervisorMobile})</a> : ''}</strong>
-                </div>
-              </div>
+              <CabLegCard
+                kind="drop"
+                skipped={skipDrop}
+                heroLabel="Cab leaves office"
+                heroTime={dropTrip?.time}
+                heroSub={dropTrip?.shiftEnd ? `Office ends at ${formatTime12(dropTrip.shiftEnd)}` : null}
+                rows={[
+                  { icon: CarFront, label: 'Vehicle', value: dropVehicle?.number || '--' },
+                  { icon: User, label: 'Driver', avatar: dropDriver?.name, value: dropDriver?.name || '--' },
+                  { icon: Phone, label: 'Driver mobile', value: dropDriver?.mobile ? <a href={`tel:${dropDriver.mobile}`} className="phone-link">{dropDriver.mobile}</a> : '--' },
+                  { icon: MapPin, label: 'Drop address', value: homeAddress },
+                  { icon: DoorClosed, label: 'Office gate', value: dropTrip?.officeGate || '--' },
+                  { icon: Navigation, label: 'Drop point',
+                    value: dropPoint
+                      ? <a href={googleMapsUrl(dropPoint)} target="_blank" rel="noreferrer" title="Open in Google Maps">Open in Google Maps</a>
+                      : <span className="muted">Not set</span> },
+                ]}
+                supervisor={{ name: dropTrip?.supervisorName, mobile: dropTrip?.supervisorMobile }}
+              />
             </div>
           )}
         </>
@@ -382,7 +409,15 @@ export default function MyCab() {
               </button>
             }
           />
-          <table className="table">
+          <table className="table" style={{ tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '30%' }} />
+              <col style={{ width: '21%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '7%' }} />
+            </colgroup>
             <thead>
               <tr>
                 <SortableTh label="Date(s)" keyName="dates" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
@@ -406,16 +441,15 @@ export default function MyCab() {
               )}
               {requestsPage.map((r) => (
                 <tr key={r.id}>
-                  <td>{r.forDates.map((d) => formatDate(d)).join(', ')}</td>
-                  <td>
-                    {r.newLocation && <div>Location: {r.newLocation}</div>}
-                    {r.newGate && <div>Gate: {r.newGate}</div>}
-                    {r.newTime && <div>Time: {formatTime12(r.newTime)}</div>}
-                    {!r.newLocation && !r.newGate && !r.newTime && <span className="muted">--</span>}
+                  <td className="cell-ellipsis" title={r.forDates.map((d) => formatDate(d)).join(', ')}>{r.forDates.map((d) => formatDate(d)).join(', ')}</td>
+                  <td className="cell-ellipsis" title={requestChangeSummary(r).join(' — ')}>
+                    {requestChangeSummary(r).length > 0
+                      ? requestChangeSummary(r).join(' · ')
+                      : <span className="muted">--</span>}
                   </td>
-                  <td>{r.reason}</td>
+                  <td className="cell-ellipsis" title={r.reason || undefined}>{r.reason}</td>
                   <td><span className={`tag ${requestStatusTagClass(r.status)}`}>{requestStatusLabel(r.status)}</span></td>
-                  <td>{r.adminNote || <span className="muted">--</span>}</td>
+                  <td className="cell-ellipsis" title={r.adminNote || undefined}>{r.adminNote || <span className="muted">--</span>}</td>
                   <td>
                     <div className="task-menu-container">
                       <button
@@ -473,18 +507,22 @@ export default function MyCab() {
         </div>
       )}
 
-      {tab === 2 && (
-        <ChatSection
-          messages={messages}
-          onSend={(text) => {
-            addCabMessage({ employeeId: user.id, byRole: 'employee', text })
-            setRefresh((n) => n + 1)
-          }}
-          onClear={() => {
-            clearCabChat(user.id)
-            setRefresh((n) => n + 1)
-          }}
-        />
+      {chatOpen && (
+        <div className="team-chat-overlay" onClick={() => setChatOpen(false)}>
+          <div className="team-chat-slide" onClick={(e) => e.stopPropagation()}>
+            <ChatSection
+              messages={messages}
+              onSend={(text) => {
+                addCabMessage({ employeeId: user.id, byRole: 'employee', text })
+                setRefresh((n) => n + 1)
+              }}
+              onClear={() => {
+                clearCabChat(user.id)
+                setRefresh((n) => n + 1)
+              }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Open request detail modal */}
@@ -557,7 +595,9 @@ export default function MyCab() {
               <button type="button" className="btn btn-tiny btn-light" onClick={cancelWithdraw} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              This will cancel your change request permanently. You will not be able to restore it afterwards.
+              This will withdraw your change request. It stays in your list marked
+              &ldquo;Withdrawn&rdquo; for your records, but the transport desk will no longer act on
+              it. This cannot be undone.
             </p>
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={confirmWithdraw}>
@@ -574,7 +614,7 @@ export default function MyCab() {
       <p className="hint">
         Today&rsquo;s Cab shows your pickup and drop details, including driver contact and vehicle
         number. Use Change Requests to ask for a temporary location or time change (valid for 1–2 days).
-        Chat here if the cab is late or the driver isn&rsquo;t responding.
+        If the cab is late or the driver isn&rsquo;t responding, use &ldquo;Chat with Transport Desk&rdquo; above to message us.
       </p>
 
       {/* Temporary change request form - Modal */}
@@ -600,6 +640,62 @@ export default function MyCab() {
       )}
     </div>
   )
+}
+
+// ---- One leg (pickup or drop) of today's cab, as a run-sheet style card ----
+// `kind` drives the semantic accent: pickup = amber (morning), drop = blue
+// (evening) — the same pairing the driver run sheet uses.
+function CabLegCard({ kind, skipped, heroLabel, heroTime, heroSub, rows, supervisor }) {
+  const time = formatTime12(heroTime);
+  const [clock, ampm] = time.split(' ');
+  const route = kind === 'pickup' ? (
+    <>Home <ArrowRight size={13} className="cab-route-arrow" aria-hidden="true" /> Office</>
+  ) : (
+    <>Office <ArrowRight size={13} className="cab-route-arrow" aria-hidden="true" /> Home</>
+  );
+  const Icon = kind === 'pickup' ? Sunrise : Sunset;
+  return (
+    <div className={`card cab-card cab-card-${kind}${skipped ? ' cab-card-skipped' : ''}`}>
+      <div className="cab-card-head">
+        <span className="cab-card-chip"><Icon size={16} /></span>
+        <div className="cab-card-head-text">
+          <div className="cab-card-title">
+            {kind === 'pickup' ? 'Pickup' : 'Drop'}
+            {skipped && <span className="tag tag-medium cab-skip-tag">Skipped today</span>}
+          </div>
+          <div className="cab-card-route">{route}</div>
+        </div>
+      </div>
+      <div className="cab-hero">
+        <div className="cab-hero-label">{heroLabel}</div>
+        <div className="cab-hero-time">
+          {time === '--' ? <span>--</span> : <>{clock}<span className="cab-hero-ampm">{ampm}</span></>}
+        </div>
+        {heroSub && <div className="cab-hero-sub">{heroSub}</div>}
+      </div>
+      <div className="cab-rows">
+        {rows.map((row, i) => {
+          const RowIcon = row.icon;
+          return (
+            <div className="cab-row" key={i}>
+              <span className="cab-row-label"><RowIcon size={14} aria-hidden="true" />{row.label}</span>
+              <strong className="cab-row-value">
+                {row.avatar && <Avatar name={row.avatar} size={24} />}
+                {row.value}
+              </strong>
+            </div>
+          );
+        })}
+      </div>
+      <div className="cab-supervisor">
+        <span className="cab-supervisor-ask"><Phone size={14} aria-hidden="true" />Cab late or driver not answering? Call</span>
+        <span className="cab-supervisor-person">
+          <span>{supervisor?.name || '--'}</span>
+          {supervisor?.mobile && <a href={`tel:${supervisor.mobile}`} className="phone-link">({supervisor.mobile})</a>}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 // ---- Inline request form ----
@@ -680,7 +776,7 @@ function RequestForm({ pickupTrip, onSubmit, onCancel, initial }) {
   )
 }
 
-// ---- Chat with the transport desk (one ongoing thread) ----
+// ---- Chat with the transport desk (one ongoing thread, slide-over panel) ----
 function ChatSection({ messages, onSend, onClear }) {
   const [text, setText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -739,27 +835,29 @@ function ChatSection({ messages, onSend, onClear }) {
               <div className="team-chat-peer-role muted small">Cab support team</div>
             </div>
           </div>
-          <div className="task-menu-container team-chat-menu-container">
-            <button
-              type="button"
-              className="btn btn-tiny btn-light task-menu-button"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label="Chat options"
-            >
-              <MoreVertical size={16} />
-            </button>
-            {menuOpen && (
-              <div className="task-menu-dropdown">
-                <button
-                  type="button"
-                  className="task-menu-item task-menu-item-danger"
-                  onClick={() => { setMenuOpen(false); setConfirmClear(true) }}
-                >
-                  <Trash2 size={14} aria-hidden="true" />
-                  Clear chat
-                </button>
-              </div>
-            )}
+          <div className="team-chat-header-actions">
+            <div className="task-menu-container team-chat-menu-container">
+              <button
+                type="button"
+                className="btn btn-tiny btn-light task-menu-button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label="Chat options"
+              >
+                <MoreVertical size={16} />
+              </button>
+              {menuOpen && (
+                <div className="task-menu-dropdown">
+                  <button
+                    type="button"
+                    className="task-menu-item task-menu-item-danger"
+                    onClick={() => { setMenuOpen(false); setConfirmClear(true) }}
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                    Clear chat
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -789,7 +887,7 @@ function ChatSection({ messages, onSend, onClear }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder='e.g. "Where is my cab?" or "Driver is not answering my call"'
+            placeholder="Type a message"
           />
           <div className="team-chat-composer-actions">
             <button

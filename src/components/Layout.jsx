@@ -138,7 +138,13 @@ export default function Layout() {
     { to: '/company-announcements', label: 'Announcements', icon: Megaphone, badge: true },
     { to: '/settings', label: 'Settings', icon: Settings }
   ]
-  const itNav = [{ to: '/it-help-desk', label: 'IT Issues', icon: Wrench }]
+  // The IT team run the help desk but are still employees — they clock in, take
+  // leave and get paid — so they keep the normal menus with their own queue on
+  // top. Announcements stay off their list, matching the noIT guard on that route.
+  const itNav = [
+    { to: '/it-help-desk', label: 'IT Issues', icon: Wrench },
+    ...employeeNav.filter((n) => n.to !== '/announcements')
+  ]
   const navItems = !isAdmin ? employeeNav : isIT ? itNav : adminNav
 
   return (
@@ -155,13 +161,16 @@ export default function Layout() {
             <Avatar src={photoUrl} name={user?.name || ''} size={32} />
             <span className="who-text">
               {user?.name}{' '}
+              {/* Brackets mark the role as a qualifier of the name rather than part
+                  of it, matching how the threads read "Priya Nair (HR / Admin)".
+                  Inside the <small> so the brackets stay muted and small too. */}
               <small>
-                {isAdmin ? (isIT ? (user?.isManager ? 'IT Manager' : 'IT Support') : 'HR / Admin') : 'Employee'}
+                ({isAdmin ? (isIT ? (user?.isManager ? 'IT Manager' : 'IT Support') : 'HR / Admin') : 'Employee'})
               </small>
             </span>
           </span>
-          {user && (user.role === 'employee' || (user.role === 'admin' && !isIT)) && (
-            <NotificationBell employeeId={user.id} viewerRole={user.role} />
+          {user && (user.role === 'employee' || user.role === 'admin') && (
+            <NotificationBell employeeId={user.id} viewerRole={isIT ? 'it' : user.role} />
           )}
           <div className="theme-toggle-wrap">
             <AnimatedThemeToggle />

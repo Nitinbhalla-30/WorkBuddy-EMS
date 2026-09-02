@@ -2112,7 +2112,8 @@ export function getTicketsForHR() {
 // An employee raises a new query or grievance. Returns the saved ticket.
 export function createTicket({ employeeId, kind, category, subject, message, anonymous }) {
   const all = getTickets()
-  const now = todayKey()
+  const now = new Date().toISOString() // full timestamp — the tickets table columns
+  // are timestamptz, so notifications can show the real time instead of 12:00 AM
   const isGrievance = kind === 'grievance'
   const ticket = {
     id: `TKT${Date.now()}`,
@@ -2142,7 +2143,7 @@ export function withdrawTicket(ticketId, employeeId) {
   const t = all[idx]
   if (t.employeeId !== employeeId) return null
   if (!['open', 'inprogress'].includes(t.status)) return null
-  all[idx] = { ...t, status: 'withdrawn', updatedOn: todayKey() }
+  all[idx] = { ...t, status: 'withdrawn', updatedOn: new Date().toISOString() }
   write(KEYS.tickets, all)
   return all[idx]
 }
@@ -2170,7 +2171,7 @@ export function updateTicket(ticketId, employeeId, { kind, category, subject, me
     anonymous: isGrievance ? !!anonymous : false,
     confidential: isGrievance,
     messages,
-    updatedOn: todayKey()
+    updatedOn: new Date().toISOString()
   }
   write(KEYS.tickets, all)
   return all[idx]
@@ -2191,10 +2192,10 @@ export function addTicketMessage(ticketId, { byId, byRole, text }) {
   all[idx] = {
     ...t,
     status,
-    updatedOn: todayKey(),
+    updatedOn: new Date().toISOString(),
     messages: [
       ...t.messages,
-      { id: `MSG${Date.now()}`, byId, byRole, text: text || '', on: todayKey() }
+      { id: `MSG${Date.now()}`, byId, byRole, text: text || '', on: new Date().toISOString() }
     ]
   }
   write(KEYS.tickets, all)
@@ -2206,7 +2207,10 @@ export function setTicketStatus(ticketId, status) {
   const all = getTickets()
   const idx = all.findIndex((t) => t.id === ticketId)
   if (idx < 0) return null
-  all[idx] = { ...all[idx], status, updatedOn: todayKey() }
+  // A withdrawn ticket is final: the employee ended the conversation, so its
+  // status is locked for everyone — including HR.
+  if (all[idx].status === 'withdrawn') return null
+  all[idx] = { ...all[idx], status, updatedOn: new Date().toISOString() }
   write(KEYS.tickets, all)
   return all[idx]
 }
@@ -2314,7 +2318,11 @@ export function createCabRequest({ employeeId, forDates, newLocation, newGate, n
     reason: reason || '',
     status: 'pending',
     adminNote: '',
-    raisedOn: todayKey()
+    raisedOn: todayKey(),
+    // Full timestamps so the notification feed can show a precise time and the
+    // approve/reject event is announced once (raisedOn alone is date-only).
+    createdAt: new Date().toISOString(),
+    decidedOn: null
   }
   all.push(req); write(KEYS.cabRequests, all); return req
 }
@@ -2322,7 +2330,13 @@ export function setCabRequestStatus(requestId, status, adminNote) {
   const all = getCabRequests()
   const idx = all.findIndex((r) => r.id === requestId)
   if (idx < 0) return null
-  all[idx] = { ...all[idx], status, adminNote: adminNote || '' }
+  const decided = status === 'approved' || status === 'rejected'
+  all[idx] = {
+    ...all[idx],
+    status,
+    adminNote: adminNote || '',
+    decidedOn: decided ? new Date().toISOString() : null
+  }
   write(KEYS.cabRequests, all); return all[idx]
 }
 export function updateCabRequest(requestId, data) {
@@ -2335,6 +2349,16 @@ export function updateCabRequest(requestId, data) {
 export function deleteCabRequest(requestId) {
   const all = getCabRequests().filter((r) => r.id !== requestId)
   write(KEYS.cabRequests, all)
+}
+// Soft withdraw: the employee cancels their own pending request but the row
+// stays in the list (and the admin's Requests tab) flagged as 'withdrawn',
+// matching how leaves / overtime / reimbursements keep withdrawn records.
+export function withdrawCabRequest(requestId) {
+  const all = getCabRequests()
+  const idx = all.findIndex((r) => r.id === requestId)
+  if (idx < 0) return null
+  all[idx] = { ...all[idx], status: 'withdrawn', withdrawnOn: new Date().toISOString() }
+  write(KEYS.cabRequests, all); return all[idx]
 }
 
 // Team chat messages (one thread per pair of employees).
@@ -2619,8 +2643,10 @@ export function createITIssue({ employeeId, issue, description, priority, catego
     estimatedTime: null,
     attachment: attachment || null,
     comments: [],
-    createdOn: todayKey(),
-    updatedOn: todayKey()
+    // Full ISO datetimes, not just the date — the notification bell shows these
+    // with a clock time, and a date-only stamp renders as 12:00 AM.
+    createdOn: new Date().toISOString(),
+    updatedOn: new Date().toISOString()
   }
   all.push(newIssue)
   write(KEYS.itIssues, all)
@@ -2635,7 +2661,7 @@ export function withdrawITIssue(issueId, employeeId) {
   const issue = all[idx]
   if (issue.employeeId !== employeeId) return null
   if (!['open', 'inprogress'].includes(issue.status)) return null
-  all[idx] = { ...issue, status: 'withdrawn', updatedOn: todayKey() }
+  all[idx] = { ...issue, status: 'withdrawn', updatedOn: new Date().toISOString() }
   write(KEYS.itIssues, all)
   return all[idx]
 }
@@ -2655,13 +2681,16 @@ export function updateITIssue(issueId, employeeId, { issue, description, priorit
     priority,
     category: category || row.category || 'other',
     attachment: attachment === undefined ? row.attachment || null : (attachment || null),
-    updatedOn: todayKey()
+    updatedOn: new Date().toISOString()
   }
   write(KEYS.itIssues, all)
   return all[idx]
 }
 
-// Assign an IT issue to a staff member and set estimated time
+// Assign an IT issue to a staff member and/or set its expected response time.
+// The status only moves to "In progress" when there is somebody on it: editing
+// the response time, or taking an issue back off a person, should not quietly
+// pull an already resolved or closed issue back into the queue.
 export function assignITIssue(issueId, assignedTo, estimatedTime) {
   const all = getITIssues()
   const idx = all.findIndex((i) => i.id === issueId)
@@ -2670,14 +2699,16 @@ export function assignITIssue(issueId, assignedTo, estimatedTime) {
     ...all[idx],
     assignedTo,
     estimatedTime,
-    status: 'inprogress',
-    updatedOn: todayKey()
+    status: assignedTo ? 'inprogress' : all[idx].status,
+    updatedOn: new Date().toISOString()
   }
   write(KEYS.itIssues, all)
   return all[idx]
 }
 
-// Update IT issue status
+// Update IT issue status. Any deliberate status change by the IT team ends the
+// current open cycle, so a reopen flagged earlier is cleared — putting an issue
+// back to Open by hand is not the same event as the employee reopening it.
 export function setITIssueStatus(issueId, status) {
   const all = getITIssues()
   const idx = all.findIndex((i) => i.id === issueId)
@@ -2685,7 +2716,8 @@ export function setITIssueStatus(issueId, status) {
   all[idx] = {
     ...all[idx],
     status,
-    updatedOn: todayKey()
+    reopenedOn: null,
+    updatedOn: new Date().toISOString()
   }
   write(KEYS.itIssues, all)
   return all[idx]
@@ -2693,6 +2725,9 @@ export function setITIssueStatus(issueId, status) {
 
 // Employee re-opens an issue that was marked resolved/closed but is not
 // actually fixed. It goes back to open so IT picks it up again.
+// reopenedOn marks that this open cycle came from the employee rejecting the
+// fix, which is what lets IT's alert read "IT issue reopened" instead of "New
+// IT issue". One stamp is shared with updatedOn so the two always match.
 export function reopenITIssue(issueId, employeeId) {
   const all = getITIssues()
   const idx = all.findIndex((i) => i.id === issueId)
@@ -2700,7 +2735,8 @@ export function reopenITIssue(issueId, employeeId) {
   const issue = all[idx]
   if (issue.employeeId !== employeeId) return null
   if (!['resolved', 'closed'].includes(issue.status)) return null
-  all[idx] = { ...issue, status: 'open', updatedOn: todayKey() }
+  const now = new Date().toISOString()
+  all[idx] = { ...issue, status: 'open', reopenedOn: now, updatedOn: now }
   write(KEYS.itIssues, all)
   return all[idx]
 }
@@ -2718,12 +2754,12 @@ export function addITIssueComment(issueId, author, text) {
     byName: author.byName,
     byRole: author.byRole,
     text,
-    on: todayKey()
+    on: new Date().toISOString()
   }
   all[idx] = {
     ...issue,
     comments: [...(issue.comments || []), comment],
-    updatedOn: todayKey()
+    updatedOn: new Date().toISOString()
   }
   write(KEYS.itIssues, all)
   return comment
@@ -2751,7 +2787,9 @@ export function createAnnouncement({ title, content, type, createdBy, excludedEm
     content: content || '',
     type,
     createdBy,
-    createdOn: todayKey(),
+    // Full ISO datetime, not just the date — the notification bell shows this
+    // value with a clock time, and a date-only stamp renders as 12:00 AM.
+    createdOn: new Date().toISOString(),
     excludedEmployees: excludedEmployees || []
   }
   all.push(announcement)

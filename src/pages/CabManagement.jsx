@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   addCabMessage,
   addDriver,
@@ -45,14 +46,33 @@ import {
   tripLabel,
   vehicleById
 } from '../utils/cab.js'
-import { CarFront, Check, Copy, ExternalLink, MoreVertical, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
+import { CarFront, Check, Copy, ExternalLink, Eye, MoreVertical, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
 
-const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Requests', 'Messages', 'Today']
+const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Change Requests', 'Messages', 'Today']
+const TAB_SLUGS = ['vehicles', 'drivers', 'trips', 'assign', 'requests', 'messages', 'today']
 
 // Admin page to manage the company cab system.
 export default function CabManagement() {
-  const [tab, setTab] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const [tab, setTab] = useState(Math.max(0, TAB_SLUGS.indexOf(tabParam)))
   const [refresh, setRefresh] = useState(0)
+
+  // Follow URL tab changes (e.g. a "Cab change request" notification clicked
+  // while already on this page) so the Requests tab opens on demand.
+  const prevTabParam = useRef(tabParam)
+  useEffect(() => {
+    if (tabParam !== prevTabParam.current) {
+      setTab(Math.max(0, TAB_SLUGS.indexOf(tabParam)))
+      prevTabParam.current = tabParam
+    }
+  }, [tabParam])
+
+  function selectTab(i) {
+    setTab(i)
+    setSearchParams({ tab: TAB_SLUGS[i] }, { replace: true })
+  }
 
   const vehicles = useMemo(() => getVehicles(), [refresh])
   const drivers = useMemo(() => getDrivers(), [refresh])
@@ -86,9 +106,9 @@ export default function CabManagement() {
 
       <div className="tabs">
         {TABS.map((t, i) => (
-          <button key={t} className={`tab ${i === tab ? 'tab-active' : ''}`} onClick={() => setTab(i)}>
+          <button key={t} className={`tab ${i === tab ? 'tab-active' : ''}`} onClick={() => selectTab(i)}>
             {t}
-            {t === 'Requests' ? ` (${requests.filter((r) => r.status === 'pending').length})` : ''}
+            {t === 'Change Requests' ? ` (${requests.filter((r) => r.status === 'pending').length})` : ''}
             {t === 'Messages' && totalUnread > 0 ? ` (${totalUnread})` : ''}
           </button>
         ))}
@@ -1162,28 +1182,57 @@ function RequestsTab({ requests, nameOf, bump }) {
   const [notes, setNotes] = useState({})
   const [approveId, setApproveId] = useState(null)
   const [rejectId, setRejectId] = useState(null)
+  const [openId, setOpenId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+
+  function toggleMenu(id) { setOpenMenuId(openMenuId === id ? null : id) }
+  function closeMenu() { setOpenMenuId(null) }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) closeMenu()
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
 
   function decide(id, status) {
     setCabRequestStatus(id, status, notes[id] || '')
     bump()
   }
-
   function handleApprove() {
     if (!approveId) return
     decide(approveId, 'approved')
     setApproveId(null)
   }
-
   function handleReject() {
     if (!rejectId) return
+    // The reason is compulsory — the button is disabled until one is typed,
+    // this guard covers programmatic calls.
+    if (!(notes[rejectId] || '').trim()) return
     decide(rejectId, 'rejected')
     setRejectId(null)
   }
 
-  const sorted = [...requests].sort((a, b) => {
-    if (a.status === 'pending' && b.status !== 'pending') return -1
-    if (a.status !== 'pending' && b.status === 'pending') return 1
-    return a.raisedOn < b.raisedOn ? 1 : -1
+  const requestsTable = useTableControls(requests, {
+    getSearchText: (r) => [
+      nameOf(r.employeeId),
+      r.forDates.join(' '),
+      r.newLocation, r.newGate, r.newTime,
+      r.reason, requestStatusLabel(r.status), r.adminNote
+    ].join(' '),
+    getSortValue: (r, key) => {
+      if (key === 'employee') return nameOf(r.employeeId)
+      if (key === 'dates') return r.forDates[0] || ''
+      if (key === 'status') return r.status
+      // Sort the Changes column by the exact text it renders, so the order the
+      // admin sees matches the arrows they clicked.
+      if (key === 'changes') return changesParts(r).join(' · ')
+      return r[key]
+    },
+    initialSortKey: 'dates',
+    initialSortDir: 'desc',
+    filterFns: { status: (r, val) => r.status === val }
   })
 
   const {
@@ -1194,49 +1243,139 @@ function RequestsTab({ requests, nameOf, bump }) {
     startIndex: requestsStart,
     endIndex: requestsEnd,
     setPage: setRequestsPage
-  } = usePagination(sorted, 5)
+  } = usePagination(requestsTable.rows)
+
+  const openRequest = requests.find((r) => r.id === openId) || null
+  const approveRequest = requests.find((r) => r.id === approveId) || null
+  const rejectRequest = requests.find((r) => r.id === rejectId) || null
+
+  function changesParts(r) {
+    const p = []
+    if (r.newLocation) p.push(`Location: ${r.newLocation}`)
+    if (r.newGate) p.push(`Gate: ${r.newGate}`)
+    if (r.newTime) p.push(`Time: ${formatTime12(r.newTime)}`)
+    return p
+  }
 
   return (
     <div className="card">
-      <h3 className="section-title first">Temporary change requests</h3>
-      {sorted.length === 0 && <p className="muted">No requests yet.</p>}
-      {requestsPage.map((r) => {
-        const reqEmp = getEmployees().find((e) => e.id === r.employeeId)
-        return (
-        <div className="cab-request" key={r.id}>
-          <div className="cab-request-head">
-            <div className="person-cell">
-              <Avatar src={reqEmp?.photoUrl} name={nameOf(r.employeeId)} size={34} />
-              <strong>{nameOf(r.employeeId)}</strong>
-            </div>
-            <span className={`tag ${requestStatusTagClass(r.status)}`}>{requestStatusLabel(r.status)}</span>
-          </div>
-          <div className="muted small">
-            {r.forDates.map((d) => formatDate(d)).join(', ')} — raised {formatDate(r.raisedOn)}
-          </div>
-          <div className="cab-request-body">
-            {r.newLocation && <div><span className="muted">Location:</span> {r.newLocation}</div>}
-            {r.newGate && <div><span className="muted">Gate:</span> {r.newGate}</div>}
-            {r.newTime && <div><span className="muted">Time:</span> {formatTime12(r.newTime)}</div>}
-            <div><span className="muted">Reason:</span> {r.reason}</div>
-          </div>
-          {r.status === 'pending' ? (
-            <div className="button-row">
-              <input
-                className="inline-input"
-                placeholder="Note to employee (e.g. Driver will come to Gate 5)"
-                value={notes[r.id] || ''}
-                onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })}
-              />
-              <button className="btn btn-primary btn-tiny" onClick={() => setApproveId(r.id)}>Approve</button>
-              <button className="btn btn-danger btn-tiny" onClick={() => setRejectId(r.id)}>Reject</button>
-            </div>
-          ) : (
-            r.adminNote && <div className="info-box">Note: {r.adminNote}</div>
+      <TableToolbar
+        search={requestsTable.search}
+        onSearchChange={requestsTable.setSearch}
+        showing={requestsTable.count}
+        total={requestsTable.total}
+        placeholder="Search requests..."
+        filters={[
+          {
+            key: 'status',
+            label: 'Status',
+            value: requestsTable.filters.status || 'all',
+            options: [
+              { value: 'all', label: 'All statuses' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'approved', label: 'Approved' },
+              { value: 'rejected', label: 'Rejected' },
+              { value: 'withdrawn', label: 'Withdrawn' }
+            ]
+          }
+        ]}
+        onFilterChange={requestsTable.setFilter}
+      />
+      <table className="table" style={{ tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '22%' }} />
+          <col style={{ width: '17%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '17%' }} />
+          <col style={{ width: '6%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <SortableTh label="Employee" keyName="employee" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+            <SortableTh label="Date(s)" keyName="dates" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+            <SortableTh label="Changes" keyName="changes" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+            <SortableTh label="Reason" keyName="reason" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} className="th-wrap" />
+            <SortableTh label="Status" keyName="status" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+            <SortableTh label="Admin note" keyName="adminNote" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} className="th-wrap" />
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {requestsTable.count === 0 && (
+            <TableEmpty
+              colSpan={7}
+              message={
+                requests.length === 0
+                  ? 'No change requests yet.'
+                  : 'No requests match your search.'
+              }
+            />
           )}
-        </div>
-        )
-      })}
+          {requestsPage.map((r) => {
+            const emp = getEmployees().find((e) => e.id === r.employeeId)
+            const parts = changesParts(r)
+            const datesText = r.forDates.map((d) => formatDate(d)).join(', ')
+            return (
+              <tr key={r.id}>
+                <td>
+                  <div className="person-cell">
+                    <Avatar src={emp?.photoUrl} name={nameOf(r.employeeId)} size={28} />
+                    <span>{nameOf(r.employeeId)}</span>
+                  </div>
+                </td>
+                <td className="cell-ellipsis" title={datesText}>{datesText}</td>
+                <td className="cell-ellipsis" title={parts.join(' — ') || undefined}>
+                  {parts.length > 0 ? parts.join(' · ') : <span className="muted">--</span>}
+                </td>
+                <td className="cell-ellipsis" title={r.reason || undefined}>{r.reason}</td>
+                <td><span className={`tag ${requestStatusTagClass(r.status)}`}>{requestStatusLabel(r.status)}</span></td>
+                <td className="cell-ellipsis" title={r.adminNote || undefined}>{r.adminNote || <span className="muted">--</span>}</td>
+                <td>
+                  <div className="task-menu-container">
+                    <button
+                      type="button"
+                      className="btn btn-tiny btn-light task-menu-button"
+                      onClick={() => toggleMenu(r.id)}
+                      aria-label="Request actions"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                    {openMenuId === r.id && (
+                      <div className="task-menu-dropdown">
+                        <button
+                          type="button"
+                          className="task-menu-item"
+                          onClick={() => { setOpenId(r.id); closeMenu() }}
+                        >
+                          <Eye size={14} aria-hidden="true" />Open
+                        </button>
+                        <button
+                          type="button"
+                          className="task-menu-item"
+                          disabled={r.status !== 'pending'}
+                          onClick={() => { setApproveId(r.id); closeMenu() }}
+                        >
+                          <Check size={14} aria-hidden="true" />Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="task-menu-item task-menu-item-danger"
+                          disabled={r.status !== 'pending'}
+                          onClick={() => { setRejectId(r.id); closeMenu() }}
+                        >
+                          <X size={14} aria-hidden="true" />Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
       <Pagination
         page={requestsPageNum}
         totalPages={requestsTotalPages}
@@ -1246,16 +1385,60 @@ function RequestsTab({ requests, nameOf, bump }) {
         onPageChange={setRequestsPage}
       />
 
-      {approveId && (
+      {/* Open — full request details */}
+      {openRequest && (
+        <Modal onClose={() => setOpenId(null)} title="Change request">
+          <div className="modal-form modal-form-wide">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>Change request</h3>
+                <div className="muted small">
+                  {nameOf(openRequest.employeeId)}
+                  {' · '}
+                  {openRequest.forDates.map((d) => formatDate(d)).join(', ')}
+                  {' · '}
+                  Raised {formatDate(openRequest.raisedOn)}
+                  {' · '}
+                  <span className={`tag ${requestStatusTagClass(openRequest.status)}`}>
+                    {requestStatusLabel(openRequest.status)}
+                  </span>
+                </div>
+              </div>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <ul style={{ margin: '12px 0', paddingLeft: '20px' }}>
+              {changesParts(openRequest).map((p, i) => <li key={i}>{p}</li>)}
+              {changesParts(openRequest).length === 0 && <li className="muted">No changes specified</li>}
+            </ul>
+            {openRequest.reason && (
+              <p className="hint"><strong>Reason:</strong> {openRequest.reason}</p>
+            )}
+            {openRequest.adminNote && (
+              <p className="hint"><strong>Admin note:</strong> {openRequest.adminNote}</p>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Approve — confirm + note */}
+      {approveRequest && (
         <Modal onClose={() => setApproveId(null)} title="Confirm approval">
           <div className="modal-form">
             <div className="modal-header">
-              <h3 className="section-title first">Confirm approval</h3>
+              <h3 className="section-title first" style={{ margin: 0 }}>Confirm approval</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setApproveId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Are you sure you want to approve this cab request for <strong>{nameOf(approveId)}</strong>?
+              Approve this cab request for <strong>{nameOf(approveRequest.employeeId)}</strong>?
             </p>
+            <label className="field">
+              <span>Note to employee (optional)</span>
+              <input
+                value={notes[approveRequest.id] || ''}
+                onChange={(e) => setNotes({ ...notes, [approveRequest.id]: e.target.value })}
+                placeholder="e.g. Driver will come to Gate 5"
+              />
+            </label>
             <div className="button-row">
               <button type="button" className="btn btn-primary" onClick={handleApprove}>Approve</button>
               <button type="button" className="btn btn-light" onClick={() => setApproveId(null)}>Cancel</button>
@@ -1264,18 +1447,34 @@ function RequestsTab({ requests, nameOf, bump }) {
         </Modal>
       )}
 
-      {rejectId && (
+      {/* Reject — confirm + note */}
+      {rejectRequest && (
         <Modal onClose={() => setRejectId(null)} title="Confirm rejection">
           <div className="modal-form">
             <div className="modal-header">
-              <h3 className="section-title first">Confirm rejection</h3>
+              <h3 className="section-title first" style={{ margin: 0 }}>Confirm rejection</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setRejectId(null)} aria-label="Close"><X size={15} /></button>
             </div>
             <p className="hint first">
-              Are you sure you want to reject this cab request for <strong>{nameOf(rejectId)}</strong>?
+              Reject this cab request for <strong>{nameOf(rejectRequest.employeeId)}</strong>? This cannot be undone.
             </p>
+            <label className="field">
+              <span>Reason for rejection (required)</span>
+              <input
+                value={notes[rejectRequest.id] || ''}
+                onChange={(e) => setNotes({ ...notes, [rejectRequest.id]: e.target.value })}
+                placeholder="e.g. Requested date is already a holiday"
+              />
+            </label>
             <div className="button-row">
-              <button type="button" className="btn btn-danger" onClick={handleReject}>Reject</button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={!(notes[rejectRequest.id] || '').trim()}
+                onClick={handleReject}
+              >
+                Reject
+              </button>
               <button type="button" className="btn btn-light" onClick={() => setRejectId(null)}>Cancel</button>
             </div>
           </div>

@@ -7,6 +7,10 @@ import {
   getEmployeeById
 } from '../data/store.js'
 import { ANNOUNCEMENT_TYPES } from '../data/sampleData.js'
+import {
+  announcementTypeLabel,
+  announcementTypeTagClass
+} from '../utils/announcements.js'
 import { formatDate } from '../utils/attendance.js'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
@@ -110,21 +114,6 @@ export default function AdminAnnouncements() {
 
   function cancelDelete() {
     setDeleteId(null)
-  }
-
-  function getTypeLabel(key) {
-    const t = ANNOUNCEMENT_TYPES.find((item) => item.key === key)
-    return t ? t.label : key
-  }
-
-  function getTypeClass(key) {
-    switch (key) {
-      case 'urgent': return 'tag-high'
-      case 'job': return 'tag-medium'
-      case 'policy': return 'tag-low'
-      case 'event': return 'tag-event'
-      default: return 'tag-general'
-    }
   }
 
   function handleOpen(announcementId) {
@@ -237,15 +226,17 @@ export default function AdminAnnouncements() {
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '38%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '10%' }} />
+            <col style={{ width: '20%' }} /> {/* Title */}
+            <col style={{ width: '33%' }} /> {/* Content */}
+            <col style={{ width: '12%' }} /> {/* Type */}
+            <col style={{ width: '14%' }} /> {/* Created By */}
+            <col style={{ width: '13%' }} /> {/* Created On */}
+            <col style={{ width: '8%' }} />  {/* Actions */}
           </colgroup>
           <thead>
             <tr>
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Content" keyName="content" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Type" keyName="type" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Created By" keyName="createdBy" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Created On" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -254,34 +245,36 @@ export default function AdminAnnouncements() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={5} message="No announcements match your filters." />
+              <TableEmpty colSpan={6} message="No announcements match your filters." />
             )}
             {announcementsPage.map((announcement) => {
               const creator = getEmployeeById(announcement.createdBy)
+              const creatorName = creator?.name || announcement.createdBy
+              const shownDate = formatDate(announcement.createdOn)
               return (
               <tr key={announcement.id}>
-                <td>
+                <td className="cell-ellipsis" title={announcement.title}>
                   <strong>{announcement.title}</strong>
-                  <div
-                    className="muted small"
-                    title={announcement.content}
-                    style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
-                  >
-                    {announcement.content}
-                  </div>
+                </td>
+                {/* Content is its own column now rather than a second line under
+                    the title, so every row stays exactly one line tall. */}
+                <td className="cell-ellipsis" title={announcement.content}>
+                  {announcement.content}
                 </td>
                 <td>
-                  <span className={`tag ${getTypeClass(announcement.type)}`}>
-                    {getTypeLabel(announcement.type)}
+                  <span className={`tag ${announcementTypeTagClass(announcement.type)}`}>
+                    {announcementTypeLabel(announcement.type)}
                   </span>
                 </td>
                 <td>
                   <div className="person-cell">
-                    <Avatar src={creator?.photoUrl} name={creator?.name || announcement.createdBy} size={34} />
-                    <span>{creator?.name || announcement.createdBy}</span>
+                    <Avatar src={creator?.photoUrl} name={creatorName} size={34} />
+                    <span title={creatorName}>{creatorName}</span>
                   </div>
                 </td>
-                <td>{formatDate(announcement.createdOn)}</td>
+                {/* Dates print like "Wed, 02 Sep" with spaces, so without this the
+                    narrower column could wrap them onto two lines. */}
+                <td className="cell-ellipsis" title={shownDate}>{shownDate}</td>
                 <td>
                   <div className="task-menu-container">
                     <button
@@ -339,7 +332,7 @@ export default function AdminAnnouncements() {
               <div>
                 <h3 className="section-title first" style={{ margin: 0 }}>{open.title}</h3>
                 <div className="muted small">
-                  {getTypeLabel(open.type)} • {formatDate(open.createdOn)}
+                  {announcementTypeLabel(open.type)} • {formatDate(open.createdOn)}
                 </div>
               </div>
               <button

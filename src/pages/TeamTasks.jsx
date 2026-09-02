@@ -9,23 +9,23 @@ import {
   getTasks,
   getTeamMembers,
   refreshStoreFromSupabase,
-  STORE_KEYS,
-  updateTaskStatusByManager
+  STORE_KEYS
 } from '../data/store.js'
 import { TASK_STATUSES, TASK_PRIORITIES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
 import {
+  QUICK_FILTER_LABELS,
   canManagerApproveDone,
-  canManagerChangeStatus,
   closureNotice,
   isOverdue,
   isSelfAssigned,
-  managerStatusOptions,
+  quickFilterBucketKey,
   statusLabel,
   statusTagClass
 } from '../utils/tasks.js'
 import TaskForm from '../components/TaskForm.jsx'
 import TaskThread from '../components/TaskThread.jsx'
+import { TaskStatusChart } from '../components/tasks/TaskStatusChart.tsx'
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
@@ -45,7 +45,7 @@ const TASK_PRIORITY_FILTER_OPTS = [
   ...TASK_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
 ]
 
-// Team tasks panel shown inside the My Team screen's "My Team Tasks" tab.
+// Team tasks panel shown inside the My Team screen's "Their Tasks" tab.
 // The manager can create tasks for any team member, see closure submissions,
 // and approve closure.
 export default function TeamTasksPanel() {
@@ -101,7 +101,8 @@ export default function TeamTasksPanel() {
     initialSortDir: 'asc',
     filterFns: {
       status: (t, val) => t.status === val,
-      priority: (t, val) => t.priority === val
+      priority: (t, val) => t.priority === val,
+      quick: (t, val) => (val === 'overdue' ? isOverdue(t) : quickFilterBucketKey(t) === val)
     }
   })
   const {
@@ -131,11 +132,6 @@ export default function TeamTasksPanel() {
     addTask({ ...data, createdById: user.id })
     bump()
     setShowForm(false)
-  }
-
-  function move(id, status) {
-    updateTaskStatusByManager(id, user.id, status)
-    bump()
   }
 
   function handleApproveClosure(id) {
@@ -192,27 +188,10 @@ export default function TeamTasksPanel() {
   }
 
   function statusCell(task) {
-    const canChange = canManagerChangeStatus(task, user.id)
-    const options = managerStatusOptions(task, user.id)
-
-    if (!canChange) {
-      return (
-        <span className={`tag ${statusTagClass(task.status)}`}>
-          {statusLabel(task.status)}
-        </span>
-      )
-    }
-
     return (
-      <select
-        value={task.status}
-        onChange={(e) => move(task.id, e.target.value)}
-        className="btn-tiny"
-      >
-        {options.map((s) => (
-          <option key={s.key} value={s.key}>{s.label}</option>
-        ))}
-      </select>
+      <span className={`tag ${statusTagClass(task.status)}`}>
+        {statusLabel(task.status)}
+      </span>
     )
   }
 
@@ -228,6 +207,17 @@ export default function TeamTasksPanel() {
 
   return (
     <div>
+      {/* Same stat cards + donut the employee and admin task boards use, so the
+          manager reads their own team's workload the same way. Counts cover every
+          task the manager assigned; clicking a card filters the table below. */}
+      <TaskStatusChart
+        tasks={tasks}
+        activeKey={table.filters.quick && table.filters.quick !== 'all' ? table.filters.quick : null}
+        onToggleKey={(key) =>
+          table.setFilter('quick', table.filters.quick === key ? 'all' : key)
+        }
+      />
+
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Assign a new task">
           <div className="modal-form">
@@ -313,12 +303,25 @@ export default function TeamTasksPanel() {
           ]}
           onFilterChange={table.setFilter}
           actions={
-            <button
-              className="btn btn-primary btn-tiny"
-              onClick={() => setShowForm(true)}
-            >
-              <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Assign a task
-            </button>
+            <>
+              {table.filters.quick && table.filters.quick !== 'all' ? (
+                <button
+                  type="button"
+                  className="quick-filter-chip"
+                  onClick={() => table.setFilter('quick', 'all')}
+                  aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
+                >
+                  {QUICK_FILTER_LABELS[table.filters.quick]}
+                  <X size={13} aria-hidden="true" />
+                </button>
+              ) : null}
+              <button
+                className="btn btn-primary btn-tiny"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Assign a task
+              </button>
+            </>
           }
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
@@ -449,6 +452,7 @@ export default function TeamTasksPanel() {
       )}
 
       <p className="hint">
+        <strong>Quick filters:</strong> click the To do, In progress, Done, or Overdue cards above to show only those tasks; click again to see all.
         Assign tasks to your team from here. When an employee marks a task done,
         you will see <strong>Done</strong> with the completion date and can approve closure from the <strong>three-dot</strong> menu.
         The task becomes <strong>Closed</strong> for the employee only after you approve.

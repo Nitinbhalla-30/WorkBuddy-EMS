@@ -9,14 +9,16 @@ import {
   updateITIssue,
   withdrawITIssue
 } from '../data/store.js'
-import { IT_ISSUE_CATEGORIES, IT_ISSUE_PRIORITIES, IT_ISSUE_STATUSES } from '../data/sampleData.js'
+import { IT_ISSUE_CATEGORIES, IT_ISSUE_PRIORITIES } from '../data/sampleData.js'
 import DropdownSelect from '../components/DropdownSelect.jsx'
 import { formatDate } from '../utils/attendance.js'
 import {
+  IT_ISSUE_STATUS_FILTER_OPTS,
   canEditITIssue,
   canReopenITIssue,
   canWithdrawITIssue,
   itIssueCategoryLabel,
+  itIssueDisplayStatus,
   itIssueStatusClass,
   itIssueStatusLabel
 } from '../utils/itIssues.js'
@@ -30,10 +32,6 @@ import Modal from '../components/Modal.jsx'
 import { Eye, MoreVertical, Pencil, Plus, RefreshCw, Trash2, Undo2, Wrench, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
-const IT_STATUS_FILTER_OPTS = [
-  { value: 'all', label: 'All statuses' },
-  ...IT_ISSUE_STATUSES.map((s) => ({ value: s.key, label: s.label }))
-]
 const IT_PRIORITY_FILTER_OPTS = [
   { value: 'all', label: 'All priorities' },
   ...IT_ISSUE_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
@@ -164,6 +162,7 @@ export default function EmployeeITHelpDesk() {
   const [openId, setOpenId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [withdrawId, setWithdrawId] = useState(null)
+  const [reopenId, setReopenId] = useState(null)
   const [formData, setFormData] = useState(BLANK_FORM)
 
   const issues = useMemo(
@@ -172,18 +171,29 @@ export default function EmployeeITHelpDesk() {
   )
   const editIssue = issues.find((i) => i.id === editId) || null
   const openIssue = issues.find((i) => i.id === openId) || null
+  // The confirm box names the issue it is about, so this is looked up from the id
+  // held in state rather than passed around.
+  const reopenIssue = issues.find((i) => i.id === reopenId) || null
 
   const table = useTableControls(issues, {
     getSearchText: (i) =>
-      [i.issue, i.description, itIssueCategoryLabel(i.category), i.priority, i.status, i.estimatedTime, i.createdOn].join(' '),
+      // Both the stored stage and the shown one, so "open" and "reopened" each
+      // find the rows a person would expect them to.
+      [i.issue, i.description, itIssueCategoryLabel(i.category), i.priority, i.status, itIssueDisplayStatus(i), i.estimatedTime, i.createdOn].join(' '),
     getSortValue: (i, key) => {
       if (key === 'assigned') return i.assignedTo || ''
+      // Sort by the words actually in the cell, so Reopened rows group together
+      // instead of hiding inside Open.
+      if (key === 'status') return itIssueStatusLabel(itIssueDisplayStatus(i))
       return i[key]
     },
     initialSortKey: 'createdOn',
     initialSortDir: 'desc',
-        filterFns: {
-      status: (i, val) => i.status === val,
+    filterFns: {
+      // 'open' now means "open, never re-opened" and 'reopened' is its own
+      // bucket — the same reading the Status column uses, so the filter and the
+      // cell can never disagree. 'all' still shows everything.
+      status: (i, val) => itIssueDisplayStatus(i) === val,
       priority: (i, val) => i.priority === val,
       category: (i, val) => (i.category || 'other') === val
     }
@@ -251,9 +261,24 @@ export default function EmployeeITHelpDesk() {
     setRefresh((n) => n + 1)
   }
 
+  // Sending an issue back to IT is a decision, so both doors — the row menu and
+  // the issue detail — ask first, the same way Withdraw does. The detail panel is
+  // closed as the box opens so only one dialog is ever on screen; from the row
+  // menu it is already closed, which makes this a no-op there.
   function handleReopen(issueId) {
-    reopenITIssue(issueId, user.id)
+    setReopenId(issueId)
+    setOpenId(null)
+  }
+
+  function confirmReopen() {
+    if (!reopenId) return
+    reopenITIssue(reopenId, user.id)
+    setReopenId(null)
     setRefresh((n) => n + 1)
+  }
+
+  function cancelReopen() {
+    setReopenId(null)
   }
 
   function handleReply(issueId, text) {
@@ -381,7 +406,7 @@ export default function EmployeeITHelpDesk() {
               </li>
               <li>
                 <span className="muted">Status</span>
-                <strong>{itIssueStatusLabel(openIssue.status)}</strong>
+                <strong>{itIssueStatusLabel(itIssueDisplayStatus(openIssue))}</strong>
               </li>
               <li>
                 <span className="muted">Assigned to</span>
@@ -443,7 +468,7 @@ export default function EmployeeITHelpDesk() {
           filters={[
             { key: 'category', label: 'Category', value: table.filters.category || 'all', options: IT_CATEGORY_FILTER_OPTS },
             { key: 'priority', label: 'Priority', value: table.filters.priority || 'all', options: IT_PRIORITY_FILTER_OPTS },
-            { key: 'status', label: 'Status', value: table.filters.status || 'all', options: IT_STATUS_FILTER_OPTS }
+            { key: 'status', label: 'Status', value: table.filters.status || 'all', options: IT_ISSUE_STATUS_FILTER_OPTS }
           ]}
           onFilterChange={table.setFilter}
           actions={
@@ -503,8 +528,8 @@ export default function EmployeeITHelpDesk() {
                     </span>
                   </td>
                   <td>
-                    <span className={`tag ${itIssueStatusClass(issue.status)}`}>
-                      {itIssueStatusLabel(issue.status)}
+                    <span className={`tag ${itIssueStatusClass(itIssueDisplayStatus(issue))}`}>
+                      {itIssueStatusLabel(itIssueDisplayStatus(issue))}
                     </span>
                   </td>
                   <td>
@@ -598,6 +623,29 @@ export default function EmployeeITHelpDesk() {
           onPageChange={setIssuesPage}
         />
       </div>
+
+      {reopenId && (
+        <Modal onClose={cancelReopen} title="Confirm Re-Open">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Re-Open</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelReopen} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              <strong>{reopenIssue?.issue}</strong> will go back to the IT team as an open request,
+              and they will be told that you re-opened it because the problem is still there.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-primary" onClick={confirmReopen}>
+                Re-Open
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelReopen}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {withdrawId && (
         <Modal onClose={cancelWithdraw} title="Confirm Withdraw">

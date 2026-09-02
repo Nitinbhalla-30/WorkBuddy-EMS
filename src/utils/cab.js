@@ -52,12 +52,14 @@ export function tripById(trips, id) {
 export function requestStatusLabel(status) {
   if (status === 'approved') return 'Approved'
   if (status === 'rejected') return 'Rejected'
+  if (status === 'withdrawn') return 'Withdrawn'
   return 'Pending'
 }
 
 export function requestStatusTagClass(status) {
   if (status === 'approved') return 'tag-ok'
   if (status === 'rejected') return 'tag-high'
+  if (status === 'withdrawn') return 'tag-absent' // grey — app-wide withdrawn convention
   return 'tag-late'
 }
 

@@ -44,15 +44,22 @@ function BootScreen() {
 }
 
 // Only let logged-in users through. Admin-only pages also check the role.
-// noIT blocks everyone in the IT Support department (they get no announcements).
+// The IT team carry the admin role purely to reach the help desk, which would
+// otherwise leave every HR screen open to them if they typed the URL. allowIT
+// marks the one page that is theirs; every other admin-only route sends them
+// back to it. noIT does the same for announcements, which IT staff are left out
+// of by design.
 // The full dataset is awaited here rather than in App: the login page needs
 // only the small critical snapshot, so it appears immediately.
-function Protected({ children, adminOnly, noIT }) {
+function Protected({ children, adminOnly, noIT, allowIT }) {
   const { user, ready, dataReady } = useAuth()
   if (!ready) return <BootScreen />
   if (!user) return <Navigate to="/login" replace />
   if (!dataReady) return <BootScreen />
   if (adminOnly && user.role !== 'admin') return <Navigate to="/" replace />
+  if (adminOnly && !allowIT && user.department === 'IT Support') {
+    return <Navigate to="/it-help-desk" replace />
+  }
   if (noIT && user.department === 'IT Support') {
     return <Navigate to="/it-help-desk" replace />
   }
@@ -172,7 +179,7 @@ export default function App() {
         <Route
           path="/it-help-desk"
           element={
-            <Protected adminOnly>
+            <Protected adminOnly allowIT>
               <AdminITHelpDesk />
             </Protected>
           }

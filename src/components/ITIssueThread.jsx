@@ -4,13 +4,16 @@ import { formatDate } from '../utils/attendance.js'
 // Chat-style comment thread for an IT issue. IT staff use it to ask
 // clarifying questions (which laptop, which software...) and the employee
 // replies. viewerRole decides which side each message sits on
-// ('employee' or 'it'). Replies are locked once the issue is withdrawn.
-// If onClose is given, a Close button is rendered next to Send message.
+// ('employee' or 'it'). The composer is hidden when the thread is locked:
+// either the issue was withdrawn, or the caller passed no onReply because the
+// viewer only watches (HR/Admin). If onClose is given, a Close button is
+// rendered next to Send message.
 export default function ITIssueThread({ issue, viewerRole, onReply, onClose }) {
   const [text, setText] = useState('')
 
   const comments = issue.comments || []
-  const noReply = issue.status === 'withdrawn'
+  const withdrawn = issue.status === 'withdrawn'
+  const noReply = withdrawn || typeof onReply !== 'function'
 
   function send() {
     const t = text.trim()
@@ -46,7 +49,9 @@ export default function ITIssueThread({ issue, viewerRole, onReply, onClose }) {
       {noReply ? (
         <>
           <p className="hint first">
-            This issue was withdrawn and is now closed. No further messages can be added.
+            {withdrawn
+              ? 'This issue was withdrawn and is now closed. No further messages can be added.'
+              : 'You can read this discussion, but only the IT team can post in it.'}
           </p>
           {onClose && (
             <div className="button-row">

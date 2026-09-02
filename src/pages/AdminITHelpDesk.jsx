@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addITIssueComment,
@@ -10,7 +10,7 @@ import {
 } from '../data/store.js'
 import { IT_ISSUE_CATEGORIES, IT_ISSUE_PRIORITIES, IT_ISSUE_STATUSES } from '../data/sampleData.js'
 import { formatDate } from '../utils/attendance.js'
-import { itIssueCategoryLabel, itIssueStatusLabel } from '../utils/itIssues.js'
+import { IT_ISSUE_STATUS_FILTER_OPTS, itIssueCategoryLabel, itIssueDisplayStatus, itIssueStatusClass, itIssueStatusLabel } from '../utils/itIssues.js'
 import ITIssueThread from '../components/ITIssueThread.jsx'
 import Modal from '../components/Modal.jsx'
 import Pagination from '../components/Pagination.jsx'
@@ -18,14 +18,10 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { Wrench, X } from 'lucide-react'
+import { Eye, MoreVertical, Wrench, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
 
-const IT_STATUS_FILTER_OPTS = [
-  { value: 'all', label: 'All statuses' },
-  ...IT_ISSUE_STATUSES.map((s) => ({ value: s.key, label: s.label }))
-]
 const IT_PRIORITY_FILTER_OPTS = [
   { value: 'all', label: 'All priorities' },
   ...IT_ISSUE_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
@@ -38,17 +34,16 @@ const IT_CATEGORY_FILTER_OPTS = [
 export default function AdminITHelpDesk() {
   const { user } = useAuth()
   const [refresh, setRefresh] = useState(0)
-  const [editingIssue, setEditingIssue] = useState(null)
   const [viewId, setViewId] = useState(null)
-  const [editForm, setEditForm] = useState({
-    assignedTo: '',
-    estimatedTime: ''
-  })
+  const [openMenuId, setOpenMenuId] = useState(null)
 
-  // IT Support staff see only the issues assigned to them; the IT Manager
-  // sees everything and is the only one who can assign issues to staff.
-  const isITStaff = user?.department === 'IT Support' && !user.isManager
-  const canAssign = user?.department === 'IT Support' ? !!user.isManager : false
+  // Three kinds of viewer, and only the first two own the help desk:
+  //   IT staff  — work their own queue.
+  //   IT Manager — sees everything and assigns it.
+  //   HR/Admin — reads the whole list, changes nothing.
+  const isITUser = user?.department === 'IT Support'
+  const isITStaff = isITUser && !user.isManager
+  const canAssign = isITUser && !!user.isManager
 
   const allIssues = useMemo(() => {
     const issues = getITIssues()
@@ -80,18 +75,22 @@ export default function AdminITHelpDesk() {
     getSearchText: (i) => {
       const employee = getEmployeeById(i.employeeId)
       const assigned = i.assignedTo ? getITStaff().find((s) => s.id === i.assignedTo) : null
-      return [employee?.name, i.issue, i.description, itIssueCategoryLabel(i.category), i.priority, i.status, assigned?.name, i.estimatedTime, i.createdOn].join(' ')
+      return [employee?.name, i.issue, i.description, itIssueCategoryLabel(i.category), i.priority, i.status, itIssueDisplayStatus(i), assigned?.name, i.estimatedTime, i.createdOn].join(' ')
     },
     getSortValue: (i, key) => {
       if (key === 'employee') return getEmployeeById(i.employeeId)?.name || i.employeeId
       if (key === 'assigned') return i.assignedTo || ''
-      if (key === 'status') return itIssueStatusLabel(i.status)
+      // Sort on the words the cell shows, so Reopened rows group together instead
+      // of being buried inside Open.
+      if (key === 'status') return itIssueStatusLabel(itIssueDisplayStatus(i))
       return i[key]
     },
     initialSortKey: 'createdOn',
     initialSortDir: 'desc',
     filterFns: {
-      status: (i, val) => i.status === val,
+      // Choosing "Open" now leaves out the re-opened ones, which have their own
+      // entry — the filter reads the row exactly as the Status column does.
+      status: (i, val) => itIssueDisplayStatus(i) === val,
       priority: (i, val) => i.priority === val,
       category: (i, val) => (i.category || 'other') === val,
       employee: (i, val) => i.employeeId === val,
@@ -110,31 +109,20 @@ export default function AdminITHelpDesk() {
     setPage
   } = usePagination(table.rows, 10)
 
-  function handleEdit(issue) {
-    setEditingIssue(issue)
-    setEditForm({
-      assignedTo: issue.assignedTo || '',
-      estimatedTime: issue.estimatedTime || ''
-    })
-  }
-
-  function handleSaveAssignment() {
-    if (!editingIssue) return
-
-    assignITIssue(
-      editingIssue.id,
-      editForm.assignedTo || null,
-      editForm.estimatedTime || null
-    )
-
-    setEditingIssue(null)
-    setEditForm({ assignedTo: '', estimatedTime: '' })
+  // The IT Manager sets the assignee and the response time straight from the row,
+  // so each change saves on its own — there is no edit mode to enter or leave.
+  function handleAssigneeChange(issue, assignedTo) {
+    assignITIssue(issue.id, assignedTo || null, issue.estimatedTime || null)
     setRefresh((n) => n + 1)
   }
 
-  function handleCancelEdit() {
-    setEditingIssue(null)
-    setEditForm({ assignedTo: '', estimatedTime: '' })
+  function handleResponseTimeCommit(issue, rawValue) {
+    const value = rawValue.trim()
+    // Blur after typing nothing new must not rewrite the issue or bump its
+    // "updated" stamp.
+    if (value === (issue.estimatedTime || '')) return
+    assignITIssue(issue.id, issue.assignedTo || null, value || null)
+    setRefresh((n) => n + 1)
   }
 
   function handleStatusChange(issueId, newStatus) {
@@ -147,6 +135,26 @@ export default function AdminITHelpDesk() {
     addITIssueComment(issueId, { byId: user.id, byName: user.name, byRole: 'it' }, text)
     setRefresh((n) => n + 1)
   }
+
+  function toggleMenu(issueId) {
+    setOpenMenuId(openMenuId === issueId ? null : issueId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  // Close the row menu on any click outside it — same convention as every other
+  // table's three-dot menu in the app.
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
 
   function getPriorityLabel(key) {
     const p = IT_ISSUE_PRIORITIES.find((item) => item.key === key)
@@ -171,7 +179,11 @@ export default function AdminITHelpDesk() {
           <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
             <Wrench size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />IT Issues
           </h2>
-          <p className="muted small" style={{ margin: '4px 0 0' }}>Track, assign, and resolve employee IT support requests</p>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>
+            {isITUser
+              ? 'Track, assign, and resolve employee IT support requests'
+              : 'Every employee IT support request — the IT team assigns and resolves them'}
+          </p>
         </div>
         <span className="muted">
           {isITStaff ? `${openCount} open issues assigned to you` : `${openCount} open issues`}
@@ -188,22 +200,26 @@ export default function AdminITHelpDesk() {
           filters={[
             { key: 'category', label: 'Category', value: table.filters.category || 'all', options: IT_CATEGORY_FILTER_OPTS },
             { key: 'priority', label: 'Priority', value: table.filters.priority || 'all', options: IT_PRIORITY_FILTER_OPTS },
-            { key: 'status', label: 'Status', value: table.filters.status || 'all', options: IT_STATUS_FILTER_OPTS },
+            { key: 'status', label: 'Status', value: table.filters.status || 'all', options: IT_ISSUE_STATUS_FILTER_OPTS },
             { key: 'assigned', label: 'Assigned To', value: table.filters.assigned || 'all', options: assignedFilterOpts }
           ]}
           onFilterChange={table.setFilter}
         />
         <table className="table table-compact" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '13%' }} />
-            <col style={{ width: '17%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '13%' }} />
-            <col style={{ width: '13%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '5%' }} />
+            <col style={{ width: '12%' }} /> {/* Employee */}
+            <col style={{ width: '16%' }} /> {/* Issue */}
+            <col style={{ width: '9%' }} />  {/* Category */}
+            <col style={{ width: '8%' }} />  {/* Priority */}
+            <col style={{ width: '13%' }} /> {/* Status */}
+            <col style={{ width: '13%' }} /> {/* Assigned To — holds a dropdown */}
+            <col style={{ width: '11%' }} /> {/* Response Time — holds a text box */}
+            <col style={{ width: '10%' }} /> {/* Reported On */}
+            {/* The Actions column only exists for the IT Manager, so its col is
+                left out for everyone else — an orphan 8% col would strand dead
+                space on the right of the table. The rest sum to 92 and the
+                browser scales them to fill the gap. */}
+            {canAssign && <col style={{ width: '8%' }} />}
           </colgroup>
           <thead>
             <tr>
@@ -228,14 +244,14 @@ export default function AdminITHelpDesk() {
             {pageRows.map((issue) => {
               const employee = getEmployeeById(issue.employeeId)
               const assignedStaff = issue.assignedTo ? itStaff.find((s) => s.id === issue.assignedTo) : null
-              const isEditing = editingIssue?.id === issue.id
 
               return (
                 <tr key={issue.id}>
                   <td>
                     <div className="person-cell">
                       <Avatar src={employee?.photoUrl} name={employee?.name} size={34} />
-                      <span>{employee?.name || issue.employeeId}</span>
+                      {/* The narrow column ellipsizes the name, so keep it readable. */}
+                      <span title={employee?.name || issue.employeeId}>{employee?.name || issue.employeeId}</span>
                     </div>
                   </td>
                   <td>
@@ -253,47 +269,72 @@ export default function AdminITHelpDesk() {
                     </span>
                   </td>
                   <td>
-                    <select
-                      value={issue.status}
-                      onChange={(e) => handleStatusChange(issue.id, e.target.value)}
-                      className="btn-tiny"
-                    >
-                      {IT_ISSUE_STATUSES.map((s) => (
-                        <option key={s.key} value={s.key}>{s.label}</option>
-                      ))}
-                    </select>
+                    {isITUser ? (
+                      <select
+                        value={itIssueDisplayStatus(issue)}
+                        onChange={(e) => handleStatusChange(issue.id, e.target.value)}
+                        className="btn-tiny"
+                        aria-label="Status"
+                      >
+                        {/* A re-opened issue is still stage 'open' in the data, but the
+                            one thing IT has to see is the word saying the fix was
+                            rejected. This entry is disabled, so it can be read and
+                            never picked — and choosing any real stage below sets the
+                            status and clears the reopen flag at the same time. */}
+                        {itIssueDisplayStatus(issue) === 'reopened' && (
+                          <option value="reopened" disabled>{itIssueStatusLabel('reopened')}</option>
+                        )}
+                        {IT_ISSUE_STATUSES.map((s) => (
+                          <option key={s.key} value={s.key}>{s.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      /* HR/Admin read the status instead of setting it — moving
+                         an issue along is the IT team's call. Same plain tag the
+                         employee sees on their own IT Issues page. */
+                      <span className={`tag ${itIssueStatusClass(itIssueDisplayStatus(issue))}`}>
+                        {itIssueStatusLabel(itIssueDisplayStatus(issue))}
+                      </span>
+                    )}
                   </td>
                   <td>
-                    {isEditing ? (
+                    {canAssign ? (
+                      /* The manager picks the person here directly — one choice,
+                         saved immediately, no round trip through a menu. */
                       <select
-                        value={editForm.assignedTo}
-                        onChange={(e) => setEditForm({ ...editForm, assignedTo: e.target.value })}
+                        value={issue.assignedTo || ''}
+                        onChange={(e) => handleAssigneeChange(issue, e.target.value)}
                         className="btn-tiny"
+                        aria-label="Assigned to"
                       >
                         <option value="">Unassigned</option>
                         {itStaff.map((staff) => (
                           <option key={staff.id} value={staff.id}>{staff.name}</option>
                         ))}
                       </select>
+                    ) : assignedStaff ? (
+                      <div>
+                        <div>{assignedStaff.name}</div>
+                        <div className="muted small">{assignedStaff.mobile}</div>
+                      </div>
                     ) : (
-                      assignedStaff ? (
-                        <div>
-                          <div>{assignedStaff.name}</div>
-                          <div className="muted small">{assignedStaff.mobile}</div>
-                        </div>
-                      ) : (
-                        <span className="muted">Not assigned</span>
-                      )
+                      <span className="muted">Not assigned</span>
                     )}
                   </td>
                   <td>
-                    {isEditing ? (
+                    {canAssign ? (
+                      /* Uncontrolled on purpose: the manager types freely and only
+                         the finished value is written, so the list refreshing
+                         under them cannot interrupt the half-typed text. Enter or
+                         clicking away commits it. */
                       <input
                         type="text"
-                        value={editForm.estimatedTime}
-                        onChange={(e) => setEditForm({ ...editForm, estimatedTime: e.target.value })}
+                        defaultValue={issue.estimatedTime || ''}
+                        onBlur={(e) => handleResponseTimeCommit(issue, e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
                         placeholder="e.g., 2 hours"
                         className="btn-tiny"
+                        aria-label="Expected response time"
                       />
                     ) : (
                       issue.estimatedTime || <span className="muted">--</span>
@@ -302,29 +343,29 @@ export default function AdminITHelpDesk() {
                   <td>{formatDate(issue.createdOn)}</td>
                   {canAssign && (
                     <td>
-                      {isEditing ? (
-                        <div>
-                          <button
-                            className="btn btn-tiny btn-primary"
-                            onClick={handleSaveAssignment}
-                          >
-                            Save
-                          </button>
-                          <button
-                            className="btn btn-tiny btn-light"
-                            onClick={handleCancelEdit}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
+                      {/* Only Open is left in here now that the assignee and the
+                          response time are edited in their own columns. */}
+                      <div className="task-menu-container">
                         <button
-                          className="btn btn-tiny btn-light"
-                          onClick={() => handleEdit(issue)}
+                          type="button"
+                          className="btn btn-tiny btn-light task-menu-button"
+                          onClick={() => toggleMenu(issue.id)}
+                          aria-label="Issue actions"
                         >
-                          Assign
+                          <MoreVertical size={16} />
                         </button>
-                      )}
+                        {openMenuId === issue.id && (
+                          <div className="task-menu-dropdown">
+                            <button
+                              type="button"
+                              className="task-menu-item"
+                              onClick={() => { setViewId(issue.id); closeMenu() }}
+                            >
+                              <Eye size={14} aria-hidden="true" />Open
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -367,7 +408,7 @@ export default function AdminITHelpDesk() {
               </li>
               <li>
                 <span className="muted">Status</span>
-                <strong>{IT_ISSUE_STATUSES.find((s) => s.key === viewIssue.status)?.label || viewIssue.status}</strong>
+                <strong>{itIssueStatusLabel(itIssueDisplayStatus(viewIssue))}</strong>
               </li>
               <li>
                 <span className="muted">Assigned to</span>
@@ -400,7 +441,10 @@ export default function AdminITHelpDesk() {
             <ITIssueThread
               issue={viewIssue}
               viewerRole="it"
-              onReply={(text) => handleViewReply(viewIssue.id, text)}
+              /* A message posted here is stamped as coming from IT, so HR/Admin
+                 read the thread but cannot write to it — the employee would
+                 otherwise think IT had replied. */
+              onReply={isITUser ? (text) => handleViewReply(viewIssue.id, text) : undefined}
             />
           </div>
         </Modal>
@@ -409,7 +453,9 @@ export default function AdminITHelpDesk() {
       <p className="hint">
         {isITStaff
           ? 'These are the IT issues assigned to you. Update the status as you work on each issue.'
-          : 'Manage IT issues and assign them to team members. Employees can see the assigned person\u2019s name and contact details.'}
+          : canAssign
+            ? 'Assign issues to your team and keep their status up to date — every change in a row saves as soon as you make it. Employees can see the assigned person\u2019s name and contact details.'
+            : 'Read-only view of every IT issue in the organisation. Assigning work and updating status belong to the IT team.'}
       </p>
     </div>
   )

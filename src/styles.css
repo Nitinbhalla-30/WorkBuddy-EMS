@@ -635,6 +635,13 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   line-height: 1;
   transform: translateY(0.06em);
 }
+/* Keeps an element's normal box in the layout but renders nothing. Used where
+   a row must stay exactly as tall as its neighbours (e.g. an anonymous ticket
+   has no avatar/employee-id to show — dropping them made the row shorter and
+   the pagination bar twitched between pages). */
+.reserve-space {
+  visibility: hidden;
+}
 .person-cell {
   display: flex;
   align-items: center;
@@ -892,7 +899,7 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
 }
 .sidebar {
   flex-shrink: 0;
-  width: 235px;
+  width: 247px;
   background: var(--card);
   border-right: 1px solid var(--line);
   padding: 14px 12px;
@@ -936,6 +943,12 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Vertical scrolling stays (needed on short screens), but the horizontal axis
+     is pinned off: `overflow-y: auto` silently turns a left-out overflow-x into
+     a scrollbar too, so the widening labels flash one at the bottom of the rail
+     while the panel animates back to full width. (The mobile block below
+     re-enables overflow-x on purpose — there the nav is a horizontal strip.) */
+  overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
 }
@@ -998,8 +1011,13 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
 }
 .sidebar--collapsed .nav-item .notification-badge {
   position: absolute;
-  top: 3px;
-  right: 4px;
+  /* Sits on the row's top edge rather than inside it: on a 64px rail the badge
+     is ~20px wide for two digits and the icon box is only 12-29px, so nudging
+     it right alone could never clear the glyph. Lifting it to -7px puts its
+     bottom edge exactly where the icon's top edge begins, and the overlap with
+     the row above falls in that row's bottom padding, away from its icon. */
+  top: -7px;
+  right: 0;
   margin-left: 0;
   min-width: 16px;
   height: 16px;
@@ -1471,6 +1489,13 @@ textarea::placeholder {
 .tag-late { background: #fdf0e2; color: var(--warn); }
 .tag-absent { background: #f0f2f6; color: var(--muted); }
 .tag-pending { background: #e8f0fe; color: #1a73e8; }
+/* "Closed" — finished with a decision made. Kept apart from the faded grey of
+   Withdrawn / Absent above: a withdrawn record was voided by the person who
+   raised it, a closed one was completed, so Closed reads bolder (deep slate on
+   ink) while Withdrawn reads faded (pale grey on muted). Stays in the slate
+   neutral family and avoids the teal / blue / amber / red hues already taken by
+   priority and type tags in the same tables. */
+.tag-closed { background: #dbe3ec; color: var(--ink); }
 
 /* ---------- Boot placeholder (store still loading) ---------- */
 .boot-screen {
@@ -1618,18 +1643,22 @@ textarea::placeholder {
 .tag-low { background: #e6f2f1; color: var(--brand-dark); }
 .tag-pickup { background: #fef3c7; color: #78350f; }
 .tag-drop   { background: #eff6ff; color: #0369a1; }
-/* IT issue status tags — five distinct colours */
+/* IT issue status tags. Closed and Withdrawn are shared tokens (.tag-closed /
+   .tag-absent), not per-module colours, so they match every other module. */
 .tag-it-open       { background: #fdf0e2; color: var(--warn); }
 .tag-it-inprogress { background: #e8f0fe; color: #1a73e8; }
 .tag-it-resolved   { background: #e6f5ec; color: var(--good); }
-.tag-it-closed     { background: #f0f2f6; color: var(--muted); }
-.tag-it-withdrawn  { background: #fdecec; color: var(--bad); }
-/* Ticket (Queries & Grievances) status tags — five distinct colours */
+/* "Reopened" — the employee says the fix did not work. Needs to read as more
+   urgent than the amber Open beside it, so it takes violet: the one hue this
+   table has not used, with amber (Open), blue (In progress), green (Resolved),
+   slate (Closed) and grey (Withdrawn) all taken, and red belonging to the High
+   priority pill in the neighbouring column. */
+.tag-it-reopened   { background: #f3e8ff; color: #6b21a8; }
+/* Ticket (Queries & Grievances) status tags. Same: Closed and Withdrawn come
+   from the shared tokens above. */
 .tag-tk-open       { background: #fdf0e2; color: var(--warn); }
 .tag-tk-inprogress { background: #e8f0fe; color: #1a73e8; }
 .tag-tk-resolved   { background: #e6f5ec; color: var(--good); }
-.tag-tk-closed     { background: #f0f2f6; color: var(--muted); }
-.tag-tk-withdrawn  { background: #fdecec; color: var(--bad); }
 /* Announcement type badges: keep the same filled-pill look for every type. */
 .tag-event { background: #e6f5ec; color: var(--good); }
 .tag-general { background: #f0f2f6; color: #475569; }
@@ -1709,13 +1738,11 @@ textarea::placeholder {
 .info-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 24px; }
 .info-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
 .info-label { color: var(--label-text); }
-.info-value a,
-.cab-detail a {
+.info-value a {
   color: var(--link);
   text-decoration: none;
 }
-.info-value a:hover,
-.cab-detail a:hover {
+.info-value a:hover {
   color: var(--brand-dark);
   text-decoration: underline;
 }
@@ -1780,48 +1807,170 @@ textarea::placeholder {
 }
 
 /* ---------- Cab module ---------- */
-.cab-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 20px; }
-.cab-card { margin-bottom: 0; }
-.cab-detail {
+.cab-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; margin-bottom: 20px; }
+
+/* One leg of today's cab as a run-sheet card. `kind` drives the semantic
+   accent — pickup = morning amber, drop = evening blue — the same pairing
+   the driver run sheet uses, harmonised with the teal brand. */
+.cab-card {
+  --cab-accent: var(--brand);
+  margin-bottom: 0;
+  padding: 0;
+  border-radius: 14px;
+  overflow: hidden;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+}
+.cab-card-pickup { --cab-accent: var(--warn); }
+.cab-card-drop { --cab-accent: var(--accent-blue); }
+
+.cab-card-head {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px dashed var(--line);
-  font-size: 14px;
+  padding: 14px 18px;
+  background: color-mix(in srgb, var(--cab-accent) 9%, var(--card));
+  border-bottom: 1px solid color-mix(in srgb, var(--cab-accent) 20%, var(--line));
 }
-.cab-detail:last-child { border-bottom: none; }
-.cab-detail span { color: var(--muted); }
-.cab-detail strong { text-align: right; }
-/* Driver avatar in My Cab Today tab */
-.cab-detail .avatar-fallback {
-  background: #6b7280;
-  color: #fff;
+.cab-card-chip {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--cab-accent) 16%, transparent);
+  color: var(--cab-accent);
+  flex-shrink: 0;
 }
-.cab-detail .avatar-fallback .avatar-initials {
-  color: #fff;
-  transform: none;
+.cab-card-head-text { min-width: 0; }
+.cab-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
 }
-[data-theme="dark"] .cab-detail .avatar-fallback {
-  background: #4b5563;
-}
-[data-theme="dark"] .cab-detail .avatar-fallback .avatar-initials {
-  color: #e5e7eb;
-}
-.cab-supervisor {
-  background: var(--notice-warn-bg);
-  border: 1px solid var(--notice-warn-border);
-  border-radius: 8px;
-  padding: 8px 10px;
-  margin-top: 6px;
-}
-.cab-supervisor span { color: var(--notice-warn-text); }
-.cab-supervisor strong { color: var(--notice-warn-text); }
-.cab-supervisor a {
-  color: var(--link);
+.cab-card-route {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 1px;
 }
 
-.cab-chat-hint { margin-bottom: 12px; }
+/* Hero: the single most important fact — the cab time — given real weight. */
+.cab-hero { padding: 18px 18px 16px; }
+.cab-hero-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cab-hero-time {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.cab-hero-ampm { font-size: 15px; font-weight: 700; color: var(--cab-accent); }
+.cab-hero-sub { font-size: 13px; color: var(--muted); margin-top: 5px; }
+
+/* Detail rows: icon + label on the left, the value right-aligned. */
+.cab-rows { padding: 2px 18px 6px; }
+.cab-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  font-size: 14px;
+}
+.cab-row:last-child { border-bottom: none; }
+.cab-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.cab-row-label svg { color: color-mix(in srgb, var(--muted) 78%, transparent); flex-shrink: 0; }
+.cab-row-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 0;
+}
+.cab-row-value a { color: var(--link); text-decoration: none; font-weight: 600; }
+.cab-row-value a:hover { color: var(--brand-dark); text-decoration: underline; }
+/* Driver avatar stays neutral so it reads as a person, not a brand action. */
+.cab-row .avatar-fallback { background: #6b7280; color: #fff; }
+.cab-row .avatar-fallback .avatar-initials { color: #fff; transform: none; }
+[data-theme="dark"] .cab-row .avatar-fallback { background: #4b5563; }
+[data-theme="dark"] .cab-row .avatar-fallback .avatar-initials { color: #e5e7eb; }
+
+/* Supervisor help band pinned to the card foot — question on the left,
+   contact person right-aligned with the number under the name. */
+.cab-supervisor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  background: var(--notice-warn-bg);
+  border-top: 1px solid var(--notice-warn-border);
+  color: var(--notice-warn-text);
+  padding: 11px 18px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.cab-supervisor-ask {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.cab-supervisor-ask svg { flex-shrink: 0; }
+.cab-supervisor-person {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  flex-shrink: 0;
+  line-height: 1.35;
+}
+.cab-supervisor-person span { font-weight: 700; }
+.cab-supervisor-person a { color: var(--notice-warn-text); font-weight: 700; text-decoration: none; }
+.cab-supervisor-person a:hover { text-decoration: underline; }
+
+/* Page-head trigger for the transport-desk chat (Today's Cab tab). */
+.cab-chat-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.cab-chat-open-btn:hover { color: var(--brand); }
+.cab-chat-open-btn svg { color: var(--brand); }
 
 /* Today's cab preference (cancellation panel) */
 .cab-cancellation-panel {
@@ -1836,18 +1985,45 @@ textarea::placeholder {
 .cab-cancellation-panel .muted {
   color: var(--muted);
 }
+/* Heading + toggle buttons share one row on wide screens, stack on narrow. */
+.cab-pref-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+  flex-wrap: wrap;
+}
+.cab-pref-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.cab-pref-heading .stat-chip {
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  color: var(--brand);
+  flex-shrink: 0;
+}
 .cab-cancellation-title {
   font-size: 15px;
   font-weight: 700;
   color: var(--ink);
-  margin-bottom: 4px;
 }
 .cab-cancellation-actions {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  margin-top: 12px;
 }
+.cab-pref-lock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cab-pref-lock svg { flex-shrink: 0; opacity: 0.75; }
 .cab-cancel-btn {
   display: inline-flex;
   align-items: center;
@@ -1877,14 +2053,12 @@ textarea::placeholder {
   background: var(--btn-hover-bg);
   color: var(--ink);
 }
-/* Skipped state echoed on the matching pickup/drop card */
-.cab-skip-tag {
-  margin-left: 10px;
-  vertical-align: 2px;
-}
-.cab-card-skipped .cab-detail {
-  opacity: 0.55;
-}
+/* Skipped state echoed on the matching pickup/drop card: the leg stays
+   readable but visibly stands down — muted body, struck-through time. */
+.cab-skip-tag { flex-shrink: 0; }
+.cab-card-skipped .cab-hero,
+.cab-card-skipped .cab-rows { opacity: 0.5; }
+.cab-card-skipped .cab-hero-time { text-decoration: line-through; text-decoration-thickness: 2px; }
 
 .phone-link {
   color: var(--link);
@@ -2425,15 +2599,6 @@ button.task-status-stat-card {
   font-weight: 600;
 }
 
-.cab-request {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 12px;
-}
-.cab-request-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.cab-request-body { margin: 8px 0; font-size: 14px; line-height: 1.6; }
-
 .inline-input {
   padding: 8px 12px;
   border: 1px solid var(--line);
@@ -2604,6 +2769,7 @@ button.task-status-stat-card {
 [data-theme="dark"] .tag-late { background: #3d2e1a; }
 [data-theme="dark"] .tag-absent { background: #252d3f; }
 [data-theme="dark"] .tag-pending { background: #1a2d4a; color: #8ab4f8; }
+[data-theme="dark"] .tag-closed { background: #3f4b5b; }
 [data-theme="dark"] .tag-high { background: #3d2428; }
 [data-theme="dark"] .tag-medium { background: #3d2e1a; }
 [data-theme="dark"] .tag-low { background: #123b37; }
@@ -2612,13 +2778,12 @@ button.task-status-stat-card {
 [data-theme="dark"] .tag-it-open       { background: #3d2e1a; }
 [data-theme="dark"] .tag-it-inprogress { background: #1a2d4a; color: #8ab4f8; }
 [data-theme="dark"] .tag-it-resolved   { background: #1a3d2a; }
-[data-theme="dark"] .tag-it-closed     { background: #252d3f; }
-[data-theme="dark"] .tag-it-withdrawn  { background: #3d2428; }
+/* Unlike the others, the light-mode violet text would sink into a dark pill, so
+   the colour is swapped as well as the background. */
+[data-theme="dark"] .tag-it-reopened   { background: #3b2560; color: #d8b4fe; }
 [data-theme="dark"] .tag-tk-open       { background: #3d2e1a; }
 [data-theme="dark"] .tag-tk-inprogress { background: #1a2d4a; color: #8ab4f8; }
 [data-theme="dark"] .tag-tk-resolved   { background: #1a3d2a; }
-[data-theme="dark"] .tag-tk-closed     { background: #252d3f; }
-[data-theme="dark"] .tag-tk-withdrawn  { background: #3d2428; }
 [data-theme="dark"] .team-chat-overlay { background: rgba(0, 0, 0, 0.55); }
 [data-theme="dark"] .team-chat-slide { box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4); }
 [data-theme="dark"] .state-not-in { background: #252d3f; }

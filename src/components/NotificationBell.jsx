@@ -9,7 +9,7 @@ import {
 import { formatDateTime } from '../utils/cab.js'
 import { getNotificationFeed } from '../utils/notifications.js'
 
-// Top-bar notification bell for employees and HR/Admin.
+// Top-bar notification bell for employees, HR/Admin and the IT team.
 export default function NotificationBell({ employeeId, viewerRole = 'employee' }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)

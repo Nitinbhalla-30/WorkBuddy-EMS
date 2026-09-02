@@ -285,21 +285,21 @@ export default function MyTeam() {
             className={`tab ${tab === 'tasks' ? 'tab-active' : ''}`}
             onClick={() => selectTab('tasks')}
           >
-            My Team Tasks
+            Their Tasks
           </button>
           <button
             type="button"
             className={`tab ${tab === 'leaves' ? 'tab-active' : ''}`}
             onClick={() => selectTab('leaves')}
           >
-            My Team Leave Request{teamLeaves.length > 0 ? ` (${teamLeaves.length})` : ''}
+            Their Leave Requests{teamLeaves.length > 0 ? ` (${teamLeaves.length})` : ''}
           </button>
           <button
             type="button"
             className={`tab ${tab === 'overtime' ? 'tab-active' : ''}`}
             onClick={() => selectTab('overtime')}
           >
-            My Team Overtime{teamOvertime.length > 0 ? ` (${teamOvertime.length})` : ''}
+            Their Overtime Requests{teamOvertime.length > 0 ? ` (${teamOvertime.length})` : ''}
           </button>
         </div>
       )}

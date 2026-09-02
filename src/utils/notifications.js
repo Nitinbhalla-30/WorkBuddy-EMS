@@ -5,6 +5,8 @@ import {
   getAnnouncementsForEmployee,
   getAttendanceCorrections,
   getAttendanceCorrectionsForEmployee,
+  getCabRequests,
+  getCabRequestsForEmployee,
   getDeletedTasks,
   getDismissedNotificationIds,
   getEmployeeById,
@@ -29,6 +31,7 @@ import {
   getTicketsForEmployee,
   isAnnouncementRead
 } from '../data/store.js'
+import { announcementTypeLabel } from './announcements.js'
 import { correctionIssueLabel } from './attendance.js'
 import { leaveTypeLabel } from './leaves.js'
 import { monthLabel } from './salary.js'
@@ -92,6 +95,24 @@ function nameOf(id) {
 function leavePhrase(type) {
   const label = leaveTypeLabel(type)
   return label.toLowerCase().endsWith('leave') ? label : `${label} leave`
+}
+
+// One alert per unread announcement, shared by the employee and admin feeds.
+// The type goes into the headline so an urgent notice reads differently from a
+// general one before it is even opened.
+function announcementNotification(a, href) {
+  const typeLabel = a.type ? announcementTypeLabel(a.type) : ''
+  return {
+    id: `announcement-${a.id}`,
+    category: 'announcement',
+    title: typeLabel ? `New announcement · ${typeLabel}` : 'New announcement',
+    body: a.title,
+    // Announcements used to record only the date, which the bell showed as
+    // 12:00 AM. bestTime keeps those at noon and shows the real clock time for
+    // anything published after the store started writing full timestamps.
+    on: bestTime(a.publishedOn, a.createdOn),
+    href
+  }
 }
 
 // All notifications for one employee (read + unread), newest first.
@@ -397,7 +418,9 @@ export function buildEmployeeNotifications(employeeId) {
         category: 'ticket',
         title: 'Reply on your query',
         body: last.text || t.subject,
-        on: last.on || t.updatedOn,
+        // Older tickets recorded the reply moment as a bare date (the store now
+        // writes a full ISO time); bestTime keeps those from showing 12:00 AM.
+        on: bestTime(last.on, t.updatedOn, t.createdOn),
         href: '/help'
       })
     }
@@ -410,7 +433,11 @@ export function buildEmployeeNotifications(employeeId) {
         category: 'it',
         title: issue.status === 'resolved' ? 'IT issue resolved' : 'IT issue closed',
         body: issue.issue,
-        on: issue.updatedOn || issue.createdOn,
+        // Old IT issues stored the date only, which the bell showed as 12:00 AM
+        // (the columns were DATE and the store wrote todayKey()). bestTime covers
+        // any of those still cached in a browser, while new events show the real
+        // clock time from the store's ISO timestamps.
+        on: bestTime(issue.updatedOn, issue.createdOn),
         href: '/it-help'
       })
     } else if (issue.assignedTo && issue.status === 'inprogress') {
@@ -419,7 +446,7 @@ export function buildEmployeeNotifications(employeeId) {
         category: 'it',
         title: 'IT is working on your issue',
         body: issue.issue,
-        on: issue.updatedOn || issue.createdOn,
+        on: bestTime(issue.updatedOn, issue.createdOn),
         href: '/it-help'
       })
     }
@@ -427,14 +454,7 @@ export function buildEmployeeNotifications(employeeId) {
 
   for (const a of getAnnouncementsForEmployee(employeeId)) {
     if (!isAnnouncementRead(employeeId, a.id)) {
-      push(items, {
-        id: `announcement-${a.id}`,
-        category: 'announcement',
-        title: 'New announcement',
-        body: a.title,
-        on: a.publishedOn || a.createdOn,
-        href: '/announcements'
-      })
+      push(items, announcementNotification(a, '/announcements'))
     }
   }
 
@@ -492,6 +512,34 @@ export function buildEmployeeNotifications(employeeId) {
     }
   }
 
+  // Cab change request updates for the employee (approved / rejected).
+  for (const r of getCabRequestsForEmployee(employeeId)) {
+    if (r.status === 'approved') {
+      push(items, {
+        id: `cab-change-approved-${r.id}`,
+        category: 'cab',
+        title: 'Cab change approved',
+        body: r.adminNote
+          ? `Your cab change request was approved: ${r.adminNote}`
+          : 'Your cab change request was approved.',
+        on: bestTime(r.decidedOn, r.createdAt, r.raisedOn),
+        href: '/my-cab?tab=change-requests'
+      })
+    }
+    if (r.status === 'rejected') {
+      push(items, {
+        id: `cab-change-rejected-${r.id}`,
+        category: 'cab',
+        title: 'Cab change rejected',
+        body: r.adminNote
+          ? `Your cab change request was rejected: ${r.adminNote}`
+          : 'Your cab change request was rejected.',
+        on: bestTime(r.decidedOn, r.createdAt, r.raisedOn),
+        href: '/my-cab?tab=change-requests'
+      })
+    }
+  }
+
   // Unread team messages from each teammate.
   const unreadByPeer = {}
   for (const m of getTeamConversations()) {
@@ -522,6 +570,29 @@ export function buildEmployeeNotifications(employeeId) {
 
   items.sort((a, b) => toTimestamp(b.on) - toTimestamp(a.on))
   return items
+}
+
+// An open IT issue, worded for whoever the alert is for. When an employee reopens
+// an issue IT had marked resolved or closed, it simply goes back to status 'open'
+// — indistinguishable from a request nobody has looked at yet, so the reader was
+// told "New IT issue" and the fact that the first fix was rejected was lost.
+// reopenITIssue (src/data/store.js) stamps `reopenedOn` for exactly this moment,
+// and setITIssueStatus clears it again once IT acts, so the alert self-clears
+// like the rest of the feed instead of needing to be dismissed by hand.
+function openITIssueAlert(issue, newTitle) {
+  const reopened = !!issue.reopenedOn
+  return {
+    // A reopened issue gets its own id, otherwise a reader who had already read
+    // or dismissed the original "new issue" alert would never see this one.
+    id: reopened ? `it-reopen-${issue.id}` : `it-open-${issue.id}`,
+    category: 'it',
+    title: reopened ? 'IT issue reopened' : newTitle,
+    body: `${nameOf(issue.employeeId)}: ${issue.issue}`,
+    // The reopen moment carries a real clock time, so show that rather than the
+    // date the issue was first raised weeks ago.
+    on: bestTime(reopened ? issue.reopenedOn : issue.createdOn),
+    href: '/it-help-desk'
+  }
 }
 
 // Action items and replies HR/Admin should know about. `adminId` is the HR user
@@ -631,7 +702,9 @@ export function buildAdminNotifications(adminId) {
         category: 'ticket',
         title: t.kind === 'grievance' ? 'New grievance activity' : 'New query activity',
         body: last.text || t.subject,
-        on: last.on || t.updatedOn,
+        // Legacy rows stored only a date when the employee wrote in; fall back
+        // through updatedOn/createdOn so the alert never shows 12:00 AM.
+        on: bestTime(last.on, t.updatedOn, t.createdOn),
         href: '/queries'
       })
     }
@@ -670,14 +743,7 @@ export function buildAdminNotifications(adminId) {
 
   for (const issue of getITIssues()) {
     if (issue.status === 'open') {
-      push(items, {
-        id: `it-open-${issue.id}`,
-        category: 'it',
-        title: 'New IT issue',
-        body: `${nameOf(issue.employeeId)}: ${issue.issue}`,
-        on: issue.createdOn,
-        href: '/it-help-desk'
-      })
+      push(items, openITIssueAlert(issue, 'New IT issue'))
     }
   }
 
@@ -710,24 +776,70 @@ export function buildAdminNotifications(adminId) {
     })
   }
 
+  // Pending cab change requests raised by employees.
+  for (const r of getCabRequests()) {
+    if (r.status !== 'pending') continue
+    push(items, {
+      id: `cab-change-pending-${r.id}`,
+      category: 'cab',
+      title: 'Cab change request',
+      body: `${nameOf(r.employeeId)} requested a temporary cab change.`,
+      on: bestTime(r.createdAt, r.raisedOn),
+      href: '/cab-management?tab=requests'
+    })
+  }
+
   items.sort((a, b) => toTimestamp(b.on) - toTimestamp(a.on))
   return items
 }
 
+// The IT team's own work queue, added on top of their personal alerts. Until now
+// "New IT issue" only ever reached HR, who cannot assign it, while the people who
+// can were never told. The IT Manager is alerted about everything still waiting
+// to be picked up; everyone gets told when an issue lands on their own desk.
+function buildITWorkNotifications(userId) {
+  const items = []
+  const isITManager = !!getEmployeeById(userId)?.isManager
+
+  if (isITManager) {
+    for (const issue of getITIssues()) {
+      if (issue.status !== 'open') continue
+      push(items, openITIssueAlert(issue, 'New IT issue needs assigning'))
+    }
+  }
+
+  for (const issue of getITIssues()) {
+    if (issue.assignedTo !== userId) continue
+    // Only while there is work to do — once IT resolves or closes the issue the
+    // alert goes away on its own instead of sitting there needing dismissal.
+    if (!['open', 'inprogress'].includes(issue.status)) continue
+    push(items, {
+      id: `it-assigned-${issue.id}`,
+      category: 'it',
+      title: isITManager ? 'You are handling this IT issue' : 'IT issue assigned to you',
+      body: `${nameOf(issue.employeeId)}: ${issue.issue}`,
+      on: bestTime(issue.updatedOn, issue.createdOn),
+      href: '/it-help-desk'
+    })
+  }
+
+  return items
+}
+
 function buildNotifications(userId, viewerRole) {
+  if (viewerRole === 'it') {
+    // IT staff are employees too — they take leave and get paid — so their bell
+    // carries both halves: the help desk work and their own HR requests.
+    return [...buildITWorkNotifications(userId), ...buildEmployeeNotifications(userId)].sort(
+      (a, b) => toTimestamp(b.on) - toTimestamp(a.on)
+    )
+  }
   if (viewerRole === 'admin') {
     const actionItems = buildAdminNotifications(userId)
     const announcementItems = []
     for (const a of getAnnouncementsForEmployee(userId)) {
       if (!isAnnouncementRead(userId, a.id)) {
-        push(announcementItems, {
-          id: `announcement-${a.id}`,
-          category: 'announcement',
-          title: 'New announcement',
-          body: a.title,
-          on: a.publishedOn || a.createdOn,
-          href: '/company-announcements'
-        })
+        push(announcementItems, announcementNotification(a, '/company-announcements'))
       }
     }
     return [...actionItems, ...announcementItems].sort(

@@ -33,15 +33,21 @@ export function statusLabel(key) {
   return s ? s.label : key
 }
 
-// Five distinct tag colours for ticket statuses.
+// Ticket status colours. Withdrawn and Closed are the shared app-wide pills, not
+// module-local ones: `tag-absent` is the faded grey every withdrawable module
+// uses (leaves, overtime, shift changes, reimbursements, attendance corrections),
+// and `tag-closed` is the deeper slate for work that was finished. Keeping the
+// two apart matters because they mean opposite things — one was voided by the
+// person who raised it, the other was completed by HR. Red is reserved for
+// outcomes someone still has to act on, which neither of them is.
 export function statusTagClass(key) {
   switch (key) {
     case 'open':       return 'tag-tk-open'       // orange: needs attention
     case 'inprogress': return 'tag-tk-inprogress' // blue: being worked on
     case 'resolved':   return 'tag-tk-resolved'   // green: sorted
-    case 'closed':     return 'tag-tk-closed'     // grey: finished
-    case 'withdrawn':  return 'tag-tk-withdrawn'  // red: cancelled
-    default:           return 'tag-tk-closed'
+    case 'closed':     return 'tag-closed'        // slate: finished
+    case 'withdrawn':  return 'tag-absent'        // faded grey: voided by the raiser
+    default:           return 'tag-closed'
   }
 }
 
