@@ -23,10 +23,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Node 24, not 20. wrangler 4.x refuses to start below Node 22 and exits
+      # inside a second - before it ever reads CLOUDFLARE_API_TOKEN - which is
+      # why the deploy step failed instantly on every run while the build above
+      # it passed. 24 also matches the local runtime that `npm run deploy` uses,
+      # so a CI build and a manual build happen on the same toolchain.
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       # Fail here with a readable line naming the secret that is absent.
