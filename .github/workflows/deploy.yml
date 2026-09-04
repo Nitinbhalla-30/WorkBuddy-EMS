@@ -29,6 +29,28 @@ jobs:
           node-version: 20
           cache: npm
 
+      # Fail here with a readable line naming the secret that is absent.
+      # Without this check a missing secret only surfaces as "exit code 1" on
+      # the wrangler step, which looks like a build problem and sends you
+      # reading the wrong logs. The Supabase pair belongs here too: Vite bakes
+      # them in at build time and stays silent when they are empty, so an
+      # unconfigured runner would happily publish a site that cannot reach the
+      # database over the top of a working one.
+      - name: Check required secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          missing=0
+          for name in CLOUDFLARE_API_TOKEN VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret ${name} is not set - add it under Settings > Secrets and variables > Actions."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
       # Install exact dependencies from package-lock.json (equivalent to
       # "npm install", but reproducible and required for CI).
       - name: Install dependencies
@@ -42,7 +64,9 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      # Upload the freshly built dist/ to the existing Pages project.
+      # Upload the freshly built dist/ to the existing Pages project. The token
+      # needs Account > Cloudflare Pages > Edit on the account below; a token
+      # that is valid but scoped to something else fails here instantly.
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy dist --project-name workbuddy-ems --branch main
         env:
