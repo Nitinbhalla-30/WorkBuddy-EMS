@@ -8,7 +8,7 @@ import NotificationBell from './NotificationBell.jsx'
 import AnimatedThemeToggle from './ui/animated-theme-toggle.tsx'
 import { OriginButton } from './ui/origin-button.tsx'
 import { useState, useEffect } from 'react'
-import { Banknote, Briefcase, CalendarDays, CarFront, CircleUser, Clock, Contact, LayoutDashboard, ListTodo, LogOut, Megaphone, MessageSquareText, PanelLeftClose, PanelLeftOpen, ReceiptText, Settings, Shuffle, Users, Wrench, X, Timer } from 'lucide-react'
+import { Banknote, Briefcase, CalendarDays, CalendarHeart, CarFront, CircleUser, Clock, Contact, LayoutDashboard, ListTodo, LogOut, Megaphone, MessageSquareText, PanelLeftClose, PanelLeftOpen, ReceiptText, Settings, Shuffle, Users, Wrench, X, Timer } from 'lucide-react'
 
 // Sidebar collapse-to-rail is a display preference, not app data → localStorage.
 // Guarded because the app already tolerates storage being unavailable.
@@ -30,7 +30,11 @@ export default function Layout() {
   const settings = getSettings()
   const isAdmin = user?.role === 'admin'
   const isIT = user?.department === 'IT Support'
-  const showAnnouncements = !isAdmin
+  // Whether the sidebar badge should count unread announcements. HR/Admin write
+  // announcements and are not on the receiving end of them, so no count applies
+  // to them. IT staff hold the admin role purely to reach the help desk — as
+  // employees they receive announcements like anyone else, so they get the count.
+  const showAnnouncements = !isAdmin || isIT
   const [unreadCount, setUnreadCount] = useState(0)
   const [teamUnreadCount, setTeamUnreadCount] = useState(0)
   const [confirmLogout, setConfirmLogout] = useState(false)
@@ -120,7 +124,8 @@ export default function Layout() {
     { to: '/my-cab', label: 'My Cab', icon: CarFront },
     { to: '/it-help', label: 'My IT Issues', icon: Wrench },
     { to: '/help', label: 'My Queries & Grievances', icon: MessageSquareText },
-    { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: true }
+    { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: true },
+    { to: '/celebrations', label: 'Celebrations', icon: CalendarHeart }
   ]
   const adminNav = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -136,14 +141,17 @@ export default function Layout() {
     { to: '/it-help-desk', label: 'IT Issues', icon: Wrench },
     { to: '/queries', label: 'Queries & Grievances', icon: MessageSquareText },
     { to: '/company-announcements', label: 'Announcements', icon: Megaphone, badge: true },
+    { to: '/celebrations', label: 'Celebrations', icon: CalendarHeart },
     { to: '/settings', label: 'Settings', icon: Settings }
   ]
   // The IT team run the help desk but are still employees — they clock in, take
   // leave and get paid — so they keep the normal menus with their own queue on
-  // top. Announcements stay off their list, matching the noIT guard on that route.
+  // top. "My IT Issues" is the one entry that comes off that list: they are the
+  // side that answers those tickets rather than the side that raises them. It is
+  // matched by a noIT guard on the route itself, so the URL redirects too.
   const itNav = [
     { to: '/it-help-desk', label: 'IT Issues', icon: Wrench },
-    ...employeeNav.filter((n) => n.to !== '/announcements')
+    ...employeeNav.filter((n) => n.to !== '/it-help')
   ]
   const navItems = !isAdmin ? employeeNav : isIT ? itNav : adminNav
 

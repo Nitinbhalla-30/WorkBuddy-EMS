@@ -53,7 +53,14 @@ export const DEFAULT_SETTINGS = {
     notes: 'Please take lunch only during the allowed window and return to your workstation on time.'
   },
   // Dates the company observes as holidays. isHoliday = true means a day off for employees.
-  companyHolidays: []
+  companyHolidays: [],
+  // Celebrations module: how long someone who joins is still introduced as a
+  // new joiner on the Celebrations page. Birthdays and anniversaries are not
+  // configured here — they come straight from the employee record.
+  newJoinerWindowDays: 7,
+  // Entries from the built-in festival/national-day calendar this office does
+  // not observe. Holds ids from data/celebrationsData.js.
+  celebrationsHiddenSlots: []
 }
 
 // Default shifts for a new company. Admin can add, edit, or remove these.

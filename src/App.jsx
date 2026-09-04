@@ -28,6 +28,7 @@ import EmployeeShifts from './pages/EmployeeShifts.jsx'
 import AdminOvertime from './pages/AdminOvertime.jsx'
 import EmployeeOvertime from './pages/EmployeeOvertime.jsx'
 import CabManagement from './pages/CabManagement.jsx'
+import Celebrations from './pages/Celebrations.jsx'
 import AttendanceRecords from './pages/AttendanceRecords.jsx'
 import Settings from './pages/Settings.jsx'
 import DriverView from './pages/DriverView.jsx'
@@ -47,8 +48,8 @@ function BootScreen() {
 // The IT team carry the admin role purely to reach the help desk, which would
 // otherwise leave every HR screen open to them if they typed the URL. allowIT
 // marks the one page that is theirs; every other admin-only route sends them
-// back to it. noIT does the same for announcements, which IT staff are left out
-// of by design.
+// back to it. noIT runs the other way: it takes away the employee-side "My IT
+// Issues", because IT staff are the ones who answer those tickets.
 // The full dataset is awaited here rather than in App: the login page needs
 // only the small critical snapshot, so it appears immediately.
 function Protected({ children, adminOnly, noIT, allowIT }) {
@@ -108,18 +109,24 @@ export default function App() {
         <Route path="/my-team" element={<MyTeam />} />
         <Route path="/my-profile" element={<EmployeeProfile />} />
         <Route path="/help" element={<EmployeeTickets />} />
-        <Route path="/it-help" element={<EmployeeITHelpDesk />} />
+        {/* IT staff work the other side of this queue, so the help desk is the
+            only IT module on their menus. noIT backs that up for a typed URL;
+            Layout's itNav filter hides the sidebar entry. */}
         <Route
-          path="/announcements"
+          path="/it-help"
           element={
             <Protected noIT>
-              <EmployeeAnnouncements />
+              <EmployeeITHelpDesk />
             </Protected>
           }
         />
+        <Route path="/announcements" element={<EmployeeAnnouncements />} />
         <Route path="/my-cab" element={<MyCab />} />
         <Route path="/my-shifts" element={<EmployeeShifts />} />
         <Route path="/my-overtime" element={<EmployeeOvertime />} />
+        {/* Everyone who works here sees the same page; only the Manage tab on it
+            is restricted, so the route itself carries no admin check. */}
+        <Route path="/celebrations" element={<Celebrations />} />
         <Route
           path="/admin"
           element={

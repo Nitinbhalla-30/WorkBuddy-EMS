@@ -8,6 +8,7 @@ import { DEFAULT_SETTINGS, DEFAULT_SHIFTS } from './sampleData.js'
 import { blankProfile } from '../utils/profile.js'
 import { combineDateAndTime, monthKeysBetween, monthKeyOffset } from '../utils/attendance.js'
 import { isManagerLeaveExpired } from '../utils/leaves.js'
+import { canManageCelebrations } from '../utils/celebrations.js'
 
 // Sample employee data used as fallback when Supabase is not configured or empty.
 const SAMPLE_EMPLOYEES = [
@@ -63,7 +64,8 @@ const KEYS = {
   shifts: 'hr_shifts',
   shiftChangeRequests: 'hr_shift_change_requests',
   shiftHistory: 'hr_shift_history',
-  overtimeRequests: 'hr_overtime_requests'
+  overtimeRequests: 'hr_overtime_requests',
+  celebrationEvents: 'hr_celebration_events'
 }
 
 // Exposed so a screen can tell refreshStoreFromSupabase exactly which
@@ -764,7 +766,8 @@ const DEFAULTS = {
   [KEYS.shifts]: DEFAULT_SHIFTS,
   [KEYS.shiftChangeRequests]: [],
   [KEYS.shiftHistory]: [],
-  [KEYS.overtimeRequests]: []
+  [KEYS.overtimeRequests]: [],
+  [KEYS.celebrationEvents]: []
 }
 
 // Keys that remain in app_store (not migrated to optimized tables)
@@ -790,6 +793,7 @@ const APP_STORE_KEYS = [
   KEYS.teamClearedChats,
   KEYS.shifts,
   KEYS.shiftHistory,
+  KEYS.celebrationEvents,
   KEYS.deletedTasks
 ]
 
@@ -1088,7 +1092,9 @@ export function getSettings() {
       ...DEFAULT_SETTINGS.lunchPolicy,
       ...(saved.lunchPolicy || {})
     },
-    companyHolidays: saved.companyHolidays ?? DEFAULT_SETTINGS.companyHolidays
+    companyHolidays: saved.companyHolidays ?? DEFAULT_SETTINGS.companyHolidays,
+    newJoinerWindowDays: saved.newJoinerWindowDays ?? DEFAULT_SETTINGS.newJoinerWindowDays,
+    celebrationsHiddenSlots: saved.celebrationsHiddenSlots ?? DEFAULT_SETTINGS.celebrationsHiddenSlots
   }
 }
 
@@ -2836,6 +2842,71 @@ export function markAnnouncementAsRead(employeeId, announcementId) {
 export function isAnnouncementRead(employeeId, announcementId) {
   const readData = getReadAnnouncements()
   return (readData[employeeId] || []).includes(announcementId)
+}
+
+// ---- celebrations ----
+// Birthdays, new joiners and work anniversaries are never stored: the page
+// derives them from the employee directory and the onboarding profile on every
+// read (utils/celebrations.js). What lives here is only what HR adds by hand —
+// organisation-wide occasions such as a foundation day or a date the built-in
+// festival calendar does not know yet. Which of those belong to a festival, a
+// national day or a company occasion is stored per row, so a hidden system
+// festival and a hand-written one behave the same way.
+
+export function getCelebrationEvents() {
+  return read(KEYS.celebrationEvents, [])
+}
+
+export function createCelebrationEvent(data, actor) {
+  if (!canManageCelebrations(actor)) return null
+  const all = getCelebrationEvents()
+  const event = {
+    id: `CEL${Date.now()}`,
+    name: String(data.name || '').trim(),
+    kind: data.kind || 'occasion',
+    date: String(data.date || '').trim(),
+    greeting: String(data.greeting || '').trim(),
+    message: String(data.message || '').trim(),
+    // A recurring occasion repeats on its month and day every year, so HR sets
+    // an annual date once instead of re-adding it in January.
+    recurring: !!data.recurring,
+    createdBy: actor?.id || '',
+    // Full timestamp rather than a date — a date-only stamp reads as 12:00 AM
+    // wherever this is ever shown with a time.
+    createdOn: new Date().toISOString()
+  }
+  all.push(event)
+  write(KEYS.celebrationEvents, all)
+  return event
+}
+
+export function updateCelebrationEvent(eventId, patch, actor) {
+  if (!canManageCelebrations(actor)) return null
+  const all = getCelebrationEvents()
+  const idx = all.findIndex((e) => e.id === eventId)
+  if (idx < 0) return null
+  all[idx] = { ...all[idx], ...patch, id: all[idx].id, createdBy: all[idx].createdBy }
+  write(KEYS.celebrationEvents, all)
+  return all[idx]
+}
+
+export function deleteCelebrationEvent(eventId, actor) {
+  if (!canManageCelebrations(actor)) return null
+  const remaining = getCelebrationEvents().filter((e) => e.id !== eventId)
+  write(KEYS.celebrationEvents, remaining)
+  return remaining
+}
+
+// Ids from the built-in calendar that this office does not observe. Kept in
+// settings next to the company holiday list because it is company-wide
+// configuration, not a record of its own.
+export function setSystemCelebrationHidden(celebrationId, hidden, actor) {
+  if (!canManageCelebrations(actor)) return getSettings().celebrationsHiddenSlots
+  const next = new Set(getSettings().celebrationsHiddenSlots || [])
+  if (hidden) next.add(celebrationId)
+  else next.delete(celebrationId)
+  saveSettings({ ...getSettings(), celebrationsHiddenSlots: [...next].sort() })
+  return getSettings().celebrationsHiddenSlots
 }
 
 // ---- employee notification reads ----

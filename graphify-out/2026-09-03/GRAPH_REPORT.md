@@ -1,7 +1,7 @@
 # Graph Report - WorkBuddy EMS  (2026-09-03)
 
 ## Corpus Check
-- 120 files · ~114,460 words
+- 120 files · ~114,421 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -28,7 +28,7 @@
 - AttendanceRecords
 - EmployeeTasks
 - Celebrations.jsx
-- TeamTasks.jsx
+- formatDate
 - AdminReimbursements
 - origin-button.tsx
 - compilerOptions
@@ -45,7 +45,7 @@
 - TeamTasksPanel
 - EmployeeITHelpDesk.jsx
 - components.json
-- EmployeeTasks.jsx
+- tasks.js
 - CabManagement.jsx
 - TripsTab
 - VehiclesTab
@@ -83,13 +83,13 @@
 - public.tickets
 - public.it_issues
 - NotificationBell
-- formatDate
+- TaskBoard.jsx
 - MyCab.jsx
 - getDriverRunSheet
 - AdminAnnouncements
 - getTasks
 - EmployeeDashboard.jsx
-- lucide-react
+- framer-motion
 
 ## God Nodes (most connected - your core abstractions)
 1. `write()` - 95 edges
@@ -166,15 +166,15 @@ Nodes (12): ensureAttendanceForDate(), resolveAttendanceCorrection(), Attendance
 
 ### Community 11 - "EmployeeTasks"
 Cohesion: 0.16
-Nodes (13): addTask(), EmployeeTasks(), assignerLabel(), bump(), closeMenu(), confirmDelete(), handleClickOutside(), handleCreate() (+5 more)
+Nodes (13): addTaskMessage(), EmployeeTasks(), assignerLabel(), bump(), closeMenu(), confirmDelete(), handleClickOutside(), handleEdit() (+5 more)
 
 ### Community 12 - "Celebrations.jsx"
 Cohesion: 0.07
 Nodes (54): CelebrationAdminPanel(), closeForm(), confirmDelete(), handleSubmit(), toggleVisible(), CelebrationCard(), KIND_ICONS, CELEBRATION_EVENT_TYPES (+46 more)
 
-### Community 13 - "TeamTasks.jsx"
-Cohesion: 0.15
-Nodes (18): TaskForm(), STATUS_COLORS, TaskForChart, TaskStatusChart(), TaskStatusKey, TASK_PRIORITIES, TASK_STATUSES, addTaskMessageByAdmin() (+10 more)
+### Community 13 - "formatDate"
+Cohesion: 0.12
+Nodes (23): TaskForm(), STATUS_COLORS, TaskForChart, TaskStatusChart(), TaskStatusKey, TaskThread(), TASK_PRIORITIES, TASK_STATUSES (+15 more)
 
 ### Community 14 - "AdminReimbursements"
 Cohesion: 0.23
@@ -214,7 +214,7 @@ Nodes (19): autoprefixer, devDependencies, autoprefixer, postcss, tailwindcss, @
 
 ### Community 23 - "dependencies"
 Cohesion: 0.12
-Nodes (17): clsx, framer-motion, html2pdf.js, jszip, dependencies, clsx, framer-motion, html2pdf.js (+9 more)
+Nodes (17): clsx, html2pdf.js, jszip, lucide-react, dependencies, clsx, html2pdf.js, jszip (+9 more)
 
 ### Community 24 - "Design System: WorkBuddy EMS"
 Cohesion: 0.08
@@ -230,7 +230,7 @@ Nodes (14): addCabMessage(), clearCabChatAdmin(), getCabMessages(), getCabMessag
 
 ### Community 27 - "TeamTasksPanel"
 Cohesion: 0.14
-Nodes (12): addTaskMessage(), getTeamMembers(), handleTaskReply(), TeamTasksPanel(), bump(), closeMenu(), confirmDelete(), handleApproveClosure() (+4 more)
+Nodes (12): addTask(), getTeamMembers(), handleCreate(), TeamTasksPanel(), bump(), closeMenu(), confirmDelete(), handleApproveClosure() (+4 more)
 
 ### Community 28 - "EmployeeITHelpDesk.jsx"
 Cohesion: 0.06
@@ -240,9 +240,9 @@ Nodes (43): DropdownSelect(), ITIssueThread(), IT_ISSUE_CATEGORIES, IT_ISSUE_PRI
 Cohesion: 0.14
 Nodes (13): aliases, components, ui, utils, rsc, $schema, style, tailwind (+5 more)
 
-### Community 30 - "EmployeeTasks.jsx"
-Cohesion: 0.15
-Nodes (24): ASSIGNED_DURING_FILTER_OPTS, statusCell(), inAssignedDuring(), TASK_PRIORITY_FILTER_OPTS, TASK_STATUS_FILTER_OPTS, statusCell(), canEmployeeAskQuestion(), canEmployeeDeleteTask() (+16 more)
+### Community 30 - "tasks.js"
+Cohesion: 0.17
+Nodes (20): statusCell(), statusCell(), canEmployeeAskQuestion(), canEmployeeDeleteTask(), canEmployeeEditTask(), canManagerApproveDone(), canManagerChangeStatus(), chartBucketKey() (+12 more)
 
 ### Community 31 - "CabManagement.jsx"
 Cohesion: 0.18
@@ -332,9 +332,9 @@ Nodes (10): getReadAnnouncements(), getUnreadAnnouncementCount(), isAnnouncement
 Cohesion: 0.21
 Nodes (15): NotificationBell(), handleClearAll(), handleClickItem(), handleMarkAll(), handleOpenToggle(), onStoreRefreshed(), onTeamMessage(), refresh() (+7 more)
 
-### Community 79 - "formatDate"
-Cohesion: 0.27
-Nodes (8): TaskBoard(), TaskThread(), formatDate(), groupByStatus(), nextStatus(), prevStatus(), priorityLabel(), priorityTagClass()
+### Community 79 - "TaskBoard.jsx"
+Cohesion: 0.46
+Nodes (7): TaskBoard(), groupByStatus(), isOverdue(), nextStatus(), prevStatus(), priorityLabel(), priorityTagClass()
 
 ### Community 80 - "MyCab.jsx"
 Cohesion: 0.12
@@ -364,11 +364,11 @@ Nodes (7): AttendanceCorrectionForm(), getAttendance(), getAttendanceForEmployee
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `formatDate()` connect `formatDate` to `EmployeeLeaves.jsx`, `sampleData.js`, `attendance.js`, `AdminTasks`, `AttendanceRecords`, `EmployeeTasks`, `Celebrations.jsx`, `TeamTasks.jsx`, `EmployeeRecords`, `write`, `getProfileForEmployee`, `AttendanceRecords.jsx`, `TeamTasksPanel`, `EmployeeITHelpDesk.jsx`, `EmployeeTasks.jsx`, `CabManagement.jsx`, `getEmployeeById`, `AdminDashboard`, `getShiftChangeRequests`, `RequestsTab`, `useTableControls`, `profile.js`, `EmployeeDashboard`, `ReimbursementThread`, `EmployeeAnnouncements`, `MyCab.jsx`, `AdminAnnouncements`, `EmployeeDashboard.jsx`?**
+- **Why does `formatDate()` connect `formatDate` to `EmployeeLeaves.jsx`, `sampleData.js`, `attendance.js`, `AdminTasks`, `AttendanceRecords`, `EmployeeTasks`, `Celebrations.jsx`, `EmployeeRecords`, `write`, `getProfileForEmployee`, `AttendanceRecords.jsx`, `TeamTasksPanel`, `EmployeeITHelpDesk.jsx`, `tasks.js`, `CabManagement.jsx`, `getEmployeeById`, `AdminDashboard`, `getShiftChangeRequests`, `RequestsTab`, `useTableControls`, `profile.js`, `EmployeeDashboard`, `ReimbursementThread`, `EmployeeAnnouncements`, `TaskBoard.jsx`, `MyCab.jsx`, `AdminAnnouncements`, `EmployeeDashboard.jsx`?**
   _High betweenness centrality (0.068) - this node is a cross-community bridge._
-- **Why does `useTableControls()` connect `useTableControls` to `EmployeeLeaves.jsx`, `sampleData.js`, `EmployeeReimbursements.jsx`, `EmployeeReimbursements`, `AdminTasks`, `AttendanceRecords`, `EmployeeTasks`, `Celebrations.jsx`, `TeamTasks.jsx`, `AdminReimbursements`, `EmployeeRecords`, `write`, `AttendanceRecords.jsx`, `TeamTasksPanel`, `EmployeeITHelpDesk.jsx`, `EmployeeTasks.jsx`, `CabManagement.jsx`, `TripsTab`, `VehiclesTab`, `getEmployeeById`, `AdminDashboard`, `getShiftChangeRequests`, `RequestsTab`, `EmployeeDashboard`, `ShiftsTab`, `EmployeeAnnouncements`, `MyCab.jsx`, `getDriverRunSheet`, `AdminAnnouncements`, `EmployeeDashboard.jsx`?**
+- **Why does `useTableControls()` connect `useTableControls` to `EmployeeLeaves.jsx`, `sampleData.js`, `EmployeeReimbursements.jsx`, `EmployeeReimbursements`, `AdminTasks`, `AttendanceRecords`, `EmployeeTasks`, `Celebrations.jsx`, `formatDate`, `AdminReimbursements`, `EmployeeRecords`, `write`, `AttendanceRecords.jsx`, `TeamTasksPanel`, `EmployeeITHelpDesk.jsx`, `CabManagement.jsx`, `TripsTab`, `VehiclesTab`, `getEmployeeById`, `AdminDashboard`, `getShiftChangeRequests`, `RequestsTab`, `EmployeeDashboard`, `ShiftsTab`, `EmployeeAnnouncements`, `MyCab.jsx`, `getDriverRunSheet`, `AdminAnnouncements`, `EmployeeDashboard.jsx`?**
   _High betweenness centrality (0.054) - this node is a cross-community bridge._
-- **Why does `usePagination()` connect `useTableControls` to `EmployeeLeaves.jsx`, `sampleData.js`, `EmployeeReimbursements.jsx`, `EmployeeReimbursements`, `AdminTasks`, `AttendanceRecords`, `EmployeeTasks`, `Celebrations.jsx`, `TeamTasks.jsx`, `AdminReimbursements`, `EmployeeRecords`, `write`, `AttendanceRecords.jsx`, `TeamTasksPanel`, `EmployeeITHelpDesk.jsx`, `EmployeeTasks.jsx`, `CabManagement.jsx`, `TripsTab`, `VehiclesTab`, `getEmployeeById`, `AdminDashboard`, `getShiftChangeRequests`, `RequestsTab`, `EmployeeDashboard`, `ShiftsTab`, `EmployeeAnnouncements`, `MyCab.jsx`, `getDriverRunSheet`, `AdminAnnouncements`, `EmployeeDashboard.jsx`?**
+- **Why does `usePagination()` connect `useTableControls` to `EmployeeLeaves.jsx`, `sampleData.js`, `EmployeeReimbursements.jsx`, `EmployeeReimbursements`, `AdminTasks`, `AttendanceRecords`, `EmployeeTasks`, `Celebrations.jsx`, `formatDate`, `AdminReimbursements`, `EmployeeRecords`, `write`, `AttendanceRecords.jsx`, `TeamTasksPanel`, `EmployeeITHelpDesk.jsx`, `CabManagement.jsx`, `TripsTab`, `VehiclesTab`, `getEmployeeById`, `AdminDashboard`, `getShiftChangeRequests`, `RequestsTab`, `EmployeeDashboard`, `ShiftsTab`, `EmployeeAnnouncements`, `MyCab.jsx`, `getDriverRunSheet`, `AdminAnnouncements`, `EmployeeDashboard.jsx`?**
   _High betweenness centrality (0.054) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `useTableControls()` (e.g. with `setFilter()` and `toggleSort()`) actually correct?**
   _`useTableControls()` has 2 INFERRED edges - model-reasoned connections that need verification._

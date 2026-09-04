@@ -6,7 +6,7 @@ import {
 import { fetchPublicIp } from '../utils/network.js'
 import Modal from '../components/Modal.jsx'
 import TimeInput from '../components/TimeInput.jsx'
-import { Building2, Clock, Car, Coffee, CalendarDays, Shield, Wifi, Plus, Trash2, Check, Inbox, Settings as SettingsIcon, X } from 'lucide-react'
+import { Building2, Clock, Car, Coffee, CalendarDays, CalendarHeart, Shield, Wifi, Plus, Trash2, Check, Inbox, Settings as SettingsIcon, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 // HR/Admin settings: branding, timing rules, and the office-internet check.
@@ -427,6 +427,28 @@ export default function Settings() {
             <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" /> Add date
           </button>
         </div>
+
+        <h3 className="section-title">
+          <CalendarHeart size={15} style={{ marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} aria-hidden="true" />
+          Celebrations
+        </h3>
+        <p className="hint first">
+          Birthdays, work anniversaries and new joiners on the Celebrations page are
+          read straight from the employee records HR already keeps, so there is
+          nothing to enter here. The only choice is how long a person who joins is
+          still introduced as a new joiner. Company occasions and the festival
+          calendar are managed on the Celebrations page itself.
+        </p>
+        <label className="field" style={{ maxWidth: '280px' }}>
+          <span>Days shown as a new joiner</span>
+          <input
+            type="number"
+            min="0"
+            max="90"
+            value={form.newJoinerWindowDays ?? 7}
+            onChange={(e) => update('newJoinerWindowDays', Number(e.target.value))}
+          />
+        </label>
 
         <h3 className="section-title">
           <Wifi size={15} style={{ marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} aria-hidden="true" />
