@@ -93,7 +93,7 @@ export default function CabManagement() {
   }
 
   return (
-    <div className={tab === 5 ? 'chat-fill-page' : undefined}>
+    <div>
       <div className="page-head">
         <div>
           <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
@@ -1513,10 +1513,16 @@ function MessagesTab({ employees, unreadByEmp, bump }) {
     })
   }, [employees, unreadByEmp])
 
-  // Auto-scroll to the bottom when new messages arrive.
+  // Auto-scroll to the bottom when new messages arrive, and focus the reply
+  // box as the slide-in panel opens so the admin can start typing right away.
   useEffect(() => {
     if (threadRef.current) {
       threadRef.current.scrollTop = threadRef.current.scrollHeight
+    }
+    if (selected) {
+      requestAnimationFrame(() => {
+        if (inputRef.current) inputRef.current.focus()
+      })
     }
   }, [messages, selected])
 
@@ -1562,6 +1568,10 @@ function MessagesTab({ employees, unreadByEmp, bump }) {
     bump()
   }
 
+  function closeChat() {
+    setSelected('')
+  }
+
   return (
     <>
       <div className="card" style={{ padding: '12px 16px', marginBottom: 12 }}>
@@ -1581,76 +1591,83 @@ function MessagesTab({ employees, unreadByEmp, bump }) {
         </label>
       </div>
 
+      {/* Slide-in chat panel — same pattern as the My Team message panel */}
       {selected && (
-        <div className="team-chat-panel">
-          <div className="team-chat-header">
-            <div className="team-chat-peer">
-              <Avatar src={selectedEmp?.photoUrl} name={selectedEmp?.name || selected} size={32} />
-              <div>
-                <div className="team-chat-peer-name">{selectedEmp?.name || selected}</div>
-                <div className="team-chat-peer-role muted small">{selected}</div>
-              </div>
-            </div>
-            <div className="task-menu-container team-chat-menu-container">
-              <button
-                type="button"
-                className="btn btn-tiny btn-light task-menu-button"
-                onClick={() => setMenuOpen((v) => !v)}
-                aria-label="Chat options"
-              >
-                <MoreVertical size={16} />
-              </button>
-              {menuOpen && (
-                <div className="task-menu-dropdown">
-                  <button
-                    type="button"
-                    className="task-menu-item task-menu-item-danger"
-                    onClick={() => { setMenuOpen(false); setConfirmClear(true) }}
-                  >
-                    <Trash2 size={14} aria-hidden="true" />
-                    Clear chat
-                  </button>
+        <div className="team-chat-overlay" onClick={closeChat}>
+          <div className="team-chat-slide" onClick={(e) => e.stopPropagation()}>
+            <div className="team-chat-panel">
+              <div className="team-chat-header">
+                <div className="team-chat-peer">
+                  <Avatar src={selectedEmp?.photoUrl} name={selectedEmp?.name || selected} size={32} />
+                  <div>
+                    <div className="team-chat-peer-name">{selectedEmp?.name || selected}</div>
+                    <div className="team-chat-peer-role muted small">{selected}</div>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="team-chat-thread" ref={threadRef}>
-            {messages.length === 0 && (
-              <p className="muted team-chat-empty">
-                No messages in this conversation yet.
-              </p>
-            )}
-            {messages.map((m) => (
-              <div key={m.id} className={`msg ${m.byRole === 'admin' ? 'msg-mine' : 'msg-them'}`}>
-                {m.text && <div className="msg-body">{m.text}</div>}
-                <div className="msg-time">{formatDateTime(m.on)}</div>
+                <div className="team-chat-header-actions">
+                  <div className="task-menu-container team-chat-menu-container">
+                    <button
+                      type="button"
+                      className="btn btn-tiny btn-light task-menu-button"
+                      onClick={() => setMenuOpen((v) => !v)}
+                      aria-label="Chat options"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                    {menuOpen && (
+                      <div className="task-menu-dropdown">
+                        <button
+                          type="button"
+                          className="task-menu-item task-menu-item-danger"
+                          onClick={() => { setMenuOpen(false); setConfirmClear(true) }}
+                        >
+                          <Trash2 size={14} aria-hidden="true" />
+                          Clear chat
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
 
-          <div className="team-chat-reply">
-            <div className="team-chat-composer">
-              <textarea
-                ref={inputRef}
-                className="team-chat-composer-input"
-                rows={1}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={`Reply to ${selectedEmp?.name || 'employee'}...`}
-              />
-              <div className="team-chat-composer-actions">
-                <button
-                  type="button"
-                  className={`team-chat-composer-send ${text.trim() ? 'active' : ''}`}
-                  disabled={!text.trim()}
-                  onClick={send}
-                  aria-label="Send message"
-                  title="Send message"
-                >
-                  <Send size={18} />
-                </button>
+              <div className="team-chat-thread" ref={threadRef}>
+                {messages.length === 0 && (
+                  <p className="muted team-chat-empty">
+                    No messages in this conversation yet.
+                  </p>
+                )}
+                {messages.map((m) => (
+                  <div key={m.id} className={`msg ${m.byRole === 'admin' ? 'msg-mine' : 'msg-them'}`}>
+                    {m.text && <div className="msg-body">{m.text}</div>}
+                    <div className="msg-time">{formatDateTime(m.on)}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="team-chat-reply">
+                <div className="team-chat-composer">
+                  <textarea
+                    ref={inputRef}
+                    className="team-chat-composer-input"
+                    rows={1}
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={`Reply to ${selectedEmp?.name || 'employee'}...`}
+                  />
+                  <div className="team-chat-composer-actions">
+                    <button
+                      type="button"
+                      className={`team-chat-composer-send ${text.trim() ? 'active' : ''}`}
+                      disabled={!text.trim()}
+                      onClick={send}
+                      aria-label="Send message"
+                      title="Send message"
+                    >
+                      <Send size={18} />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
