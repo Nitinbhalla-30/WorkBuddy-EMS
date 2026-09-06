@@ -1,0 +1,1950 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import {
+  addCabMessage,
+  addDriver,
+  addTrip,
+  addVehicle,
+  clearCabChatAdmin,
+  deleteDriver,
+  deleteTrip,
+  deleteVehicle,
+  getCabAssignments,
+  getCabCancellationsForDate,
+  getCabClearedAtAdmin,
+  getCabMessagesForEmployee,
+  getCabRequests,
+  getCabUnreadByEmployee,
+  getDrivers,
+  getEmployees,
+  getTrips,
+  getVehicles,
+  markCabThreadRead,
+  setCabAssignment,
+  setCabRequestStatus,
+  setDriverPin,
+  updateDriver,
+  updateTrip,
+  updateVehicle
+} from '../data/store.js'
+import Modal from '../components/Modal.jsx'
+import DropdownSelect from '../components/DropdownSelect.jsx'
+import Pagination from '../components/Pagination.jsx'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import TimeInput from '../components/TimeInput.jsx'
+import Avatar from '../components/Avatar.jsx'
+import { usePagination } from '../hooks/usePagination.js'
+import { useTableControls } from '../hooks/useTableControls.js'
+import { formatDate } from '../utils/attendance.js'
+import {
+  driverById,
+  formatDateTime,
+  formatTime12,
+  requestStatusLabel,
+  requestStatusTagClass,
+  tripLabel,
+  vehicleById
+} from '../utils/cab.js'
+import { CarFront, Check, Copy, ExternalLink, Eye, MoreVertical, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
+
+const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Change Requests', 'Messages', 'Today']
+const TAB_SLUGS = ['vehicles', 'drivers', 'trips', 'assign', 'requests', 'messages', 'today']
+
+// Admin page to manage the company cab system.
+export default function CabManagement() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const [tab, setTab] = useState(Math.max(0, TAB_SLUGS.indexOf(tabParam)))
+  const [refresh, setRefresh] = useState(0)
+
+  // Follow URL tab changes (e.g. a "Cab change request" notification clicked
+  // while already on this page) so the Requests tab opens on demand.
+  const prevTabParam = useRef(tabParam)
+  useEffect(() => {
+    if (tabParam !== prevTabParam.current) {
+      setTab(Math.max(0, TAB_SLUGS.indexOf(tabParam)))
+      prevTabParam.current = tabParam
+    }
+  }, [tabParam])
+
+  function selectTab(i) {
+    setTab(i)
+    setSearchParams({ tab: TAB_SLUGS[i] }, { replace: true })
+  }
+
+  const vehicles = useMemo(() => getVehicles(), [refresh])
+  const drivers = useMemo(() => getDrivers(), [refresh])
+  const trips = useMemo(() => getTrips(), [refresh])
+  const assignments = useMemo(() => getCabAssignments(), [refresh])
+  const requests = useMemo(() => getCabRequests(), [refresh])
+  const employees = useMemo(
+    () => getEmployees().filter((e) => e.role === 'employee'),
+    [refresh]
+  )
+  const unreadByEmp = useMemo(() => getCabUnreadByEmployee(), [refresh])
+  const totalUnread = Object.values(unreadByEmp).reduce((a, b) => a + b, 0)
+
+  function bump() { setRefresh((n) => n + 1) }
+
+  function nameOf(id) {
+    return getEmployees().find((e) => e.id === id)?.name || id
+  }
+
+  return (
+    <div>
+      <div className="page-head">
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <CarFront size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />Cab Management
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Manage vehicles, drivers, trips, and employee cab assignments</p>
+        </div>
+        <span className="muted">{vehicles.length} vehicles, {drivers.length} drivers, {trips.length} trips</span>
+      </div>
+
+      <div className="tabs">
+        {TABS.map((t, i) => (
+          <button key={t} className={`tab ${i === tab ? 'tab-active' : ''}`} onClick={() => selectTab(i)}>
+            {t}
+            {t === 'Change Requests' ? ` (${requests.filter((r) => r.status === 'pending').length})` : ''}
+            {t === 'Messages' && totalUnread > 0 ? ` (${totalUnread})` : ''}
+          </button>
+        ))}
+      </div>
+
+      {tab === 0 && <VehiclesTab vehicles={vehicles} bump={bump} />}
+      {tab === 1 && <DriversTab drivers={drivers} bump={bump} />}
+      {tab === 2 && <TripsTab trips={trips} vehicles={vehicles} drivers={drivers} bump={bump} />}
+      {tab === 3 && <AssignTab employees={employees} trips={trips} assignments={assignments} bump={bump} />}
+      {tab === 4 && <RequestsTab requests={requests} nameOf={nameOf} bump={bump} />}
+      {tab === 5 && <MessagesTab employees={employees} unreadByEmp={unreadByEmp} bump={bump} />}
+      {tab === 6 && <TodayTab employees={employees} bump={bump} />}
+
+      <p className="hint">
+        Manage vehicles, drivers, and trips from the tabs above. Use Assign to link employees
+        to pickup and drop trips. Open a driver&rsquo;s run sheet to share their schedule on the
+        driver&rsquo;s phone. Cancellation summary shows who opted out of today&rsquo;s cab.
+      </p>
+    </div>
+  )
+}
+
+// ---- Vehicles ----
+function VehiclesTab({ vehicles, bump }) {
+  const [showAdd, setShowAdd] = useState(false)
+  const [editId, setEditId] = useState(null)
+  const [form, setForm] = useState({ number: '', label: '' })
+  const [deleteId, setDeleteId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+
+  const editVehicle = vehicles.find((v) => v.id === editId) || null
+
+  const vehiclesTable = useTableControls(vehicles, {
+    getSortValue: (v, key) => {
+      if (key === 'label') return v.label || ''
+      return v[key]
+    },
+    initialSortKey: 'number',
+    initialSortDir: 'asc'
+  })
+
+  const {
+    items: vehiclesPage,
+    page: vehiclesPageNum,
+    totalPages: vehiclesTotalPages,
+    total: vehiclesTotal,
+    startIndex: vehiclesStart,
+    endIndex: vehiclesEnd,
+    setPage: setVehiclesPage
+  } = usePagination(vehiclesTable.rows)
+
+  function toggleMenu(vehicleId) {
+    setOpenMenuId(openMenuId === vehicleId ? null : vehicleId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
+
+  function openAdd() {
+    setForm({ number: '', label: '' })
+    setShowAdd(true)
+  }
+
+  function openEdit(v) {
+    setEditId(v.id)
+    setForm({ number: v.number, label: v.label || '' })
+  }
+
+  function submitAdd() {
+    if (!form.number.trim()) return
+    addVehicle({ number: form.number.trim(), label: form.label.trim() })
+    setShowAdd(false)
+    bump()
+  }
+
+  function submitEdit() {
+    if (!editId || !form.number.trim()) return
+    updateVehicle(editId, { number: form.number.trim(), label: form.label.trim() })
+    setEditId(null)
+    bump()
+  }
+
+  function confirmDelete() {
+    if (deleteId) {
+      deleteVehicle(deleteId)
+      setDeleteId(null)
+      bump()
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
+        <h3 className="section-title first">Company vehicles</h3>
+        <button className="btn btn-primary btn-tiny" onClick={openAdd}><Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add vehicle</button>
+      </div>
+      <table className="table">
+        <thead>
+          <tr>
+            <SortableTh label="Vehicle No." keyName="number" sortKey={vehiclesTable.sortKey} sortDir={vehiclesTable.sortDir} onSort={vehiclesTable.toggleSort} />
+            <SortableTh label="Label" keyName="label" sortKey={vehiclesTable.sortKey} sortDir={vehiclesTable.sortDir} onSort={vehiclesTable.toggleSort} />
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {vehiclesPage.map((v) => (
+            <tr key={v.id}>
+              <td><strong>{v.number}</strong></td>
+              <td>{v.label || <span className="muted">--</span>}</td>
+              <td>
+                <div className="task-menu-container">
+                  <button
+                    type="button"
+                    className="btn btn-tiny btn-light task-menu-button"
+                    onClick={() => toggleMenu(v.id)}
+                    aria-label="Vehicle actions"
+                   ><MoreVertical size={16} /></button>
+                  {openMenuId === v.id && (
+                    <div className="task-menu-dropdown">
+                      <button
+                        type="button"
+                        className="task-menu-item"
+                        onClick={() => {
+                          openEdit(v)
+                          closeMenu()
+                        }}
+                      >
+                        <Pencil size={14} aria-hidden="true" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="task-menu-item task-menu-item-danger"
+                        onClick={() => {
+                          setDeleteId(v.id)
+                          closeMenu()
+                        }}
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Pagination
+        page={vehiclesPageNum}
+        totalPages={vehiclesTotalPages}
+        total={vehiclesTotal}
+        startIndex={vehiclesStart}
+        endIndex={vehiclesEnd}
+        onPageChange={setVehiclesPage}
+      />
+
+      {showAdd && (
+        <Modal onClose={() => setShowAdd(false)} title="Add vehicle">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Add vehicle</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <label className="field">
+              <span>Vehicle no.</span>
+              <input value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} placeholder="e.g. DL 1CA 1234" />
+            </label>
+            <label className="field">
+              <span>Label (optional)</span>
+              <input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Sedan / White" />
+            </label>
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!form.number.trim()} onClick={submitAdd}>Add vehicle</button>
+              <button className="btn btn-light" onClick={() => setShowAdd(false)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {editVehicle && (
+        <Modal onClose={() => setEditId(null)} title={`Edit vehicle — ${editVehicle.number}`}>
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Edit vehicle — {editVehicle.number}</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <label className="field">
+              <span>Vehicle no.</span>
+              <input value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} />
+            </label>
+            <label className="field">
+              <span>Label (optional)</span>
+              <input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Sedan / White" />
+            </label>
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!form.number.trim()} onClick={submitEdit}>Save changes</button>
+              <button className="btn btn-light" onClick={() => setEditId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteId && (
+        <Modal onClose={() => setDeleteId(null)} title="Confirm Delete">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Delete</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This will permanently delete the vehicle. You will not be able to restore it.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>Delete</button>
+              <button type="button" className="btn btn-light" onClick={() => setDeleteId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+// ---- Drivers ----
+function DriversTab({ drivers, bump }) {
+  const [showAdd, setShowAdd] = useState(false)
+  const [editId, setEditId] = useState(null)
+  const [form, setForm] = useState({ name: '', mobile: '', pin: '' })
+  const [deleteId, setDeleteId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+  // Per-driver inline PIN editing state: { [driverId]: value }
+  const [pins, setPins] = useState({})
+  const [pinSaved, setPinSaved] = useState({})
+
+  const editDriver = drivers.find((d) => d.id === editId) || null
+
+  const driversTable = useTableControls(drivers, {
+    initialSortKey: 'name',
+    initialSortDir: 'asc'
+  })
+
+  const {
+    items: driversPage,
+    page: driversPageNum,
+    totalPages: driversTotalPages,
+    total: driversTotal,
+    startIndex: driversStart,
+    endIndex: driversEnd,
+    setPage: setDriversPage
+  } = usePagination(driversTable.rows)
+
+  function toggleMenu(driverId) {
+    setOpenMenuId(openMenuId === driverId ? null : driverId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
+
+  function openAdd() {
+    setForm({ name: '', mobile: '', pin: '' })
+    setShowAdd(true)
+  }
+
+  function openEdit(d) {
+    setEditId(d.id)
+    setForm({ name: d.name, mobile: d.mobile || '', pin: '' })
+  }
+
+  function submitAdd() {
+    if (!form.name.trim()) return
+    addDriver({ name: form.name.trim(), mobile: form.mobile.trim(), pin: form.pin.trim() })
+    setShowAdd(false)
+    bump()
+  }
+
+  function submitEdit() {
+    if (!editId || !form.name.trim()) return
+    updateDriver(editId, {
+      name: form.name.trim(),
+      mobile: form.mobile.trim(),
+      // Blank PIN keeps the existing one.
+      ...(form.pin.trim() ? { pin: form.pin.trim() } : {})
+    })
+    setEditId(null)
+    bump()
+  }
+
+  function confirmDelete() {
+    if (deleteId) {
+      deleteDriver(deleteId)
+      setDeleteId(null)
+      bump()
+    }
+  }
+
+  function savePin(driverId) {
+    const pin = (pins[driverId] || '').trim()
+    if (!pin) return
+    setDriverPin(driverId, pin)
+    setPinSaved({ ...pinSaved, [driverId]: true })
+    setTimeout(() => setPinSaved((s) => ({ ...s, [driverId]: false })), 2000)
+    bump()
+  }
+
+  return (
+    <div className="card">
+      <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
+        <h3 className="section-title first">Company drivers</h3>
+        <button className="btn btn-primary btn-tiny" onClick={openAdd}><Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add driver</button>
+      </div>
+      <p className="hint first">
+        Each driver needs a <strong>WorkBuddy ID</strong> and <strong>PIN</strong> to log in and
+        view their run sheet. Set or reset a driver&rsquo;s PIN using the table below.
+      </p>
+      <table className="table">
+        <colgroup>
+          <col style={{ width: '18%' }} />
+          <col style={{ width: '13.5%' }} />
+          <col style={{ width: '16%' }} />
+          <col style={{ width: '42.5%' }} />
+          <col style={{ width: '10%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <SortableTh label="Name" keyName="name" sortKey={driversTable.sortKey} sortDir={driversTable.sortDir} onSort={driversTable.toggleSort} />
+            <SortableTh label="Mobile" keyName="mobile" sortKey={driversTable.sortKey} sortDir={driversTable.sortDir} onSort={driversTable.toggleSort} />
+            <SortableTh label="WorkBuddy ID" keyName="id" sortKey={driversTable.sortKey} sortDir={driversTable.sortDir} onSort={driversTable.toggleSort} />
+            <th>PIN</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {driversPage.map((d) => (
+            <tr key={d.id}>
+              <td>
+                <div className="person-cell">
+                  <Avatar name={d.name} size={34} />
+                  <strong>{d.name}</strong>
+                </div>
+              </td>
+              <td>{d.mobile}</td>
+              <td><code>{d.id}</code></td>
+              <td>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    className="inline-input"
+                    style={{ width: 80 }}
+                    type="password"
+                    placeholder={d.pin ? '••••' : 'Set PIN'}
+                    value={pins[d.id] || ''}
+                    onChange={(e) => setPins({ ...pins, [d.id]: e.target.value })}
+                    maxLength={8}
+                  />
+                  <button
+                    className="btn btn-primary btn-tiny"
+                    onClick={() => savePin(d.id)}
+                    disabled={!(pins[d.id] || '').trim()}
+                  >
+                    {pinSaved[d.id] ? (<><Check size={14} /> Saved</>) : 'Save PIN'}
+                  </button>
+                </div>
+              </td>
+              <td>
+                <div className="task-menu-container">
+                  <button
+                    type="button"
+                    className="btn btn-tiny btn-light task-menu-button"
+                    onClick={() => toggleMenu(d.id)}
+                    aria-label="Driver actions"
+                   ><MoreVertical size={16} /></button>
+                  {openMenuId === d.id && (
+                    <div className="task-menu-dropdown">
+                      <button
+                        type="button"
+                        className="task-menu-item"
+                        onClick={() => {
+                          openEdit(d)
+                          closeMenu()
+                        }}
+                      >
+                        <Pencil size={14} aria-hidden="true" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="task-menu-item task-menu-item-danger"
+                        onClick={() => {
+                          setDeleteId(d.id)
+                          closeMenu()
+                        }}
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Pagination
+        page={driversPageNum}
+        totalPages={driversTotalPages}
+        total={driversTotal}
+        startIndex={driversStart}
+        endIndex={driversEnd}
+        onPageChange={setDriversPage}
+      />
+
+      {showAdd && (
+        <Modal onClose={() => setShowAdd(false)} title="Add driver">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Add driver</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <label className="field">
+              <span>Driver name</span>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Ramu Yadav" />
+            </label>
+            <div className="two-col">
+              <label className="field">
+                <span>Mobile</span>
+                <input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} placeholder="10-digit mobile" maxLength={10} />
+              </label>
+              <label className="field">
+                <span>PIN (optional)</span>
+                <input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} placeholder="Login PIN" maxLength={8} />
+              </label>
+            </div>
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!form.name.trim()} onClick={submitAdd}>Add driver</button>
+              <button className="btn btn-light" onClick={() => setShowAdd(false)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {editDriver && (
+        <Modal onClose={() => setEditId(null)} title={`Edit driver — ${editDriver.name}`}>
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Edit driver — {editDriver.name}</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <label className="field">
+              <span>Driver name</span>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </label>
+            <div className="two-col">
+              <label className="field">
+                <span>Mobile</span>
+                <input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} maxLength={10} />
+              </label>
+              <label className="field">
+                <span>New PIN</span>
+                <input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} placeholder={editDriver.pin ? '••••' : 'Set PIN'} maxLength={8} />
+              </label>
+            </div>
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!form.name.trim()} onClick={submitEdit}>Save changes</button>
+              <button className="btn btn-light" onClick={() => setEditId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteId && (
+        <Modal onClose={() => setDeleteId(null)} title="Confirm Delete">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Delete</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This will permanently delete the driver and remove them from all trips. You will not be able to restore it.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>Delete</button>
+              <button type="button" className="btn btn-light" onClick={() => setDeleteId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+// ---- Trips ----
+const EMPTY_TRIP_FORM = {
+  vehicleId: '', driverId: '', direction: 'pickup', time: '',
+  shiftStart: '', shiftEnd: '', officeGate: '',
+  supervisorName: '', supervisorMobile: ''
+}
+
+// Person cell for the trips table: name on its own line with the mobile
+// number below it in brackets, tappable (tel: link) on phones.
+function PersonCell({ name, mobile }) {
+  if (!name && !mobile) return <span className="muted">--</span>
+  return (
+    <>
+      <div>{name || '--'}</div>
+      {mobile
+        ? <a href={`tel:${mobile}`} className="phone-link">({mobile})</a>
+        : <span className="muted">(--)</span>}
+    </>
+  )
+}
+
+function TripsTab({ trips, vehicles, drivers, bump }) {
+  const [showAdd, setShowAdd] = useState(false)
+  const [editId, setEditId] = useState(null)
+  const [form, setForm] = useState(EMPTY_TRIP_FORM)
+  const [deleteId, setDeleteId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+
+  const editTrip = trips.find((t) => t.id === editId) || null
+
+  const tripsTable = useTableControls(trips, {
+    getSearchText: (t) => {
+      const v = vehicleById(vehicles, t.vehicleId)
+      const d = driverById(drivers, t.driverId)
+      return [t.direction, t.time, v?.number || '', d?.name || '', t.officeGate || '', t.supervisorName || ''].join(' ')
+    },
+    getSortValue: (t, key) => {
+      if (key === 'direction') return t.direction === 'drop' ? 'Drop' : 'Pickup'
+      if (key === 'officeTime') return t.direction === 'drop' ? (t.shiftEnd || '') : (t.shiftStart || '')
+      if (key === 'vehicle') return vehicleById(vehicles, t.vehicleId)?.number || ''
+      if (key === 'driver') return driverById(drivers, t.driverId)?.name || ''
+      if (key === 'gate') return t.officeGate || ''
+      if (key === 'supervisor') return t.supervisorName || ''
+      return t[key]
+    },
+    initialSortKey: 'direction',
+    initialSortDir: 'asc',
+    filterFns: {
+      direction: (t, val) => t.direction === val,
+      vehicle: (t, val) => t.vehicleId === val,
+      driver: (t, val) => t.driverId === val
+    }
+  })
+
+  const {
+    items: tripsPage,
+    page: tripsPageNum,
+    totalPages: tripsTotalPages,
+    total: tripsTotal,
+    startIndex: tripsStart,
+    endIndex: tripsEnd,
+    setPage: setTripsPage
+  } = usePagination(tripsTable.rows)
+
+  function toggleMenu(tripId) {
+    setOpenMenuId(openMenuId === tripId ? null : tripId)
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
+
+  function openAdd() {
+    setForm(EMPTY_TRIP_FORM)
+    setShowAdd(true)
+  }
+
+  function openEdit(t) {
+    setEditId(t.id)
+    setForm({
+      vehicleId: t.vehicleId, driverId: t.driverId, direction: t.direction, time: t.time,
+      shiftStart: t.shiftStart || '', shiftEnd: t.shiftEnd || '', officeGate: t.officeGate || '',
+      supervisorName: t.supervisorName || '', supervisorMobile: t.supervisorMobile || ''
+    })
+  }
+
+  // Keep only the fields that belong to the chosen direction.
+  function normalize(data) {
+    return {
+      vehicleId: data.vehicleId,
+      driverId: data.driverId,
+      direction: data.direction,
+      time: data.time,
+      officeGate: data.direction === 'drop' ? data.officeGate : '',
+      supervisorName: data.supervisorName,
+      supervisorMobile: data.supervisorMobile,
+      shiftStart: data.direction === 'pickup' ? data.shiftStart : '',
+      shiftEnd: data.direction === 'drop' ? data.shiftEnd : ''
+    }
+  }
+
+  const canSubmit = Boolean(form.vehicleId && form.driverId && form.time)
+
+  function submitAdd() {
+    if (!canSubmit) return
+    addTrip(normalize(form))
+    setShowAdd(false)
+    bump()
+  }
+
+  function submitEdit() {
+    if (!editId || !canSubmit) return
+    updateTrip(editId, normalize(form))
+    setEditId(null)
+    bump()
+  }
+
+  function confirmDelete() {
+    if (deleteId) {
+      deleteTrip(deleteId)
+      setDeleteId(null)
+      bump()
+    }
+  }
+
+  // The trip form is shared by the Add and Edit popups.
+  function tripFormFields() {
+    return (
+      <>
+        <div className="two-col">
+          <div className="field">
+            <span>Vehicle</span>
+            <DropdownSelect
+              value={form.vehicleId}
+              options={[
+                { value: '', label: '-- choose --' },
+                ...vehicles.map((v) => ({ value: v.id, label: v.number }))
+              ]}
+              onChange={(v) => setForm({ ...form, vehicleId: v })}
+              ariaLabel="Vehicle"
+            />
+          </div>
+          <div className="field">
+            <span>Driver</span>
+            <DropdownSelect
+              value={form.driverId}
+              options={[
+                { value: '', label: '-- choose --' },
+                ...drivers.map((d) => ({ value: d.id, label: d.name }))
+              ]}
+              onChange={(v) => setForm({ ...form, driverId: v })}
+              ariaLabel="Driver"
+            />
+          </div>
+        </div>
+        <div className="two-col">
+          <div className="field">
+            <span>Direction</span>
+            <DropdownSelect
+              value={form.direction}
+              options={[
+                { value: 'pickup', label: 'Pickup (home to office)' },
+                { value: 'drop', label: 'Drop (office to home)' }
+              ]}
+              onChange={(v) => setForm({ ...form, direction: v })}
+              ariaLabel="Direction"
+            />
+          </div>
+          <label className="field">
+            <span>{form.direction === 'drop' ? 'Cab leaves office time' : 'Pickup time'}</span>
+            <TimeInput value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
+          </label>
+        </div>
+        {form.direction === 'pickup' && (
+          <label className="field">
+            <span>Office starts at</span>
+            <TimeInput value={form.shiftStart} onChange={(e) => setForm({ ...form, shiftStart: e.target.value })} />
+          </label>
+        )}
+        {form.direction === 'drop' && (
+          <label className="field">
+            <span>Office ends at</span>
+            <TimeInput value={form.shiftEnd} onChange={(e) => setForm({ ...form, shiftEnd: e.target.value })} />
+          </label>
+        )}
+        {form.direction === 'drop' && (
+          <label className="field">
+            <span>Office gate (where cab waits)</span>
+            <input value={form.officeGate} onChange={(e) => setForm({ ...form, officeGate: e.target.value })} placeholder="e.g. Gate 2" />
+          </label>
+        )}
+        <div className="two-col">
+          <label className="field">
+            <span>Supervisor name</span>
+            <input value={form.supervisorName} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} placeholder="e.g. Anil Singh (to call if cab is late)" />
+          </label>
+          <label className="field">
+            <span>Supervisor mobile</span>
+            <input value={form.supervisorMobile} onChange={(e) => setForm({ ...form, supervisorMobile: e.target.value })} placeholder="10-digit mobile" maxLength={10} />
+          </label>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="card">
+      <TableToolbar
+        search={tripsTable.search}
+        onSearchChange={tripsTable.setSearch}
+        showing={tripsTable.count}
+        total={tripsTable.total}
+        placeholder="Search trips..."
+        filters={[
+          {
+            key: 'direction',
+            label: 'Direction',
+            value: tripsTable.filters.direction || 'all',
+            options: [
+              { value: 'all', label: 'All directions' },
+              { value: 'pickup', label: 'Pickup' },
+              { value: 'drop', label: 'Drop' }
+            ]
+          },
+          {
+            key: 'vehicle',
+            label: 'Vehicle',
+            value: tripsTable.filters.vehicle || 'all',
+            options: [
+              { value: 'all', label: 'All vehicles' },
+              ...vehicles.map((v) => ({ value: v.id, label: v.number }))
+            ]
+          },
+          {
+            key: 'driver',
+            label: 'Driver',
+            value: tripsTable.filters.driver || 'all',
+            options: [
+              { value: 'all', label: 'All drivers' },
+              ...drivers.map((d) => ({ value: d.id, label: d.name }))
+            ]
+          }
+        ]}
+        onFilterChange={tripsTable.setFilter}
+        actions={
+          <button className="btn btn-primary btn-tiny" onClick={openAdd}><Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add trip</button>
+        }
+      />
+      <table className="table" style={{ tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '15%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '17%' }} />
+          <col style={{ width: '5%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <SortableTh label="Direction" keyName="direction" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Cab time" keyName="time" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Office time" keyName="officeTime" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} className="th-wrap" />
+            <SortableTh label="Vehicle" keyName="vehicle" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Driver" keyName="driver" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <SortableTh label="Office Gate" keyName="gate" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} className="th-wrap" />
+            <SortableTh label="Supervisor" keyName="supervisor" sortKey={tripsTable.sortKey} sortDir={tripsTable.sortDir} onSort={tripsTable.toggleSort} />
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tripsPage.map((t) => {
+            const v = vehicleById(vehicles, t.vehicleId)
+            const d = driverById(drivers, t.driverId)
+            return (
+              <tr key={t.id}>
+                <td>{t.direction === 'drop' ? 'Drop' : 'Pickup'}</td>
+                <td><strong>{formatTime12(t.time)}</strong></td>
+                <td>
+                  {t.direction === 'drop'
+                    ? (t.shiftEnd ? <>Ends {formatTime12(t.shiftEnd)}</> : <span className="muted">--</span>)
+                    : (t.shiftStart ? <>Starts {formatTime12(t.shiftStart)}</> : <span className="muted">--</span>)}
+                </td>
+                <td>{v?.number || '--'}</td>
+                <td><PersonCell name={d?.name} mobile={d?.mobile} /></td>
+                <td>{t.officeGate || <span className="muted">--</span>}</td>
+                <td><PersonCell name={t.supervisorName} mobile={t.supervisorMobile} /></td>
+                <td>
+                  <div className="task-menu-container">
+                    <button
+                      type="button"
+                      className="btn btn-tiny btn-light task-menu-button"
+                      onClick={() => toggleMenu(t.id)}
+                      aria-label="Trip actions"
+                     ><MoreVertical size={16} /></button>
+                    {openMenuId === t.id && (
+                      <div className="task-menu-dropdown">
+                        <button
+                          type="button"
+                          className="task-menu-item"
+                          onClick={() => {
+                            openEdit(t)
+                            closeMenu()
+                          }}
+                        >
+                          <Pencil size={14} aria-hidden="true" />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="task-menu-item task-menu-item-danger"
+                          onClick={() => {
+                            setDeleteId(t.id)
+                            closeMenu()
+                          }}
+                        >
+                          <Trash2 size={14} aria-hidden="true" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <Pagination
+        page={tripsPageNum}
+        totalPages={tripsTotalPages}
+        total={tripsTotal}
+        startIndex={tripsStart}
+        endIndex={tripsEnd}
+        onPageChange={setTripsPage}
+      />
+
+      {showAdd && (
+        <Modal onClose={() => setShowAdd(false)} title="Add trip">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Add trip</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)} aria-label="Close"><X size={15} /></button>
+            </div>
+            {tripFormFields()}
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!canSubmit} onClick={submitAdd}>Add trip</button>
+              <button className="btn btn-light" onClick={() => setShowAdd(false)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {editTrip && (
+        <Modal onClose={() => setEditId(null)} title="Edit trip">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Edit trip</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            {tripFormFields()}
+            <div className="button-row">
+              <button className="btn btn-primary" disabled={!canSubmit} onClick={submitEdit}>Save changes</button>
+              <button className="btn btn-light" onClick={() => setEditId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteId && (
+        <Modal onClose={() => setDeleteId(null)} title="Confirm Delete">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Delete</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This will permanently delete the trip. You will not be able to restore it.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>Delete</button>
+              <button type="button" className="btn btn-light" onClick={() => setDeleteId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+// ---- Assign employees ----
+function AssignTab({ employees, trips, assignments, bump }) {
+  const pickupTrips = trips.filter((t) => t.direction === 'pickup')
+  const dropTrips = trips.filter((t) => t.direction === 'drop')
+
+  function assignedTo(empId) {
+    return assignments.find((a) => a.employeeId === empId) || { pickupTripId: '', dropTripId: '' }
+  }
+
+  const assignTable = useTableControls(employees, {
+    getSearchText: (emp) => {
+      const a = assignedTo(emp.id)
+      const pickupTrip = pickupTrips.find((t) => t.id === a.pickupTripId)
+      const dropTrip = dropTrips.find((t) => t.id === a.dropTripId)
+      return [emp.name, emp.id, pickupTrip ? tripLabel(pickupTrip) : '', dropTrip ? tripLabel(dropTrip) : ''].join(' ')
+    },
+    getSortValue: (emp, key) => {
+      if (key === 'pickup' || key === 'drop') {
+        const a = assignedTo(emp.id)
+        const list = key === 'pickup' ? pickupTrips : dropTrips
+        const tripId = key === 'pickup' ? a.pickupTripId : a.dropTripId
+        const t = list.find((x) => x.id === tripId)
+        return t ? tripLabel(t) : ''
+      }
+      return emp[key]
+    },
+    initialSortKey: 'name',
+    initialSortDir: 'asc',
+    filterFns: {
+      pickup: (emp, val) => {
+        const a = assignedTo(emp.id)
+        return a.pickupTripId === val
+      },
+      drop: (emp, val) => {
+        const a = assignedTo(emp.id)
+        return a.dropTripId === val
+      }
+    }
+  })
+
+  const {
+    items: employeesPage,
+    page: assignPageNum,
+    totalPages: assignTotalPages,
+    total: assignTotal,
+    startIndex: assignStart,
+    endIndex: assignEnd,
+    setPage: setAssignPage
+  } = usePagination(assignTable.rows)
+
+  function save(empId, pickupTripId, dropTripId) {
+    setCabAssignment(empId, pickupTripId, dropTripId)
+    bump()
+  }
+
+  return (
+    <div className="card">
+      <TableToolbar
+        search={assignTable.search}
+        onSearchChange={assignTable.setSearch}
+        showing={assignTable.count}
+        total={assignTable.total}
+        placeholder="Search employees..."
+        filters={[
+          {
+            key: 'pickup',
+            label: 'Pickup trip',
+            value: assignTable.filters.pickup || 'all',
+            options: [
+              { value: 'all', label: 'All pickup trips' },
+              ...pickupTrips.map((t) => ({ value: t.id, label: tripLabel(t) }))
+            ]
+          },
+          {
+            key: 'drop',
+            label: 'Drop trip',
+            value: assignTable.filters.drop || 'all',
+            options: [
+              { value: 'all', label: 'All drop trips' },
+              ...dropTrips.map((t) => ({ value: t.id, label: tripLabel(t) }))
+            ]
+          }
+        ]}
+        onFilterChange={assignTable.setFilter}
+      />
+      <table className="table">
+        <colgroup>
+          <col style={{ width: '30%' }} />
+          <col style={{ width: '25%' }} />
+          <col style={{ width: '25%' }} />
+          <col style={{ width: '20%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <SortableTh label="Employee" keyName="name" sortKey={assignTable.sortKey} sortDir={assignTable.sortDir} onSort={assignTable.toggleSort} />
+            <SortableTh label="Pickup trip" keyName="pickup" sortKey={assignTable.sortKey} sortDir={assignTable.sortDir} onSort={assignTable.toggleSort} />
+            <SortableTh label="Drop trip" keyName="drop" sortKey={assignTable.sortKey} sortDir={assignTable.sortDir} onSort={assignTable.toggleSort} />
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {employeesPage.map((emp) => {
+            const a = assignedTo(emp.id)
+            return (
+              <tr key={emp.id}>
+                <td>
+                  <div className="person-cell">
+                    <Avatar src={emp.photoUrl} name={emp.name} size={34} />
+                    <div>
+                      <strong>{emp.name}</strong>
+                      <div className="muted small">{emp.id}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <select
+                    className="inline-select"
+                    value={a.pickupTripId}
+                    onChange={(e) => save(emp.id, e.target.value, a.dropTripId)}
+                  >
+                    <option value="">-- none --</option>
+                    {pickupTrips.map((t) => <option key={t.id} value={t.id}>{tripLabel(t)}</option>)}
+                  </select>
+                </td>
+                <td>
+                  <select
+                    className="inline-select"
+                    value={a.dropTripId}
+                    onChange={(e) => save(emp.id, a.pickupTripId, e.target.value)}
+                  >
+                    <option value="">-- none --</option>
+                    {dropTrips.map((t) => <option key={t.id} value={t.id}>{tripLabel(t)}</option>)}
+                  </select>
+                </td>
+                <td><span className="tag tag-ok">Saved</span></td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <Pagination
+        page={assignPageNum}
+        totalPages={assignTotalPages}
+        total={assignTotal}
+        startIndex={assignStart}
+        endIndex={assignEnd}
+        onPageChange={setAssignPage}
+      />
+      <p className="hint">Changes are saved automatically when you select a trip.</p>
+    </div>
+  )
+}
+
+// ---- Temporary requests ----
+function RequestsTab({ requests, nameOf, bump }) {
+  const [notes, setNotes] = useState({})
+  const [approveId, setApproveId] = useState(null)
+  const [rejectId, setRejectId] = useState(null)
+  const [openId, setOpenId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+
+  function toggleMenu(id) { setOpenMenuId(openMenuId === id ? null : id) }
+  function closeMenu() { setOpenMenuId(null) }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) closeMenu()
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
+
+  function decide(id, status) {
+    setCabRequestStatus(id, status, notes[id] || '')
+    bump()
+  }
+  function handleApprove() {
+    if (!approveId) return
+    decide(approveId, 'approved')
+    setApproveId(null)
+  }
+  function handleReject() {
+    if (!rejectId) return
+    // The reason is compulsory — the button is disabled until one is typed,
+    // this guard covers programmatic calls.
+    if (!(notes[rejectId] || '').trim()) return
+    decide(rejectId, 'rejected')
+    setRejectId(null)
+  }
+
+  const requestsTable = useTableControls(requests, {
+    getSearchText: (r) => [
+      nameOf(r.employeeId),
+      r.forDates.join(' '),
+      r.newLocation, r.newGate, r.newTime,
+      r.reason, requestStatusLabel(r.status), r.adminNote
+    ].join(' '),
+    getSortValue: (r, key) => {
+      if (key === 'employee') return nameOf(r.employeeId)
+      if (key === 'dates') return r.forDates[0] || ''
+      if (key === 'status') return r.status
+      // Sort the Changes column by the exact text it renders, so the order the
+      // admin sees matches the arrows they clicked.
+      if (key === 'changes') return changesParts(r).join(' · ')
+      return r[key]
+    },
+    initialSortKey: 'dates',
+    initialSortDir: 'desc',
+    filterFns: { status: (r, val) => r.status === val }
+  })
+
+  const {
+    items: requestsPage,
+    page: requestsPageNum,
+    totalPages: requestsTotalPages,
+    total: requestsTotal,
+    startIndex: requestsStart,
+    endIndex: requestsEnd,
+    setPage: setRequestsPage
+  } = usePagination(requestsTable.rows)
+
+  const openRequest = requests.find((r) => r.id === openId) || null
+  const approveRequest = requests.find((r) => r.id === approveId) || null
+  const rejectRequest = requests.find((r) => r.id === rejectId) || null
+
+  function changesParts(r) {
+    const p = []
+    if (r.newLocation) p.push(`Location: ${r.newLocation}`)
+    if (r.newGate) p.push(`Gate: ${r.newGate}`)
+    if (r.newTime) p.push(`Time: ${formatTime12(r.newTime)}`)
+    return p
+  }
+
+  return (
+    <div className="card">
+      <TableToolbar
+        search={requestsTable.search}
+        onSearchChange={requestsTable.setSearch}
+        showing={requestsTable.count}
+        total={requestsTable.total}
+        placeholder="Search requests..."
+        filters={[
+          {
+            key: 'status',
+            label: 'Status',
+            value: requestsTable.filters.status || 'all',
+            options: [
+              { value: 'all', label: 'All statuses' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'approved', label: 'Approved' },
+              { value: 'rejected', label: 'Rejected' },
+              { value: 'withdrawn', label: 'Withdrawn' }
+            ]
+          }
+        ]}
+        onFilterChange={requestsTable.setFilter}
+      />
+      <table className="table" style={{ tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '22%' }} />
+          <col style={{ width: '17%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '17%' }} />
+          <col style={{ width: '6%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <SortableTh label="Employee" keyName="employee" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+            <SortableTh label="Date(s)" keyName="dates" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+            <SortableTh label="Changes" keyName="changes" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+            <SortableTh label="Reason" keyName="reason" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} className="th-wrap" />
+            <SortableTh label="Status" keyName="status" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} />
+            <SortableTh label="Admin note" keyName="adminNote" sortKey={requestsTable.sortKey} sortDir={requestsTable.sortDir} onSort={requestsTable.toggleSort} className="th-wrap" />
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {requestsTable.count === 0 && (
+            <TableEmpty
+              colSpan={7}
+              message={
+                requests.length === 0
+                  ? 'No change requests yet.'
+                  : 'No requests match your search.'
+              }
+            />
+          )}
+          {requestsPage.map((r) => {
+            const emp = getEmployees().find((e) => e.id === r.employeeId)
+            const parts = changesParts(r)
+            const datesText = r.forDates.map((d) => formatDate(d)).join(', ')
+            return (
+              <tr key={r.id}>
+                <td>
+                  <div className="person-cell">
+                    <Avatar src={emp?.photoUrl} name={nameOf(r.employeeId)} size={28} />
+                    <span>{nameOf(r.employeeId)}</span>
+                  </div>
+                </td>
+                <td className="cell-ellipsis" title={datesText}>{datesText}</td>
+                <td className="cell-ellipsis" title={parts.join(' — ') || undefined}>
+                  {parts.length > 0 ? parts.join(' · ') : <span className="muted">--</span>}
+                </td>
+                <td className="cell-ellipsis" title={r.reason || undefined}>{r.reason}</td>
+                <td><span className={`tag ${requestStatusTagClass(r.status)}`}>{requestStatusLabel(r.status)}</span></td>
+                <td className="cell-ellipsis" title={r.adminNote || undefined}>{r.adminNote || <span className="muted">--</span>}</td>
+                <td>
+                  <div className="task-menu-container">
+                    <button
+                      type="button"
+                      className="btn btn-tiny btn-light task-menu-button"
+                      onClick={() => toggleMenu(r.id)}
+                      aria-label="Request actions"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                    {openMenuId === r.id && (
+                      <div className="task-menu-dropdown">
+                        <button
+                          type="button"
+                          className="task-menu-item"
+                          onClick={() => { setOpenId(r.id); closeMenu() }}
+                        >
+                          <Eye size={14} aria-hidden="true" />Open
+                        </button>
+                        <button
+                          type="button"
+                          className="task-menu-item"
+                          disabled={r.status !== 'pending'}
+                          onClick={() => { setApproveId(r.id); closeMenu() }}
+                        >
+                          <Check size={14} aria-hidden="true" />Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="task-menu-item task-menu-item-danger"
+                          disabled={r.status !== 'pending'}
+                          onClick={() => { setRejectId(r.id); closeMenu() }}
+                        >
+                          <X size={14} aria-hidden="true" />Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <Pagination
+        page={requestsPageNum}
+        totalPages={requestsTotalPages}
+        total={requestsTotal}
+        startIndex={requestsStart}
+        endIndex={requestsEnd}
+        onPageChange={setRequestsPage}
+      />
+
+      {/* Open — full request details */}
+      {openRequest && (
+        <Modal onClose={() => setOpenId(null)} title="Change request">
+          <div className="modal-form modal-form-wide">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>Change request</h3>
+                <div className="muted small">
+                  {nameOf(openRequest.employeeId)}
+                  {' · '}
+                  {openRequest.forDates.map((d) => formatDate(d)).join(', ')}
+                  {' · '}
+                  Raised {formatDate(openRequest.raisedOn)}
+                  {' · '}
+                  <span className={`tag ${requestStatusTagClass(openRequest.status)}`}>
+                    {requestStatusLabel(openRequest.status)}
+                  </span>
+                </div>
+              </div>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setOpenId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <ul style={{ margin: '12px 0', paddingLeft: '20px' }}>
+              {changesParts(openRequest).map((p, i) => <li key={i}>{p}</li>)}
+              {changesParts(openRequest).length === 0 && <li className="muted">No changes specified</li>}
+            </ul>
+            {openRequest.reason && (
+              <p className="hint"><strong>Reason:</strong> {openRequest.reason}</p>
+            )}
+            {openRequest.adminNote && (
+              <p className="hint"><strong>Admin note:</strong> {openRequest.adminNote}</p>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Approve — confirm + note */}
+      {approveRequest && (
+        <Modal onClose={() => setApproveId(null)} title="Confirm approval">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first" style={{ margin: 0 }}>Confirm approval</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setApproveId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              Approve this cab request for <strong>{nameOf(approveRequest.employeeId)}</strong>?
+            </p>
+            <label className="field">
+              <span>Note to employee (optional)</span>
+              <input
+                value={notes[approveRequest.id] || ''}
+                onChange={(e) => setNotes({ ...notes, [approveRequest.id]: e.target.value })}
+                placeholder="e.g. Driver will come to Gate 5"
+              />
+            </label>
+            <div className="button-row">
+              <button type="button" className="btn btn-primary" onClick={handleApprove}>Approve</button>
+              <button type="button" className="btn btn-light" onClick={() => setApproveId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Reject — confirm + note */}
+      {rejectRequest && (
+        <Modal onClose={() => setRejectId(null)} title="Confirm rejection">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first" style={{ margin: 0 }}>Confirm rejection</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setRejectId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              Reject this cab request for <strong>{nameOf(rejectRequest.employeeId)}</strong>? This cannot be undone.
+            </p>
+            <label className="field">
+              <span>Reason for rejection (required)</span>
+              <input
+                value={notes[rejectRequest.id] || ''}
+                onChange={(e) => setNotes({ ...notes, [rejectRequest.id]: e.target.value })}
+                placeholder="e.g. Requested date is already a holiday"
+              />
+            </label>
+            <div className="button-row">
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={!(notes[rejectRequest.id] || '').trim()}
+                onClick={handleReject}
+              >
+                Reject
+              </button>
+              <button type="button" className="btn btn-light" onClick={() => setRejectId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+// ---- Messages (chat with employees) ----
+function MessagesTab({ employees, unreadByEmp, bump }) {
+  const [selected, setSelected] = useState('')
+  const [text, setText] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const threadRef = useRef(null)
+  const inputRef = useRef(null)
+
+  const messages = useMemo(() => {
+    if (!selected) return []
+    const clearedAt = getCabClearedAtAdmin(selected)
+    return getCabMessagesForEmployee(selected).filter(
+      (m) => !clearedAt || m.on > clearedAt
+    )
+  }, [selected, bump])
+
+  const selectedEmp = employees.find((e) => e.id === selected)
+
+  // Employees with unread messages first (highest count on top), then the rest.
+  const sortedEmployees = useMemo(() => {
+    return [...employees].sort((a, b) => {
+      const ua = unreadByEmp[a.id] || 0
+      const ub = unreadByEmp[b.id] || 0
+      if (ua !== ub) return ub - ua
+      return a.name.localeCompare(b.name)
+    })
+  }, [employees, unreadByEmp])
+
+  // Auto-scroll to the bottom when new messages arrive, and focus the reply
+  // box as the slide-in panel opens so the admin can start typing right away.
+  useEffect(() => {
+    if (threadRef.current) {
+      threadRef.current.scrollTop = threadRef.current.scrollHeight
+    }
+    if (selected) {
+      requestAnimationFrame(() => {
+        if (inputRef.current) inputRef.current.focus()
+      })
+    }
+  }, [messages, selected])
+
+  // Close the three-dot menu when clicking outside.
+  useEffect(() => {
+    if (!menuOpen) return
+    function onDocClick(e) {
+      if (!e.target.closest('.team-chat-menu-container')) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [menuOpen])
+
+  function chooseEmployee(id) {
+    setSelected(id)
+    setMenuOpen(false)
+    if (id) markCabThreadRead(id) // opening the thread marks it read
+    bump()
+  }
+
+  function send() {
+    const t = text.trim()
+    if (!t || !selected) return
+    addCabMessage({ employeeId: selected, byRole: 'admin', text: t })
+    setText('')
+    requestAnimationFrame(() => {
+      if (inputRef.current) inputRef.current.focus()
+    })
+    bump()
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      send()
+    }
+  }
+
+  function handleClearChat() {
+    clearCabChatAdmin(selected)
+    setMenuOpen(false)
+    setConfirmClear(false)
+    bump()
+  }
+
+  function closeChat() {
+    setSelected('')
+  }
+
+  return (
+    <>
+      <div className="card" style={{ padding: '12px 16px', marginBottom: 12 }}>
+        <label className="field" style={{ margin: 0 }}>
+          <span>Choose an employee to view their chat (unread shown first)</span>
+          <select value={selected} onChange={(e) => chooseEmployee(e.target.value)}>
+            <option value="">-- choose employee --</option>
+            {sortedEmployees.map((emp) => {
+              const n = unreadByEmp[emp.id] || 0
+              return (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name} ({emp.id}){n > 0 ? ` — ${n} new` : ''}
+                </option>
+              )
+            })}
+          </select>
+        </label>
+      </div>
+
+      {/* Slide-in chat panel — same pattern as the My Team message panel */}
+      {selected && (
+        <div className="team-chat-overlay" onClick={closeChat}>
+          <div className="team-chat-slide" onClick={(e) => e.stopPropagation()}>
+            <div className="team-chat-panel">
+              <div className="team-chat-header">
+                <div className="team-chat-peer">
+                  <Avatar src={selectedEmp?.photoUrl} name={selectedEmp?.name || selected} size={32} />
+                  <div>
+                    <div className="team-chat-peer-name">{selectedEmp?.name || selected}</div>
+                    <div className="team-chat-peer-role muted small">{selected}</div>
+                  </div>
+                </div>
+                <div className="team-chat-header-actions">
+                  <div className="task-menu-container team-chat-menu-container">
+                    <button
+                      type="button"
+                      className="btn btn-tiny btn-light task-menu-button"
+                      onClick={() => setMenuOpen((v) => !v)}
+                      aria-label="Chat options"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                    {menuOpen && (
+                      <div className="task-menu-dropdown">
+                        <button
+                          type="button"
+                          className="task-menu-item task-menu-item-danger"
+                          onClick={() => { setMenuOpen(false); setConfirmClear(true) }}
+                        >
+                          <Trash2 size={14} aria-hidden="true" />
+                          Clear chat
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="team-chat-thread" ref={threadRef}>
+                {messages.length === 0 && (
+                  <p className="muted team-chat-empty">
+                    No messages in this conversation yet.
+                  </p>
+                )}
+                {messages.map((m) => (
+                  <div key={m.id} className={`msg ${m.byRole === 'admin' ? 'msg-mine' : 'msg-them'}`}>
+                    {m.text && <div className="msg-body">{m.text}</div>}
+                    <div className="msg-time">{formatDateTime(m.on)}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="team-chat-reply">
+                <div className="team-chat-composer">
+                  <textarea
+                    ref={inputRef}
+                    className="team-chat-composer-input"
+                    rows={1}
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={`Reply to ${selectedEmp?.name || 'employee'}...`}
+                  />
+                  <div className="team-chat-composer-actions">
+                    <button
+                      type="button"
+                      className={`team-chat-composer-send ${text.trim() ? 'active' : ''}`}
+                      disabled={!text.trim()}
+                      onClick={send}
+                      aria-label="Send message"
+                      title="Send message"
+                    >
+                      <Send size={18} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmClear && (
+        <Modal onClose={() => setConfirmClear(false)} title="Clear chat">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first" style={{ margin: 0 }}>Clear chat</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmClear(false)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This will clear the conversation with {selectedEmp?.name || selected} from
+              your side only. The employee keeps their copy of the messages.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={handleClearChat}>
+                Clear chat
+              </button>
+              <button type="button" className="btn btn-light" onClick={() => setConfirmClear(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
+  )
+}
+
+// ---- Today's cancellations (driver view) ----
+function TodayTab({ employees, bump }) {
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const cancellations = useMemo(
+    () => getCabCancellationsForDate(todayKey),
+    [bump]
+  )
+  const drivers = useMemo(() => getDrivers(), [bump])
+
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [showCancellation, setShowCancellation] = useState(false)
+  const [copiedId, setCopiedId] = useState(null)
+  const copyTimer = useRef(null)
+
+  function toggleMenu(id) {
+    setOpenMenuId((cur) => (cur === id ? null : id))
+  }
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  function copyRunSheetLink(d) {
+    navigator.clipboard.writeText(`${origin}/driver/${d.id}`).catch(() => {})
+    setCopiedId(d.id)
+    window.clearTimeout(copyTimer.current)
+    copyTimer.current = window.setTimeout(() => {
+      setCopiedId(null)
+      setOpenMenuId(null)
+    }, 1200)
+  }
+
+  useEffect(() => () => window.clearTimeout(copyTimer.current), [])
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
+
+  const runsTable = useTableControls(drivers, {
+    initialSortKey: 'name',
+    initialSortDir: 'asc'
+  })
+
+  const {
+    items: driversPage,
+    page: runsPageNum,
+    totalPages: runsTotalPages,
+    total: runsTotal,
+    startIndex: runsStart,
+    endIndex: runsEnd,
+    setPage: setRunsPage
+  } = usePagination(runsTable.rows)
+
+  function nameOf(id) {
+    return employees.find((e) => e.id === id)?.name || id
+  }
+
+  const skippingPickup = cancellations.filter((c) => c.skipPickup)
+  const skippingDrop   = cancellations.filter((c) => c.skipDrop)
+
+  const {
+    items: pickupPage,
+    page: pickupPageNum,
+    totalPages: pickupTotalPages,
+    total: pickupTotal,
+    startIndex: pickupStart,
+    endIndex: pickupEnd,
+    setPage: setPickupPage
+  } = usePagination(skippingPickup)
+  const {
+    items: dropPage,
+    page: dropPageNum,
+    totalPages: dropTotalPages,
+    total: dropTotal,
+    startIndex: dropStart,
+    endIndex: dropEnd,
+    setPage: setDropPage
+  } = usePagination(skippingDrop)
+
+  const todayLabel = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  })
+
+  const origin = window.location.origin
+
+  return (
+    <>
+      {/* Driver run-sheet links */}
+      <div className="card">
+        <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
+          <h3 className="section-title first">Driver run sheets — {todayLabel}</h3>
+          <button className="btn btn-primary btn-tiny" onClick={() => setShowCancellation(true)}>
+            Cancellation summary
+          </button>
+        </div>
+        <p className="hint first">
+          Open or share a driver&rsquo;s run sheet link on their phone before the shift begins.
+          The page shows their complete pickup and drop list with addresses, times, and map links.
+        </p>
+        {drivers.length === 0 && <p className="muted">No drivers added yet.</p>}
+        {drivers.length > 0 && (
+          <>
+            <table className="table">
+              <colgroup>
+                <col style={{ width: '35%' }} />
+                <col style={{ width: '25%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <SortableTh label="Driver" keyName="name" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
+                  <SortableTh label="Mobile" keyName="mobile" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
+                  <SortableTh label="WorkBuddy ID" keyName="id" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {driversPage.map((d) => (
+                  <tr key={d.id}>
+                    <td>
+                      <div className="person-cell">
+                        <Avatar name={d.name} size={34} />
+                        <strong>{d.name}</strong>
+                      </div>
+                    </td>
+                    <td>{d.mobile}</td>
+                    <td><code>{d.id}</code></td>
+                    <td>
+                      <div className="task-menu-container">
+                        <button
+                          type="button"
+                          className="btn btn-tiny btn-light task-menu-button"
+                          onClick={() => toggleMenu(d.id)}
+                          aria-label="Run sheet actions"
+                         ><MoreVertical size={16} /></button>
+                        {openMenuId === d.id && (
+                          <div className="task-menu-dropdown">
+                            <a
+                              href={`${origin}/driver/${d.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="task-menu-item"
+                              onClick={closeMenu}
+                            >
+                              <ExternalLink size={14} aria-hidden="true" />
+                              Open run sheet
+                            </a>
+                            <button
+                              type="button"
+                              className="task-menu-item"
+                              onClick={() => copyRunSheetLink(d)}
+                            >
+                              {copiedId === d.id ? (<><Check size={14} aria-hidden="true" /> Link copied</>) : (<><Copy size={14} aria-hidden="true" /> Copy link</>)}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pagination
+              page={runsPageNum}
+              totalPages={runsTotalPages}
+              total={runsTotal}
+              startIndex={runsStart}
+              endIndex={runsEnd}
+              onPageChange={setRunsPage}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Cancellation summary popup */}
+      {showCancellation && (
+        <Modal onClose={() => setShowCancellation(false)} title="Cancellation summary">
+          <div className="modal-form modal-form-wide">
+            <div className="modal-header">
+              <h3 className="section-title first">Cancellation summary</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowCancellation(false)} aria-label="Close"><X size={15} /></button>
+            </div>
+
+            <h4 className="sub-title">Not taking pickup today</h4>
+            {skippingPickup.length === 0 ? (
+              <p className="muted">All employees are taking the pickup cab today.</p>
+            ) : (
+              <table className="table">
+                <thead><tr><th>Employee</th><th>ID</th></tr></thead>
+                <tbody>
+                  {pickupPage.map((c) => (
+                    <tr key={c.employeeId}>
+                      <td><strong>{nameOf(c.employeeId)}</strong></td>
+                      <td className="muted">{c.employeeId}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {skippingPickup.length > 0 && (
+              <Pagination
+                page={pickupPageNum}
+                totalPages={pickupTotalPages}
+                total={pickupTotal}
+                startIndex={pickupStart}
+                endIndex={pickupEnd}
+                onPageChange={setPickupPage}
+              />
+            )}
+
+            <h4 className="sub-title" style={{ marginTop: '1.5rem' }}>Not taking drop today</h4>
+            {skippingDrop.length === 0 ? (
+              <p className="muted">All employees are taking the drop cab today.</p>
+            ) : (
+              <table className="table">
+                <thead><tr><th>Employee</th><th>ID</th></tr></thead>
+                <tbody>
+                  {dropPage.map((c) => (
+                    <tr key={c.employeeId}>
+                      <td><strong>{nameOf(c.employeeId)}</strong></td>
+                      <td className="muted">{c.employeeId}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {skippingDrop.length > 0 && (
+              <Pagination
+                page={dropPageNum}
+                totalPages={dropTotalPages}
+                total={dropTotal}
+                startIndex={dropStart}
+                endIndex={dropEnd}
+                onPageChange={setDropPage}
+              />
+            )}
+          </div>
+        </Modal>
+      )}
+    </>
+  )
+}

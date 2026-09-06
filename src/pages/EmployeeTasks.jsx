@@ -1,0 +1,545 @@
+import { useMemo, useState, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext.jsx'
+import {
+  addTask,
+  addTaskMessage,
+  deleteTaskByAssignee,
+  getEmployeeById,
+  getTasksForAssignee,
+  refreshStoreFromSupabase,
+  STORE_KEYS,
+  updateTaskByAssignee,
+  updateTaskStatusByEmployee
+} from '../data/store.js'
+import { TASK_STATUSES, TASK_PRIORITIES } from '../data/sampleData.js'
+import { formatDate } from '../utils/attendance.js'
+import {
+  QUICK_FILTER_LABELS,
+  canEmployeeAskQuestion,
+  canEmployeeDeleteTask,
+  canEmployeeEditTask,
+  closureNotice,
+  employeeStatusOptions,
+  isEmployeeStatusLocked,
+  isOverdue,
+  isSelfAssigned,
+  quickFilterBucketKey,
+  statusLabel,
+  statusTagClass
+} from '../utils/tasks.js'
+import TaskForm from '../components/TaskForm.jsx'
+import TaskThread from '../components/TaskThread.jsx'
+import { TaskStatusChart } from '../components/tasks/TaskStatusChart.tsx'
+import Modal from '../components/Modal.jsx'
+import Pagination from '../components/Pagination.jsx'
+import SortableTh from '../components/SortableTh.jsx'
+import TableToolbar from '../components/TableToolbar.jsx'
+import { usePagination } from '../hooks/usePagination.js'
+import { useTableControls } from '../hooks/useTableControls.js'
+import { Eye, ListTodo, MoreVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
+import TableEmpty from '../components/TableEmpty.jsx'
+
+const TASK_STATUS_FILTER_OPTS = [
+  { value: 'all', label: 'All statuses' },
+  ...TASK_STATUSES.map((s) => ({ value: s.key, label: s.label }))
+]
+const TASK_PRIORITY_FILTER_OPTS = [
+  { value: 'all', label: 'All priorities' },
+  ...TASK_PRIORITIES.map((p) => ({ value: p.key, label: p.label }))
+]
+const ASSIGNED_DURING_FILTER_OPTS = [
+  { value: 'all', label: 'All time' },
+  { value: 'this-month', label: 'This Month' },
+  { value: 'last-month', label: 'Last Month' },
+  { value: 'ytd', label: 'Year to Date' }
+]
+
+// Whether a task's assigned-on date falls inside the chosen "Assigned During"
+// window. Handles both date-only ("YYYY-MM-DD") and full ISO datetime strings.
+function inAssignedDuring(dateKey, val) {
+  if (!val || val === 'all') return true
+  if (!dateKey) return false
+  const d = dateKey.includes('T') ? new Date(dateKey) : new Date(`${dateKey}T00:00:00`)
+  const now = new Date()
+  if (val === 'this-month') {
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+  }
+  if (val === 'last-month') {
+    const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    return d.getFullYear() === lm.getFullYear() && d.getMonth() === lm.getMonth()
+  }
+  if (val === 'ytd') return d.getFullYear() === now.getFullYear()
+  return true
+}
+
+// The employee's own task board. Self-created tasks can be edited and deleted;
+// manager-assigned tasks follow a submit-for-closure → manager approval flow.
+export default function EmployeeTasks() {
+  const { user } = useAuth()
+  const [refresh, setRefresh] = useState(0)
+  const [showForm, setShowForm] = useState(false)
+  const [editTaskId, setEditTaskId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [openTaskId, setOpenTaskId] = useState(null)
+  const [deleteId, setDeleteId] = useState(null)
+
+  const tasks = useMemo(
+    () => getTasksForAssignee(user.id),
+    [user.id, refresh]
+  )
+
+  // Pull the latest tasks from Supabase so a manager's change — including a
+  // task they deleted — reaches this board without a reload. `deletedTasks` is
+  // fetched alongside because that is what the "Task deleted" alert reads.
+  useEffect(() => {
+    let cancelled = false
+    async function refreshTasks() {
+      await refreshStoreFromSupabase([STORE_KEYS.tasks, STORE_KEYS.deletedTasks])
+      if (!cancelled) bump()
+    }
+    refreshTasks()
+    window.addEventListener('storage', refreshTasks)
+    window.addEventListener('focus', refreshTasks)
+    return () => {
+      cancelled = true
+      window.removeEventListener('storage', refreshTasks)
+      window.removeEventListener('focus', refreshTasks)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id])
+
+  const table = useTableControls(tasks, {
+    getSearchText: (t) => {
+      const creator = getEmployeeById(t.createdById)
+      const creatorName = t.createdById === t.assigneeId ? 'Myself' : creator?.name || ''
+      return [t.title, t.description, t.priority, t.status, t.dueDate, t.createdOn, creatorName].join(' ')
+    },
+    getSortValue: (t, key) => {
+      if (key === 'createdBy') {
+        if (t.createdById === t.assigneeId) return 'Myself'
+        return getEmployeeById(t.createdById)?.name || t.createdById
+      }
+      if (key === 'status') return statusLabel(t.status)
+      return t[key]
+    },
+    initialSortKey: 'dueDate',
+    initialSortDir: 'asc',
+    filterFns: {
+      status: (t, val) => t.status === val,
+      priority: (t, val) => t.priority === val,
+      assignedDuring: (t, val) => inAssignedDuring(t.createdOn, val),
+      quick: (t, val) => (val === 'overdue' ? isOverdue(t) : quickFilterBucketKey(t) === val)
+    }
+  })
+  const {
+    items: tasksPage,
+    page: tasksPageNum,
+    totalPages: tasksTotalPages,
+    total: tasksTotal,
+    startIndex: tasksStart,
+    endIndex: tasksEnd,
+    setPage: setTasksPage
+  } = usePagination(table.rows)
+
+  const openTask = tasks.find((t) => t.id === openTaskId) || null
+  const editTask = tasks.find((t) => t.id === editTaskId) || null
+
+  function nameOf(id) {
+    if (id === user.id) return user.name
+    const emp = getEmployeeById(id)
+    return emp?.name || id
+  }
+
+  function assignerLabel(task) {
+    if (task.createdById === task.assigneeId) return 'Myself'
+    return nameOf(task.createdById)
+  }
+
+  function bump() {
+    setRefresh((n) => n + 1)
+  }
+
+  function handleCreate(data) {
+    addTask({ ...data, createdById: user.id })
+    bump()
+    setShowForm(false)
+  }
+
+  function handleEdit(data) {
+    if (!editTask) return
+    updateTaskByAssignee(editTask.id, user.id, data)
+    bump()
+    setEditTaskId(null)
+  }
+
+  function move(id, status) {
+    updateTaskStatusByEmployee(id, user.id, status)
+    bump()
+  }
+
+  function handleDelete(id) {
+    setDeleteId(id)
+  }
+
+  function confirmDelete() {
+    if (deleteId) {
+      deleteTaskByAssignee(deleteId, user.id)
+      setDeleteId(null)
+      bump()
+    }
+  }
+
+  function cancelDelete() {
+    setDeleteId(null)
+  }
+
+  function handleTaskReply(text) {
+    if (!openTask) return
+    addTaskMessage(openTask.id, { byId: user.id, text })
+    bump()
+  }
+
+  function getPriorityLabel(key) {
+    const p = TASK_PRIORITIES.find((item) => item.key === key)
+    return p ? p.label : key
+  }
+
+  function getPriorityClass(key) {
+    switch (key) {
+      case 'high': return 'tag-high'
+      case 'medium': return 'tag-medium'
+      case 'low': return 'tag-low'
+      default: return ''
+    }
+  }
+
+  function toggleMenu(taskId) {
+    setOpenMenuId(openMenuId === taskId ? null : taskId)
+  }
+  function closeMenu() {
+    setOpenMenuId(null)
+  }
+
+  function statusCell(task) {
+    const options = employeeStatusOptions(task)
+
+    if (isEmployeeStatusLocked(task)) {
+      return (
+        <span className={`tag ${statusTagClass(task.status)}`}>
+          {statusLabel(task.status)}
+        </span>
+      )
+    }
+
+    return (
+      <select
+        value={task.status}
+        onChange={(e) => move(task.id, e.target.value)}
+        className="btn-tiny"
+      >
+        {options.map((s) => (
+          <option key={s.key} value={s.key}>{s.label}</option>
+        ))}
+      </select>
+    )
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenuId && !event.target.closest('.task-menu-container')) {
+        closeMenu()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
+
+  return (
+    <div>
+      <div className="page-head">
+        <div>
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <ListTodo size={20} style={{ opacity: 0.7, marginRight: 8, flexShrink: 0 }} />My Tasks
+          </h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>Track your assigned tasks, priorities, and deadlines</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span className="muted">{tasks.length} task(s)</span>
+        </div>
+      </div>
+
+      <TaskStatusChart
+        tasks={tasks}
+        activeKey={table.filters.quick && table.filters.quick !== 'all' ? table.filters.quick : null}
+        onToggleKey={(key) =>
+          table.setFilter('quick', table.filters.quick === key ? 'all' : key)
+        }
+      />
+
+      {showForm && (
+        <Modal onClose={() => setShowForm(false)} title="Add a task for myself">
+          <div className="modal-form">
+              <div className="modal-header">
+                <h3 className="section-title first">Add a task for myself</h3>
+                <button
+                  type="button"
+                  className="btn btn-tiny btn-light"
+                  onClick={() => setShowForm(false)}
+                 aria-label="Close"><X size={15} /></button>
+              </div>
+              <p className="hint first">
+                Create a task for yourself and track its progress through To do, In progress, and Done.
+              </p>
+              <TaskForm
+                defaultAssigneeId={user.id}
+                onCreate={handleCreate}
+                onCancel={() => setShowForm(false)}
+              />
+            </div>
+        </Modal>
+      )}
+
+      {editTask && (
+        <Modal onClose={() => setEditTaskId(null)} title="Edit task">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Edit task</h3>
+              <button
+                type="button"
+                className="btn btn-tiny btn-light"
+                onClick={() => setEditTaskId(null)}
+               aria-label="Close"><X size={15} /></button>
+            </div>
+            <TaskForm
+              defaultAssigneeId={user.id}
+              initial={editTask}
+              submitLabel="Save changes"
+              onCreate={handleEdit}
+              onCancel={() => setEditTaskId(null)}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {openTask && (
+        <Modal onClose={() => setOpenTaskId(null)} title={openTask.title}>
+          <div className="modal-form">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>{openTask.title}</h3>
+                <div className="muted small">
+                  Assigned by {assignerLabel(openTask)} on {openTask.createdOn ? formatDate(openTask.createdOn) : '--'}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-tiny btn-light"
+                onClick={() => setOpenTaskId(null)}
+               aria-label="Close"><X size={15} /></button>
+            </div>
+            {openTask.description && (
+              <p className="hint first">{openTask.description}</p>
+            )}
+            {closureNotice(openTask, nameOf) && (
+              <p className="hint">{closureNotice(openTask, nameOf)}</p>
+            )}
+            <TaskThread
+              task={openTask}
+              viewerId={user.id}
+              nameOf={nameOf}
+              onReply={handleTaskReply}
+              onClose={() => setOpenTaskId(null)}
+            />
+          </div>
+        </Modal>
+      )}
+
+      <div className="card">
+        <TableToolbar
+          search={table.search}
+          onSearchChange={table.setSearch}
+          total={tasksTotal}
+          startIndex={tasksStart}
+          endIndex={tasksEnd}
+          placeholder="Search tasks..."
+          filters={[
+            {
+              key: 'assignedDuring',
+              label: 'Assigned During',
+              value: table.filters.assignedDuring || 'all',
+              options: ASSIGNED_DURING_FILTER_OPTS
+            },
+            {
+              key: 'priority',
+              label: 'Priority',
+              value: table.filters.priority || 'all',
+              options: TASK_PRIORITY_FILTER_OPTS
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              value: table.filters.status || 'all',
+              options: TASK_STATUS_FILTER_OPTS
+            }
+          ]}
+          onFilterChange={table.setFilter}
+          actions={
+            <>
+              {table.filters.quick && table.filters.quick !== 'all' ? (
+                <button
+                  type="button"
+                  className="quick-filter-chip"
+                  onClick={() => table.setFilter('quick', 'all')}
+                  aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
+                >
+                  {QUICK_FILTER_LABELS[table.filters.quick]}
+                  <X size={13} aria-hidden="true" />
+                </button>
+              ) : null}
+              <button
+                className="btn btn-primary btn-tiny"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add a task
+              </button>
+            </>
+          }
+        />
+        <table className="table" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '17%' }} />
+            <col style={{ width: '25%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '8%' }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Description" keyName="description" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Assigned by" keyName="createdBy" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Assigned on" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Due Date" keyName="dueDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {table.count === 0 && (
+              <TableEmpty colSpan={8} message="No tasks match your filters." />
+            )}
+            {tasksPage.map((task) => (
+              <tr key={task.id}>
+                <td className="cell-ellipsis" title={task.title}><strong>{task.title}</strong></td>
+                <td className="cell-ellipsis" title={task.description || undefined}>{task.description || <span className="muted">--</span>}</td>
+                <td>{assignerLabel(task)}</td>
+                <td>
+                  {task.createdOn ? formatDate(task.createdOn) : <span className="muted">--</span>}
+                </td>
+                <td>
+                  <span className={`tag ${getPriorityClass(task.priority)}`}>
+                    {getPriorityLabel(task.priority)}
+                  </span>
+                </td>
+                <td>{statusCell(task)}</td>
+                <td className={isOverdue(task) ? 'text-bad' : ''}>
+                  {task.dueDate ? formatDate(task.dueDate) : <span className="muted">--</span>}
+                  {isOverdue(task) && <div className="muted small">(Overdue)</div>}
+                </td>
+                <td>
+                  <div className="task-menu-container">
+                    <button
+                      className="btn btn-tiny btn-light task-menu-button"
+                      onClick={() => toggleMenu(task.id)}
+                     aria-label="More actions"><MoreVertical size={16} /></button>
+                    {openMenuId === task.id && (
+                      <div className="task-menu-dropdown">
+                        {!isSelfAssigned(task) && (
+                          <button
+                            className="task-menu-item"
+                            onClick={() => {
+                              setOpenTaskId(task.id)
+                              closeMenu()
+                            }}
+                            disabled={!canEmployeeAskQuestion(task)}
+                          >
+                            <Eye size={14} aria-hidden="true" />
+                            Open
+                          </button>
+                        )}
+                        {canEmployeeEditTask(task, user.id) && (
+                          <button
+                            className="task-menu-item"
+                            onClick={() => {
+                              setEditTaskId(task.id)
+                              closeMenu()
+                            }}
+                          >
+                            <Pencil size={14} aria-hidden="true" />
+                            Edit
+                          </button>
+                        )}
+                        {canEmployeeDeleteTask(task, user.id) && (
+                          <button
+                            className="task-menu-item task-menu-item-danger"
+                            onClick={() => {
+                              handleDelete(task.id)
+                            }}
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pagination
+          page={tasksPageNum}
+          totalPages={tasksTotalPages}
+          total={tasksTotal}
+          startIndex={tasksStart}
+          endIndex={tasksEnd}
+          onPageChange={setTasksPage}
+        />
+      </div>
+
+      {deleteId && (
+        <Modal onClose={cancelDelete} title="Confirm Delete">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Confirm Delete</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={cancelDelete} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This will permanently delete the task and all its conversation. You will not be able to recover it.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>
+                Delete
+              </button>
+              <button type="button" className="btn btn-light" onClick={cancelDelete}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      <p className="hint">
+        <strong>Quick filters:</strong> click the To do, In progress, Done, or Overdue cards above to show only those tasks; click again to see all.
+        Your own tasks can be edited, deleted, or marked done from the status dropdown.
+        For tasks assigned by your manager, mark them done when finished — your manager will approve before the task is closed.
+        Use the <strong>three-dot</strong> menu on manager-assigned tasks to ask questions or request changes.
+      </p>
+    </div>
+  )
+}

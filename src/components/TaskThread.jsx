@@ -1,0 +1,85 @@
+import { useState } from 'react'
+import { formatDate } from '../utils/attendance.js'
+
+// Task Q&A thread between the assignee and whoever created the task.
+// allowPost lets an admin view post on any task.
+export default function TaskThread({ task, viewerId, nameOf, onReply, onClose, allowPost }) {
+  const [text, setText] = useState('')
+  const messages = task.messages || []
+  const canPost = allowPost || viewerId === task.assigneeId || viewerId === task.createdById
+
+  function authorName(byId) {
+    if (byId === task.assigneeId && byId === task.createdById) return `${nameOf(byId)} (me)`
+    if (byId === task.assigneeId) return nameOf(byId)
+    if (byId === task.createdById) return nameOf(byId)
+    return nameOf(byId)
+  }
+
+  function send() {
+    const t = text.trim()
+    if (!t) return
+    onReply(t)
+    setText('')
+  }
+
+  return (
+    <div>
+      <p className="hint first">
+        Have a question about this task? Ask about missing details, access, deadlines,
+        or anything else. The person who assigned the task will see your message and can reply here.
+      </p>
+
+      {messages.length === 0 ? (
+        <p className="muted">No questions yet. Send the first message below.</p>
+      ) : (
+        <div className="thread">
+          {messages.map((msg) => {
+            const mine = msg.byId === viewerId
+            return (
+              <div key={msg.id} className={`msg ${mine ? 'msg-mine' : 'msg-them'}`}>
+                <div className="msg-head">
+                  <span className="msg-who">{authorName(msg.byId)}</span>
+                  <span>{formatDate(msg.on)}</span>
+                </div>
+                <div className="msg-body">{msg.text}</div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {canPost ? (
+        <div className="reply-box">
+          <textarea
+            className="reply-input"
+            rows={3}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Type your question or reply..."
+          />
+          <div className="button-row">
+            <button className="btn btn-primary" disabled={!text.trim()} onClick={send}>
+              Send message
+            </button>
+            {onClose && (
+              <button type="button" className="btn btn-light" onClick={onClose}>
+                Close
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          <p className="hint first">Only the person assigned and the person who created the task can post messages here.</p>
+          {onClose && (
+            <div className="button-row">
+              <button type="button" className="btn btn-light" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}

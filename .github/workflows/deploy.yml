@@ -1,0 +1,79 @@
+name: Deploy to Cloudflare Pages
+
+# Automatically build and deploy to the EXISTING Cloudflare Pages project
+# "workbuddy-ems" whenever changes are pushed to the production branch (main).
+# A manual "Run workflow" button is also available for on-demand deploys.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Only one deploy runs at a time; a newer push cancels an in-flight deploy.
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Node 24, not 20. wrangler 4.x refuses to start below Node 22 and exits
+      # inside a second - before it ever reads CLOUDFLARE_API_TOKEN - which is
+      # why the deploy step failed instantly on every run while the build above
+      # it passed. 24 also matches the local runtime that `npm run deploy` uses,
+      # so a CI build and a manual build happen on the same toolchain.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # Fail here with a readable line naming the secret that is absent.
+      # Without this check a missing secret only surfaces as "exit code 1" on
+      # the wrangler step, which looks like a build problem and sends you
+      # reading the wrong logs. The Supabase pair belongs here too: Vite bakes
+      # them in at build time and stays silent when they are empty, so an
+      # unconfigured runner would happily publish a site that cannot reach the
+      # database over the top of a working one.
+      - name: Check required secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          missing=0
+          for name in CLOUDFLARE_API_TOKEN VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret ${name} is not set - add it under Settings > Secrets and variables > Actions."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      # Install exact dependencies from package-lock.json (equivalent to
+      # "npm install", but reproducible and required for CI).
+      - name: Install dependencies
+        run: npm ci
+
+      # Vite bakes these into the bundle at build time, so they must be present
+      # here — the repo's .env is intentionally not committed.
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      # Upload the freshly built dist/ to the existing Pages project. The token
+      # needs Account > Cloudflare Pages > Edit on the account below; a token
+      # that is valid but scoped to something else fails here instantly.
+      - name: Deploy to Cloudflare Pages
+        run: npx wrangler pages deploy dist --project-name workbuddy-ems --branch main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 67b35c35103613165cd1734409316b69
