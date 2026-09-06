@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
+  addEmployee,
   getAttendanceForEmployee,
   getEmployees,
   getProfileForEmployee,
@@ -17,7 +18,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { Contact, Eye, MoreVertical, X } from 'lucide-react'
+import { Calendar, Contact, Eye, MoreVertical, UserPlus, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
 
@@ -51,7 +52,28 @@ export default function EmployeeRecords() {
 
   const [openMenuId, setOpenMenuId] = useState(null)
 
+  // Add employee modal
+  const [showAdd, setShowAdd] = useState(false)
+  const [addForm, setAddForm] = useState({
+    name: '',
+    id: '',
+    department: '',
+    designation: '',
+    isManager: false,
+    managerId: '',
+    dateJoined: ''
+  })
+  const [addError, setAddError] = useState('')
+  const [newDept, setNewDept] = useState('')
+  const [addingDept, setAddingDept] = useState(false)
+  const dateJoinedRef = useRef(null)
+
   const employees = useMemo(() => getEmployees(), [refresh])
+
+  // Only real employees can be picked as a manager.
+  const managers = employees
+    .filter((e) => e.role === 'employee' && e.isManager)
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   const departmentFilterOpts = useMemo(() => {
     const departments = [...new Set(employees.map((e) => e.department).filter(Boolean))].sort()
@@ -62,20 +84,13 @@ export default function EmployeeRecords() {
   }, [employees])
 
   const reportsToFilterOpts = useMemo(() => {
-    const managerIds = [...new Set(employees.map((e) => e.managerId).filter(Boolean))]
-    const named = managerIds
-      .map((id) => {
-        const m = employees.find((e) => e.id === id)
-        return m ? { value: id, label: m.name } : null
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.label.localeCompare(b.label))
+    const named = managers.map((m) => ({ value: m.id, label: m.name }))
     return [
       { value: 'all', label: 'All managers' },
       { value: 'none', label: 'None' },
       ...named
     ]
-  }, [employees])
+  }, [managers])
 
   const table = useTableControls(employees, {
     getSearchText: (e) => {
@@ -125,11 +140,6 @@ export default function EmployeeRecords() {
     endIndex: recordsEnd,
     setPage: setRecordsPage
   } = usePagination(table.rows)
-
-  // Only real employees can be picked as a manager.
-  const managers = employees
-    .filter((e) => e.role === 'employee' && e.isManager)
-    .sort((a, b) => a.name.localeCompare(b.name))
 
   // Profile for a given employee (only real employees onboard).
   function profileOf(emp) {
@@ -186,9 +196,19 @@ export default function EmployeeRecords() {
     setNote('')
   }
 
+  function scrollModalToTop() {
+    // The modal body (.modal-content) is the scroll container; scroll it so
+    // the status change message at the top is visible after an action.
+    requestAnimationFrame(() => {
+      const el = document.querySelector('.modal-content')
+      if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }
+
   function verify(employeeId) {
     reviewProfile(employeeId, 'verified', user.id, '')
     setRefresh((n) => n + 1)
+    scrollModalToTop()
   }
 
   function returnForFix(employeeId) {
@@ -196,6 +216,7 @@ export default function EmployeeRecords() {
     reviewProfile(employeeId, 'returned', user.id, note.trim())
     setNote('')
     setRefresh((n) => n + 1)
+    scrollModalToTop()
   }
 
   function approveUpdateRequest(employeeId) {
@@ -208,6 +229,58 @@ export default function EmployeeRecords() {
     if (!note.trim()) return
     reviewProfileUpdateRequest(employeeId, false, user.id, note.trim())
     setNote('')
+    setRefresh((n) => n + 1)
+  }
+
+  // ---- add employee ----
+  function getNextEmployeeId() {
+    const empIds = employees
+      .map((e) => e.id)
+      .filter((id) => /^EMP\d+$/.test(id))
+      .map((id) => parseInt(id.replace('EMP', ''), 10))
+    const nextNum = empIds.length > 0 ? Math.max(...empIds) + 1 : 1
+    return 'EMP' + String(nextNum).padStart(3, '0')
+  }
+
+  const departmentOpts = useMemo(() => {
+    const depts = new Set(employees.map((e) => e.department).filter(Boolean))
+    // Include the currently selected department (e.g. a newly typed one)
+    if (addForm.department) depts.add(addForm.department)
+    return [...depts].sort().map((d) => ({ value: d, label: d }))
+  }, [employees, addForm.department])
+
+  function openAddEmployee() {
+    setAddForm({ name: '', id: getNextEmployeeId(), department: '', designation: '', isManager: false, managerId: '', dateJoined: '' })
+    setAddError('')
+    setShowAdd(true)
+  }
+
+  function closeAddEmployee() {
+    setShowAdd(false)
+    setAddError('')
+    setAddingDept(false)
+    setNewDept('')
+  }
+
+  function handleAddEmployee() {
+    if (!addForm.name.trim() || !addForm.id.trim() || !addForm.department.trim() || !addForm.designation.trim()) {
+      setAddError('Name, ID, department, and designation are required.')
+      return
+    }
+    const result = addEmployee({
+      id: addForm.id.trim(),
+      name: addForm.name.trim(),
+      department: addForm.department.trim(),
+      designation: addForm.designation.trim(),
+      isManager: addForm.isManager,
+      managerId: addForm.managerId || null,
+      dateJoined: addForm.dateJoined
+    })
+    if (!result) {
+      setAddError('An employee with this ID already exists.')
+      return
+    }
+    closeAddEmployee()
     setRefresh((n) => n + 1)
   }
 
@@ -249,6 +322,11 @@ export default function EmployeeRecords() {
             }
           ]}
           onFilterChange={table.setFilter}
+          actions={
+            <button type="button" className="btn btn-primary" onClick={openAddEmployee}>
+              <UserPlus size={14} aria-hidden="true" style={{ marginRight: 6 }} />Add Employee
+            </button>
+          }
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
@@ -513,7 +591,159 @@ export default function EmployeeRecords() {
         </Modal>
       )}
 
+      {showAdd && (
+        <Modal onClose={closeAddEmployee} title="Add Employee">
+          <div className="modal-form modal-form-wide">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>New Employee</h3>
+                <div className="muted small">Add a new employee to the system</div>
+              </div>
+              <button type="button" className="btn btn-tiny btn-light" onClick={closeAddEmployee} aria-label="Close"><X size={15} /></button>
+            </div>
+
+            {addError && <div className="error-box">{addError}</div>}
+
+            <div className="two-col">
+              <label className="field">
+                <span>Employee name *</span>
+                <input
+                  value={addForm.name}
+                  onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                  placeholder="e.g. Priya Sharma"
+                />
+              </label>
+              <label className="field">
+                <span>Employee ID (auto-generated)</span>
+                <input
+                  value={addForm.id}
+                  readOnly
+                  style={{ color: 'var(--muted)', cursor: 'default' }}
+                />
+              </label>
+            </div>
+
+            <div className="two-col">
+              <label className="field">
+                <span>Department *</span>
+                {addingDept ? (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      value={newDept}
+                      onChange={(e) => setNewDept(e.target.value)}
+                      placeholder="Type new department name"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newDept.trim()) {
+                          const dept = newDept.trim()
+                          setAddForm((f) => ({ ...f, department: dept }))
+                          setNewDept('')
+                          setAddingDept(false)
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-light btn-tiny"
+                      onClick={() => {
+                        const dept = newDept.trim()
+                        if (dept) {
+                          setAddForm((f) => ({ ...f, department: dept }))
+                          setNewDept('')
+                        }
+                        setAddingDept(false)
+                      }}
+                      style={{ flexShrink: 0 }}
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-light btn-tiny"
+                      onClick={() => { setAddingDept(false); setNewDept('') }}
+                      style={{ flexShrink: 0 }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <select
+                    value={addForm.department}
+                    onChange={(e) => {
+                      if (e.target.value === '__add_new__') {
+                        setAddingDept(true)
+                        setNewDept('')
+                      } else {
+                        setAddForm({ ...addForm, department: e.target.value })
+                      }
+                    }}
+                  >
+                    <option value="">-- Select department --</option>
+                    <option value="__add_new__">+ Add new department</option>
+                    {departmentOpts.map((d) => (
+                      <option key={d.value} value={d.value}>{d.label}</option>
+                    ))}
+                  </select>
+                )}
+              </label>
+              <label className="field">
+                <span>Designation *</span>
+                <input
+                  value={addForm.designation}
+                  onChange={(e) => setAddForm({ ...addForm, designation: e.target.value })}
+                  placeholder="e.g. Sales Executive"
+                />
+              </label>
+            </div>
+
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={addForm.isManager}
+                onChange={(e) => setAddForm({ ...addForm, isManager: e.target.checked })}
+              />
+              <span>This person is a Manager / Team Leader</span>
+            </label>
+
+            <label className="field">
+              <span>Reports to (their manager)</span>
+              <select
+                value={addForm.managerId}
+                onChange={(e) => setAddForm({ ...addForm, managerId: e.target.value })}
+              >
+                <option value="">-- None --</option>
+                {managers
+                  .filter((m) => m.id !== addForm.id)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Date of joining</span>
+              <input
+                ref={dateJoinedRef}
+                type="date"
+                value={addForm.dateJoined}
+                onChange={(e) => setAddForm({ ...addForm, dateJoined: e.target.value })}
+              />
+            </label>
+
+            <div className="info-box" style={{ marginTop: 8 }}>
+              The employee will be assigned a default PIN of <strong>1234</strong>. Share the Employee ID and PIN so they can log in and fill in their details under &ldquo;My Details&rdquo;.
+            </div>
+
+            <div className="button-row">
+              <button type="button" className="btn btn-primary" onClick={handleAddEmployee}>Add Employee</button>
+              <button type="button" className="btn btn-light" onClick={closeAddEmployee}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <p className="hint">
+        Click &ldquo;Add Employee&rdquo; to create a new employee record. Share their ID and PIN (default: 1234) so they can log in.
         Toggle the switch to make someone a Manager. Use the dropdown to set who they report to.
         Employees fill in their own onboarding details under &ldquo;My Details&rdquo;. Once verified,
         employees must request HR permission before making changes. Open a record to approve

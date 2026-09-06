@@ -54,6 +54,24 @@ export default function Modal({ onClose, children, title }) {
       const active = document.activeElement
       const index = els.indexOf(active)
 
+      // Compound inputs (date, time, number, etc.) have internal sub-elements
+      // managed by the browser (e.g. day/month/year spinbuttons). Let the
+      // browser handle Tab natively for those so internal segments remain
+      // reachable.
+      if (
+        active &&
+        (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') &&
+        !['text', 'password', 'email', 'tel', 'url', 'search'].includes(active.type)
+      ) {
+        // At the boundary (last focusable + Tab forward) we still wrap.
+        if (index === els.length - 1 && !e.shiftKey) {
+          e.preventDefault()
+          first.focus()
+        }
+        // Otherwise let the browser handle it natively (no preventDefault).
+        return
+      }
+
       e.preventDefault()
 
       if (e.shiftKey) {

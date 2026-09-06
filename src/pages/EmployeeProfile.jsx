@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   getProfileForEmployee,
@@ -33,6 +33,15 @@ export default function EmployeeProfile() {
     return found
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id, refresh])
+
+  // Scroll to top after submission so the confirmation message is visible.
+  // The scrollable container is .content (overflow-y: auto), not window.
+  useEffect(() => {
+    if (profile.status === 'submitted') {
+      const el = document.querySelector('.content')
+      if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [profile.status])
 
   function handleSaveDraft(data) {
     saveProfileDraft(user.id, data)

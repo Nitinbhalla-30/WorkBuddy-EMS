@@ -100,6 +100,7 @@ const OriginButton = React.forwardRef<HTMLButtonElement, OriginButtonProps>(
     const [isPressed, setIsPressed] = React.useState(false);
     const [origin, setOrigin] = React.useState({ x: 0, y: 0 });
     const [coverSize, setCoverSize] = React.useState(0);
+    const [fillComplete, setFillComplete] = React.useState(false);
 
     const ariaLabel = props["aria-label"];
     const ariaLabelledBy = props["aria-labelledby"];
@@ -148,6 +149,11 @@ const OriginButton = React.forwardRef<HTMLButtonElement, OriginButtonProps>(
     }, [updateOrigin]);
 
     const showFill = !isDisabled && (hovered || isPressed);
+
+    // Reset fill-complete when the fill is no longer visible.
+    React.useEffect(() => {
+      if (!showFill) setFillComplete(false);
+    }, [showFill]);
 
     React.useLayoutEffect(() => {
       const node = buttonRef.current;
@@ -201,6 +207,7 @@ const OriginButton = React.forwardRef<HTMLButtonElement, OriginButtonProps>(
         )}
         data-pressed={isPressed ? "true" : "false"}
         data-hovered={hovered ? "true" : "false"}
+        data-fill-complete={fillComplete ? "true" : "false"}
         disabled={isDisabled}
         onBlur={(event) => {
           onBlur?.(event);
@@ -297,6 +304,9 @@ const OriginButton = React.forwardRef<HTMLButtonElement, OriginButtonProps>(
             fillClassName
           )}
           initial={false}
+          onAnimationComplete={(definition) => {
+            if (definition.scale === 1) setFillComplete(true);
+          }}
           style={{
             height: coverSize,
             left: origin.x,

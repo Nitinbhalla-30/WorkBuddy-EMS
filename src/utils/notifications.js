@@ -385,7 +385,7 @@ export function buildEmployeeNotifications(employeeId) {
       category: 'profile',
       title: 'Profile returned for correction',
       body: profile.reviewNote || 'HR asked you to update your details.',
-      on: profile.reviewedOn || profile.updatedOn,
+      on: bestTime(profile.reviewedOn, profile.updatedOn),
       href: '/my-profile'
     })
   }
@@ -395,7 +395,7 @@ export function buildEmployeeNotifications(employeeId) {
       category: 'profile',
       title: 'Profile update approved',
       body: 'You can edit your details now.',
-      on: profile.updatedOn,
+      on: bestTime(profile.updatedOn),
       href: '/my-profile'
     })
   }
@@ -405,7 +405,7 @@ export function buildEmployeeNotifications(employeeId) {
       category: 'profile',
       title: 'Profile verified',
       body: 'HR verified your onboarding details.',
-      on: profile.reviewedOn,
+      on: bestTime(profile.reviewedOn),
       href: '/my-profile'
     })
   }
@@ -677,7 +677,7 @@ export function buildAdminNotifications(adminId) {
         category: 'profile',
         title: 'Profile awaiting review',
         body: `${nameOf(profile.employeeId)} submitted onboarding details.`,
-        on: profile.submittedOn || profile.updatedOn,
+        on: bestTime(profile.submittedOn, profile.updatedOn),
         href: '/records-profiles'
       })
     }
@@ -687,7 +687,7 @@ export function buildAdminNotifications(adminId) {
         category: 'profile',
         title: 'Profile update requested',
         body: `${nameOf(profile.employeeId)} asked to update their details.`,
-        on: profile.updateRequestedOn || profile.updatedOn,
+        on: bestTime(profile.updateRequestedOn, profile.updatedOn),
         href: '/records-profiles'
       })
     }

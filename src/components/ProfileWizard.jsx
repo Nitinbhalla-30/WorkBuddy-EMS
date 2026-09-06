@@ -159,12 +159,12 @@ export default function ProfileWizard({ profile, onSaveDraft, onSubmit }) {
           </label>
           <div className="detect-row">
             <label className="checkbox-row">
-              <input type="radio" name="wantsCabService" checked={p.wantsCabService === true}
+              <input type="radio" tabIndex={0} checked={p.wantsCabService === true}
                 onChange={() => setPersonal('wantsCabService', true)} />
               <span>Yes</span>
             </label>
             <label className="checkbox-row">
-              <input type="radio" name="wantsCabService" checked={p.wantsCabService === false}
+              <input type="radio" tabIndex={0} checked={p.wantsCabService === false}
                 onChange={() => setPersonal('wantsCabService', false)} />
               <span>No</span>
             </label>

@@ -22,9 +22,9 @@ export default function FileField({
   required,
   disabled,
   accept = '.pdf,application/pdf',
-  addLabel = 'Add PDF',
-  chooseLabel = 'Choose PDF',
-  replaceLabel = 'Replace PDF',
+  addLabel = 'Upload PDF',
+  chooseLabel = 'Upload PDF',
+  replaceLabel = 'Upload PDF',
   files,
   onChange
 }) {

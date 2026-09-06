@@ -1029,6 +1029,28 @@ export function updateEmployeeTeam(employeeId, team) {
   return all[idx]
 }
 
+// Add a new employee record. `data` = { id, name, department, designation, isManager, managerId, dateJoined }.
+// A default PIN of "1234" is assigned so the employee can log in immediately.
+export function addEmployee(data) {
+  const all = getEmployees()
+  if (all.some((e) => e.id === data.id)) return null
+  all.push({
+    id: data.id,
+    name: data.name,
+    pin: '1234',
+    role: 'employee',
+    department: data.department,
+    designation: data.designation,
+    isManager: !!data.isManager,
+    managerId: data.managerId || null,
+    dateJoined: data.dateJoined || '',
+    email: '',
+    salary: { basic: 0, hra: 0, other: 0, tdsMonthly: 0 }
+  })
+  write(KEYS.employees, all)
+  return all[all.length - 1]
+}
+
 // The people who report to a given manager (only real employees).
 export function getTeamMembers(managerId) {
   return getEmployees().filter(
@@ -2036,8 +2058,8 @@ export function submitProfile(employeeId, data) {
     ...data,
     employeeId,
     status: 'submitted',
-    updatedOn: todayKey(),
-    submittedOn: todayKey(),
+    updatedOn: new Date().toISOString(),
+    submittedOn: new Date().toISOString(),
     reviewNote: '',
     updateRequestedOn: '',
     updateRequestNote: ''
@@ -2052,7 +2074,7 @@ export function requestProfileUpdate(employeeId, note = '') {
   const profile = {
     ...current,
     status: 'update_requested',
-    updateRequestedOn: todayKey(),
+    updateRequestedOn: new Date().toISOString(),
     updateRequestNote: String(note || '').trim(),
     reviewNote: ''
   }
@@ -2068,7 +2090,7 @@ export function reviewProfileUpdateRequest(employeeId, approved, reviewedBy, not
       ...current,
       status: 'update_approved',
       reviewedBy: reviewedBy || '',
-      reviewedOn: todayKey(),
+      reviewedOn: new Date().toISOString(),
       reviewNote: String(note || '').trim()
     })
   }
@@ -2078,7 +2100,7 @@ export function reviewProfileUpdateRequest(employeeId, approved, reviewedBy, not
     updateRequestedOn: '',
     updateRequestNote: '',
     reviewedBy: reviewedBy || '',
-    reviewedOn: todayKey(),
+    reviewedOn: new Date().toISOString(),
     reviewNote: String(note || '').trim()
   })
 }
@@ -2090,7 +2112,7 @@ export function reviewProfile(employeeId, decision, reviewedBy, note) {
     ...current,
     status: decision,
     reviewedBy: reviewedBy || '',
-    reviewedOn: todayKey(),
+    reviewedOn: new Date().toISOString(),
     reviewNote: decision === 'returned' ? (note || '') : ''
   }
   return upsertProfile(profile)
