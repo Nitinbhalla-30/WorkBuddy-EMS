@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addTask,
@@ -82,6 +82,7 @@ export default function EmployeeTasks() {
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openTaskId, setOpenTaskId] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
+  const chartAreaRef = useRef(null)
 
   const tasks = useMemo(
     () => getTasksForAssignee(user.id),
@@ -140,6 +141,17 @@ export default function EmployeeTasks() {
     endIndex: tasksEnd,
     setPage: setTasksPage
   } = usePagination(table.rows)
+
+  useEffect(() => {
+    const clearQuick = (e) => {
+      if (e.type === 'click' && table.filters.quick) {
+        table.setFilter('quick', null)
+        setTasksPage(1)
+      }
+    }
+    document.addEventListener('click', clearQuick)
+    return () => document.removeEventListener('click', clearQuick)
+  }, [table.filters.quick, table.setFilter, setTasksPage])
 
   const openTask = tasks.find((t) => t.id === openTaskId) || null
   const editTask = tasks.find((t) => t.id === editTaskId) || null
@@ -268,13 +280,15 @@ export default function EmployeeTasks() {
         </div>
       </div>
 
-      <TaskStatusChart
-        tasks={tasks}
-        activeKey={table.filters.quick && table.filters.quick !== 'all' ? table.filters.quick : null}
-        onToggleKey={(key) =>
-          table.setFilter('quick', table.filters.quick === key ? 'all' : key)
-        }
-      />
+      <div ref={chartAreaRef} onClick={(e) => e.stopPropagation()}>
+        <TaskStatusChart
+          tasks={tasks}
+          activeKey={table.filters.quick || null}
+          onToggleKey={(key) =>
+            table.setFilter('quick', table.filters.quick === key ? null : key)
+          }
+        />
+      </div>
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Add a task for myself">
@@ -389,7 +403,7 @@ export default function EmployeeTasks() {
                 <button
                   type="button"
                   className="quick-filter-chip"
-                  onClick={() => table.setFilter('quick', 'all')}
+                  onClick={() => table.setFilter('quick', null)}
                   aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
                 >
                   {QUICK_FILTER_LABELS[table.filters.quick]}
@@ -413,8 +427,8 @@ export default function EmployeeTasks() {
             <col style={{ width: '10%' }} />
             <col style={{ width: '8%' }} />
             <col style={{ width: '12%' }} />
-            <col style={{ width: '9%' }} />
-            <col style={{ width: '8%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '5%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -446,9 +460,12 @@ export default function EmployeeTasks() {
                   </span>
                 </td>
                 <td>{statusCell(task)}</td>
-                <td className={isOverdue(task) ? 'text-bad' : ''}>
+                <td
+                  className={`cell-ellipsis ${isOverdue(task) ? 'text-bad' : ''}`}
+                  title={task.dueDate ? `${formatDate(task.dueDate)}${isOverdue(task) ? ' (Overdue)' : ''}` : undefined}
+                >
                   {task.dueDate ? formatDate(task.dueDate) : <span className="muted">--</span>}
-                  {isOverdue(task) && <div className="muted small">(Overdue)</div>}
+                  {isOverdue(task) && <span className="muted small"> (Overdue)</span>}
                 </td>
                 <td>
                   <div className="task-menu-container">

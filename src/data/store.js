@@ -3181,6 +3181,10 @@ function otStage(req) {
 
 export function requestOvertime(employeeId, monthKey, hours, reason) {
   const all = getOvertimeRequests()
+  // Employees without a manager skip the manager stage and go straight to HR,
+  // the same routing rule as leave requests.
+  const employee = getEmployeeById(employeeId)
+  const stage = employee?.managerId ? 'manager' : 'hr'
   const req = {
     id: `OT${Date.now()}`,
     employeeId,
@@ -3188,7 +3192,7 @@ export function requestOvertime(employeeId, monthKey, hours, reason) {
     hours: Number(hours) || 0,
     reason: reason || '',
     status: 'pending',
-    stage: 'manager',
+    stage,
     managerStatus: null,
     managerDecidedBy: null,
     managerDecidedOn: null,

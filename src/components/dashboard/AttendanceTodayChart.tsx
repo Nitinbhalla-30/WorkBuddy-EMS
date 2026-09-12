@@ -9,15 +9,15 @@ export type AttendanceChartKey = 'all' | 'ontime' | 'late' | 'absent' | 'onleave
 const CHART_BUCKETS = [
   { key: 'ontime' as const, label: 'On time' },
   { key: 'late' as const, label: 'Late' },
-  { key: 'absent' as const, label: 'Absent' },
-  { key: 'onleave' as const, label: 'On leave' }
+  { key: 'onleave' as const, label: 'On leave' },
+  { key: 'absent' as const, label: 'Absent' }
 ]
 
 const STATUS_COLORS: Record<AttendanceChartKey, string> = {
   ontime: 'var(--good)',
   late: 'var(--warn)',
   absent: 'var(--bad)',
-  onleave: 'var(--muted)'
+  onleave: 'var(--accent-blue)'
 }
 
 interface AttendanceTodayChartProps {
@@ -62,6 +62,9 @@ export function AttendanceTodayChart({
 
   const total = employees
   const active = data.find((d) => d.label === hovered)
+  const clicked = activeKey && activeKey !== 'all' ? data.find((d) => d.key === activeKey) : null
+  const displayed = active || clicked
+  const pct = total > 0 && displayed ? Math.round((displayed.value / total) * 100) : 0
 
   const handleSegmentHover = useCallback((segment: { label: string } | null) => {
     setHovered(segment?.label ?? null)
@@ -72,7 +75,7 @@ export function AttendanceTodayChart({
       <div className="dashboard-attendance-stat-grid">
         <div
           className={cn(
-            'stat-card task-status-stat-card',
+            'stat-card task-status-stat-card stat-neutral',
             hovered === 'Employees' && 'task-status-stat-card-active',
             activeKey === 'all' && 'task-status-stat-card-active'
           )}
@@ -91,7 +94,10 @@ export function AttendanceTodayChart({
         >
           <span className="stat-chip"><Users size={18} aria-hidden="true" /></span>
           <div className="stat-num">{employees}</div>
-          <div className="stat-label">Employees</div>
+          <div className="stat-label">
+            <span>Employees</span>
+            <span className="stat-label-pct">100%</span>
+          </div>
         </div>
 
         {data.map((segment) => (
@@ -102,6 +108,7 @@ export function AttendanceTodayChart({
               segment.key === 'ontime' && 'stat-good',
               segment.key === 'late' && 'stat-warn',
               segment.key === 'absent' && 'stat-bad',
+              segment.key === 'onleave' && 'stat-info',
               hovered === segment.label && 'task-status-stat-card-active',
               activeKey === segment.key && 'task-status-stat-card-active'
             )}
@@ -125,7 +132,10 @@ export function AttendanceTodayChart({
               {segment.key === 'onleave' && <Plane size={18} aria-hidden="true" />}
             </span>
             <div className="stat-num">{segment.value}</div>
-            <div className="stat-label">{segment.label}</div>
+            <div className="stat-label">
+              <span>{segment.label}</span>
+              <span className="stat-label-pct">{total > 0 ? Math.round((segment.value / total) * 100) : 0}%</span>
+            </div>
           </div>
         ))}
       </div>
@@ -139,37 +149,30 @@ export function AttendanceTodayChart({
           size={120}
           strokeWidth={16}
           onSegmentHover={handleSegmentHover}
+          onSegmentClick={(seg) => onToggleKey?.(seg.key as AttendanceChartKey)}
           centerContent={
             <AnimatePresence mode="wait">
               <motion.div
-                key={
-                  hovered === 'Employees'
-                    ? 'employees'
-                    : hovered === 'On leave' || activeKey === 'onleave'
-                      ? 'onleave'
-                      : active?.label ?? (total === 0 ? 'empty' : 'total')
-                }
+                key={displayed ? displayed.key : (hovered === 'Employees' ? 'employees' : 'total')}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: hovered ? 0.15 : 0.2 }}
                 className="task-status-chart-center"
               >
                 <p className="muted small task-status-chart-center-label">
                   {total === 0
                     ? 'No employees'
-                    : hovered === 'Employees'
-                      ? 'Employees'
-                      : hovered === 'On leave' || activeKey === 'onleave'
-                        ? 'On leave'
-                        : active?.label ?? 'Employees'}
+                    : displayed
+                      ? displayed.label
+                      : 'Employees'}
                 </p>
                 <p className="task-status-chart-center-value">
-                  {hovered === 'Employees'
-                    ? total
-                    : hovered === 'On leave' || activeKey === 'onleave'
-                      ? onLeave
-                      : active?.value ?? total}
+                  {total === 0
+                    ? '0'
+                    : displayed
+                      ? `${pct}%`
+                      : total}
                 </p>
               </motion.div>
             </AnimatePresence>

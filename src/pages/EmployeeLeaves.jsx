@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   applyLeave,
@@ -49,14 +49,32 @@ const BALANCE_ICONS = {
   short: AlarmClock
 }
 
-const LEAVE_STATUS_FILTERS = [
-  { value: 'all', label: 'All statuses' },
-  { value: 'pending-manager', label: 'Pending (Manager)' },
-  { value: 'pending-hr', label: 'Pending (HR)' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: 'withdrawn', label: 'Withdrawn' }
-]
+// Color tone per leave type, matching the task module's stat-card palette.
+const BALANCE_TONES = {
+  casual: 'info',
+  sick: 'warn',
+  earned: 'good',
+  halfday: 'bad',
+  short: 'neutral'
+}
+
+// Status filter options for My Leaves. Employees with a manager see where a
+// pending request sits; manager-less employees' requests all go straight to
+// HR, so a single Pending option is clearer for them.
+function leaveStatusFilters(hasManager) {
+  return [
+    { value: 'all', label: 'All statuses' },
+    ...(hasManager
+      ? [
+          { value: 'pending-manager', label: 'Pending (Manager)' },
+          { value: 'pending-hr', label: 'Pending (HR)' }
+        ]
+      : [{ value: 'pending', label: 'Pending' }]),
+    { value: 'approved', label: 'Approved' },
+    { value: 'rejected', label: 'Rejected' },
+    { value: 'withdrawn', label: 'Withdrawn' }
+  ]
+}
 const LEAVE_TYPE_FILTERS = [
   { value: 'all', label: 'All types' },
   ...LEAVE_TYPES.map((t) => ({ value: t.key, label: t.label }))
@@ -66,6 +84,10 @@ const LEAVE_TYPE_FILTERS = [
 export default function EmployeeLeaves() {
   const { user } = useAuth()
   const settings = getSettings()
+  // Manager-less employees' requests go straight to HR, so a single Pending
+  // option/label is clearer than the manager/HR split.
+  const hasManager = Boolean(getEmployeeById(user.id)?.managerId)
+  const statusFilterOpts = leaveStatusFilters(hasManager)
 
   const [leaves, setLeaves] = useState(() => getLeavesForEmployee(user.id))
   const [showForm, setShowForm] = useState(false)
@@ -75,6 +97,7 @@ export default function EmployeeLeaves() {
   const [openMenuId, setOpenMenuId] = useState(null)
   const [withdrawId, setWithdrawId] = useState(null)
   const [message, setMessage] = useState('')
+  const [hoveredType, setHoveredType] = useState(null)
 
   // Refresh from Supabase on mount to pick up any data that was saved
   // from another session or that failed to load initially. Only the two
@@ -127,6 +150,20 @@ export default function EmployeeLeaves() {
     endIndex: leavesEnd,
     setPage: setLeavesPage
   } = usePagination(table.rows)
+
+  // Click outside the balance cards to clear the type quick-filter, the
+  // same way the task module's stat cards reset.
+  const statAreaRef = useRef(null)
+  useEffect(() => {
+    function clearType(e) {
+      if (e.type === 'click' && table.filters.type) {
+        table.setFilter('type', null)
+        setLeavesPage(1)
+      }
+    }
+    document.addEventListener('click', clearType)
+    return () => document.removeEventListener('click', clearType)
+  }, [table.filters.type, table.setFilter, setLeavesPage])
 
   const openLeave = leaves.find((lv) => lv.id === openId) || null
   const editLeave = leaves.find((lv) => lv.id === editId) || null
@@ -306,7 +343,9 @@ export default function EmployeeLeaves() {
                 onCancel={() => setShowForm(false)}
               />
               <p className="hint">
-                Weekends are excluded. Sick leave requires a medical certificate. Paid leave requires balance and completed probation; manager and HR approval required.
+                Weekends are excluded. Sick leave requires a medical certificate. Paid leave requires balance and completed
+                probation. Your request is reviewed by your manager first and then by HR; if no manager is assigned to you,
+                HR reviews it directly.
               </p>
             </div>
         </Modal>
@@ -338,26 +377,25 @@ export default function EmployeeLeaves() {
       )}
 
       {/* Balance cards */}
-      <div className="stat-grid">
+      <div className="stat-grid" ref={statAreaRef} onClick={(e) => e.stopPropagation()}>
         {balance.map((b) => {
           const Icon = BALANCE_ICONS[b.key] || CalendarDays
           const ratio = b.allowed > 0 ? b.remaining / b.allowed : 0
-          const tone = b.remaining === 0 ? ' stat-bad' : ratio <= 0.25 ? ' stat-warn' : ''
           const isActive = table.filters.type === b.key
+          const isHovered = hoveredType === b.key
           return (
-            <div
-              className={`stat-card${tone}${isActive ? ' task-status-stat-card-active' : ''}`}
+            <button
+              type="button"
+              className={`stat-card task-status-stat-card stat-${BALANCE_TONES[b.key] || 'info'}${isHovered || isActive ? ' task-status-stat-card-active' : ''}`}
               key={b.key}
-              onClick={() => table.setFilter('type', isActive ? 'all' : b.key)}
-              role="button"
-              tabIndex={0}
+              aria-pressed={isActive}
               aria-label={`Filter by ${b.label} leave`}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  table.setFilter('type', isActive ? 'all' : b.key)
-                }
+              onClick={() => {
+                table.setFilter('type', isActive ? null : b.key)
+                setLeavesPage(1)
               }}
+              onMouseEnter={() => setHoveredType(b.key)}
+              onMouseLeave={() => setHoveredType(null)}
             >
               <span className="stat-chip"><Icon size={18} aria-hidden="true" /></span>
               <div className="stat-num">{b.remaining}</div>
@@ -371,7 +409,7 @@ export default function EmployeeLeaves() {
                   style={{ width: `${Math.round(ratio * 100)}%` }}
                 />
               </div>
-            </div>
+            </button>
           )
         })}
       </div>
@@ -397,7 +435,7 @@ export default function EmployeeLeaves() {
               key: 'status',
               label: 'Status',
               value: table.filters.status || 'all',
-              options: LEAVE_STATUS_FILTERS
+              options: statusFilterOpts
             }
           ]}
           onFilterChange={table.setFilter}
@@ -469,7 +507,7 @@ export default function EmployeeLeaves() {
                   {/* Only the status tag here; stage and decision details
                       are shown in the Open modal from the Action menu. */}
                   <span className={`tag ${statusTagClass(lv.status)}`}>
-                    {leaveStatusLabel(lv)}
+                    {leaveStatusLabel(hasManager ? lv : lv.status)}
                   </span>
                 </td>
                 <td>
@@ -537,8 +575,9 @@ export default function EmployeeLeaves() {
 
       <p className="hint">
         <strong>Quick filters:</strong> click a leave balance card above to show only requests of that type; click again to see all.
-        Your leave balance updates as requests are approved or rejected. Paid leave needs your
-        manager&rsquo;s approval first, then HR&rsquo;s final sign-off. Sick leave does not
+        Your leave balance updates as requests are approved or rejected. Requests are reviewed by your
+        manager first and then by HR for final sign-off; if no manager is assigned to you, HR reviews
+        them directly. Sick leave does not
         require a balance — just upload a medical certificate if asked.
       </p>
 
@@ -563,7 +602,7 @@ export default function EmployeeLeaves() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className={`tag ${statusTagClass(openLeave.status)}`}>
-                  {leaveStatusLabel(openLeave)}
+                  {leaveStatusLabel(hasManager ? openLeave : openLeave.status)}
                 </span>
                 <button type="button" className="btn btn-tiny btn-light" onClick={closeLeaveModal} aria-label="Close"><X size={15} /></button>
               </div>

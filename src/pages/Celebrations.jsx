@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CalendarHeart, Loader2 } from 'lucide-react'
+import { CalendarHeart } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   getCelebrationEvents,
@@ -88,12 +88,11 @@ export default function Celebrations() {
   const [bump, setBump] = useState(0)
 
   // Pull the latest shared data on arrival, the same way the other screens do.
-  // The page paints from the store immediately either way, so a slow or failed
+  // The page paints from the store immediately either way, so a failed
   // read shows a note instead of an empty screen.
   useEffect(() => {
     let cancelled = false
     async function load() {
-      setRefreshState('refreshing')
       const ok = await refreshStoreFromSupabase([
         STORE_KEYS.employees,
         STORE_KEYS.profiles,
@@ -191,12 +190,6 @@ export default function Celebrations() {
               Could not reach the server just now, so this page may be a little behind.
             </p>
           )}
-          {refreshState === 'refreshing' && (
-            <p className="muted small" style={{ margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Loader2 size={13} className="animate-spin" aria-hidden="true" /> Checking for new celebrations…
-            </p>
-          )}
-
           {/* One panel for a whole empty tab, rather than three empty bands
               competing for attention. The range is printed from the window
               constants so a heading cannot drift from what is collected. */}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addTask,
@@ -52,6 +52,7 @@ export default function AdminTasks() {
   const [followUpId, setFollowUpId] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const chartAreaRef = useRef(null)
 
   // Everyone who can hold a task (real employees).
   const people = useMemo(
@@ -75,11 +76,17 @@ export default function AdminTasks() {
     return getEmployeeById(id)?.name || id
   }
 
+  // Creator of the task; for self-assigned tasks this is the assignee themselves.
+  function assignerLabel(task) {
+    return nameOf(task.createdById)
+  }
+
   const table = useTableControls(allTasks, {
     getSearchText: (t) =>
-      [t.title, t.description, nameOf(t.assigneeId), statusLabel(t.status), priorityLabel(t.priority), t.dueDate].join(' '),
+      [t.title, t.description, nameOf(t.assigneeId), nameOf(t.createdById), statusLabel(t.status), priorityLabel(t.priority), t.dueDate].join(' '),
     getSortValue: (t, key) => {
       if (key === 'assignee') return nameOf(t.assigneeId)
+      if (key === 'createdBy') return nameOf(t.createdById)
       if (key === 'status') return statusLabel(t.status)
       return t[key]
     },
@@ -168,6 +175,17 @@ export default function AdminTasks() {
     return () => document.removeEventListener('mousedown', handleMenuOutside)
   }, [openMenuId])
 
+  useEffect(() => {
+    const clearQuick = (e) => {
+      if (e.type === 'click' && table.filters.quick) {
+        table.setFilter('quick', null)
+        setTasksPage(1)
+      }
+    }
+    document.addEventListener('click', clearQuick)
+    return () => document.removeEventListener('click', clearQuick)
+  }, [table.filters.quick, table.setFilter, setTasksPage])
+
   return (
     <div>
       <div className="page-head">
@@ -182,13 +200,15 @@ export default function AdminTasks() {
         </div>
       </div>
 
-      <TaskStatusChart
-        tasks={allTasks}
-        activeKey={table.filters.quick && table.filters.quick !== 'all' ? table.filters.quick : null}
-        onToggleKey={(key) =>
-          table.setFilter('quick', table.filters.quick === key ? 'all' : key)
-        }
-      />
+      <div ref={chartAreaRef} onClick={(e) => e.stopPropagation()}>
+        <TaskStatusChart
+          tasks={allTasks}
+          activeKey={table.filters.quick || null}
+          onToggleKey={(key) =>
+            table.setFilter('quick', table.filters.quick === key ? null : key)
+          }
+        />
+      </div>
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Create a task for anyone">
@@ -302,7 +322,7 @@ export default function AdminTasks() {
                 <button
                   type="button"
                   className="quick-filter-chip"
-                  onClick={() => table.setFilter('quick', 'all')}
+                  onClick={() => table.setFilter('quick', null)}
                   aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
                 >
                   {QUICK_FILTER_LABELS[table.filters.quick]}
@@ -320,19 +340,23 @@ export default function AdminTasks() {
         />
         <table className="table">
           <colgroup>
-            <col style={{ width: '19%' }} />
-            <col style={{ width: '18.5%' }} />
-            <col style={{ width: '13%' }} />
-            <col style={{ width: '9.5%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '13.5%' }} />
             <col style={{ width: '17%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '7%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '9.5%' }} />
+            <col style={{ width: '7.5%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '5.5%' }} />
           </colgroup>
           <thead>
             <tr>
               <SortableTh label="Assigned to" keyName="assignee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Description" keyName="description" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Assigned by" keyName="createdBy" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Assigned on" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Due Date" keyName="dueDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -341,7 +365,7 @@ export default function AdminTasks() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={7} message="No tasks match your filters." />
+              <TableEmpty colSpan={9} message="No tasks match your filters." />
             )}
             {tasksPage.map((task) => {
               const assignee = getEmployeeById(task.assigneeId)
@@ -353,8 +377,12 @@ export default function AdminTasks() {
                     <span>{nameOf(task.assigneeId)}</span>
                   </div>
                 </td>
-                <td><strong>{task.title}</strong></td>
+                <td className="cell-ellipsis" title={task.title || undefined}><strong>{task.title}</strong></td>
                 <td className="cell-ellipsis" title={task.description || undefined}>{task.description || <span className="muted">--</span>}</td>
+                <td>{assignerLabel(task)}</td>
+                <td>
+                  {task.createdOn ? formatDate(task.createdOn) : <span className="muted">--</span>}
+                </td>
                 <td>
                   <span className={`tag ${priorityTagClass(task.priority)}`}>
                     {priorityLabel(task.priority)}
@@ -372,7 +400,10 @@ export default function AdminTasks() {
                     ))}
                   </select>
                 </td>
-                <td className={isOverdue(task) ? 'text-bad' : ''}>
+                <td
+                  className={`cell-ellipsis ${isOverdue(task) ? 'text-bad' : ''}`}
+                  title={task.dueDate ? `${formatDate(task.dueDate)}${isOverdue(task) ? ' (Overdue)' : ''}` : undefined}
+                >
                   {task.dueDate ? formatDate(task.dueDate) : <span className="muted">--</span>}
                   {isOverdue(task) && <span className="muted small"> (Overdue)</span>}
                 </td>

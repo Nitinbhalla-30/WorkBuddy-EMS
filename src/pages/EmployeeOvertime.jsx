@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
+  getEmployeeById,
   getOvertimeRequestsForEmployee,
   requestOvertime,
   withdrawOvertimeRequest,
@@ -43,8 +44,9 @@ export default function EmployeeOvertime() {
       <OvertimeTable userId={user.id} refresh={refresh} bump={bump} showForm={showForm} setShowForm={setShowForm} />
 
       <p className="hint">
-        Log the extra hours you worked beyond your shift. Your manager will review first, and if approved,
-        it goes to HR for final approval. Approved overtime is paid at twice your normal hourly rate and added to your monthly salary.
+        Log the extra hours you worked beyond your shift. Your request is reviewed by your manager first
+        and then by HR for final approval; if no manager is assigned to you, HR reviews it directly.
+        Approved overtime is paid at twice your normal hourly rate and added to your monthly salary.
       </p>
     </div>
   )
@@ -57,6 +59,9 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
   const [withdrawId, setWithdrawId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [message, setMessage] = useState('')
+  // Manager-less employees' requests go straight to HR, so a single Pending
+  // option/label is clearer than the manager/HR split.
+  const hasManager = Boolean(getEmployeeById(userId)?.managerId)
 
   const table = useTableControls(requests, {
     getSearchText: (r) => [r.monthKey, r.reason, r.status].join(' '),
@@ -124,8 +129,12 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
 
   const STATUS_OPTIONS = [
     { value: 'all', label: 'All statuses' },
-    { value: 'pending-manager', label: 'Pending (Manager)' },
-    { value: 'pending-hr', label: 'Pending (HR)' },
+    ...(hasManager
+      ? [
+          { value: 'pending-manager', label: 'Pending (Manager)' },
+          { value: 'pending-hr', label: 'Pending (HR)' }
+        ]
+      : [{ value: 'pending', label: 'Pending' }]),
     { value: 'approved', label: 'Approved' },
     { value: 'rejected', label: 'Rejected' },
     { value: 'withdrawn', label: 'Withdrawn' }
@@ -204,7 +213,7 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
                   <td className="cell-ellipsis" title={r.reason || undefined}>{r.reason || <span className="muted">--</span>}</td>
                   <td>
                     <span className={`tag ${statusClass}`}>
-                      {overtimeStatusLabel(r)}
+                      {overtimeStatusLabel(hasManager ? r : r.status)}
                     </span>
                   </td>
                   <td>

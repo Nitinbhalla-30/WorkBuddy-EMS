@@ -33,7 +33,7 @@ import Avatar from '../components/Avatar.jsx'
 
 const STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
-  { value: 'pending-hr', label: 'Pending (HR)' },
+  { value: 'pending', label: 'Pending' },
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'withdrawn', label: 'Withdrawn' }
@@ -83,7 +83,7 @@ export default function AdminLeaves() {
       const emp = getEmployeeById(lv.employeeId)
       return [
         emp?.name, emp?.department, leaveTypeLabelWithPart(lv),
-        lv.fromDate, lv.toDate, lv.reason, leaveStatusLabel(lv)
+        lv.fromDate, lv.toDate, lv.reason, lv.status
       ].join(' ')
     },
     getSortValue: (lv, key) => {
@@ -95,7 +95,6 @@ export default function AdminLeaves() {
         const docs = leaveSupportingDocuments(lv)
         return docs.length ? docs.map((d) => d.name || '').join(', ') : 'Not uploaded'
       }
-      if (key === 'status') return leaveStatusLabel(lv)
       return lv[key]
     },
     initialSortKey: 'appliedOn',
@@ -103,11 +102,7 @@ export default function AdminLeaves() {
     filterFns: {
       employeeId: (lv, val) => lv.employeeId === val,
       type: (lv, val) => lv.type === val,
-      status: (lv, val) => {
-        if (val === 'pending-manager') return lv.status === 'pending' && lv.stage === 'manager'
-        if (val === 'pending-hr') return lv.status === 'pending' && lv.stage === 'hr'
-        return lv.status === val
-      }
+      status: (lv, val) => lv.status === val
     }
   })
 
@@ -298,7 +293,7 @@ export default function AdminLeaves() {
                   </td>
                   <td>
                     <span className={`tag ${statusTagClass(lv.status)}`}>
-                      {leaveStatusLabel(lv)}
+                      {leaveStatusLabel(lv.status)}
                     </span>
                   </td>
                   <td>
@@ -378,7 +373,7 @@ export default function AdminLeaves() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className={`tag ${statusTagClass(openLeave.status)}`}>
-                  {leaveStatusLabel(openLeave)}
+                  {leaveStatusLabel(openLeave.status)}
                 </span>
                 <button type="button" className="btn btn-tiny btn-light" onClick={closeReview} aria-label="Close"><X size={15} /></button>
               </div>

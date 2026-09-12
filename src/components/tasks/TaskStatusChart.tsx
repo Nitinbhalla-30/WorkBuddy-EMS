@@ -57,6 +57,12 @@ export function TaskStatusChart({
     [tasks]
   )
   const active = data.find((d) => d.label === hovered)
+  const clicked = activeKey && activeKey !== 'all' && activeKey !== 'overdue'
+    ? data.find((d) => d.key === activeKey)
+    : null
+  const clickedOverdue = activeKey === 'overdue'
+  const displayed = active || (clickedOverdue ? { label: 'Overdue', value: overdueCount } : clicked)
+  const pct = total > 0 && displayed ? Math.round((displayed.value / total) * 100) : 0
 
   const handleSegmentHover = useCallback((segment: { label: string } | null) => {
     setHovered(segment?.label ?? null)
@@ -65,6 +71,27 @@ export function TaskStatusChart({
   return (
     <div className="task-status-overview">
       <div className="stat-grid task-status-stat-grid">
+        <button
+          type="button"
+          className={cn(
+            'stat-card task-status-stat-card stat-neutral',
+            (hovered === 'Total' || activeKey === 'all') && 'task-status-stat-card-active'
+          )}
+          aria-pressed={activeKey === 'all'}
+          onClick={() => onToggleKey?.('all')}
+          onMouseEnter={() => setHovered('Total')}
+          onMouseLeave={() => setHovered(null)}
+        >
+          <span className="stat-chip">
+            <ListTodo size={18} aria-hidden="true" />
+          </span>
+          <div className="stat-num">{total}</div>
+          <div className="stat-label">
+            <span>Total Tasks</span>
+            <span className="stat-label-pct">100%</span>
+          </div>
+        </button>
+
         {data.map((segment) => (
           <button
             type="button"
@@ -87,23 +114,31 @@ export function TaskStatusChart({
               {segment.key === 'done' && <CircleCheck size={18} aria-hidden="true" />}
             </span>
             <div className="stat-num">{segment.value}</div>
-            <div className="stat-label">{segment.label}</div>
+            <div className="stat-label">
+              <span>{segment.label}</span>
+              <span className="stat-label-pct">{total > 0 ? Math.round((segment.value / total) * 100) : 0}%</span>
+            </div>
           </button>
         ))}
         <button
           type="button"
           className={cn(
             'stat-card task-status-stat-card stat-bad',
-            activeKey === 'overdue' && 'task-status-stat-card-active'
+            (hovered === 'Overdue' || activeKey === 'overdue') && 'task-status-stat-card-active'
           )}
           aria-pressed={activeKey === 'overdue'}
           onClick={() => onToggleKey?.('overdue')}
+          onMouseEnter={() => setHovered('Overdue')}
+          onMouseLeave={() => setHovered(null)}
         >
           <span className="stat-chip">
             <CalendarX2 size={18} aria-hidden="true" />
           </span>
           <div className="stat-num">{overdueCount}</div>
-          <div className="stat-label">Overdue</div>
+          <div className="stat-label">
+            <span>Overdue</span>
+            <span className="stat-label-pct">{total > 0 ? Math.round((overdueCount / total) * 100) : 0}%</span>
+          </div>
         </button>
       </div>
 
@@ -116,23 +151,30 @@ export function TaskStatusChart({
           size={120}
           strokeWidth={16}
           onSegmentHover={handleSegmentHover}
+          onSegmentClick={(seg) => onToggleKey?.(seg.key)}
           centerContent={
             <AnimatePresence mode="wait">
               <motion.div
-                key={active?.label ?? (total === 0 ? 'empty' : 'total')}
+                key={displayed ? displayed.label : (hovered === 'Total' ? 'total-hover' : 'total')}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: hovered ? 0.15 : 0.2 }}
                 className="task-status-chart-center"
               >
                 <p className="muted small task-status-chart-center-label">
                   {total === 0
                     ? 'No tasks yet'
-                    : active?.label ?? 'Total Tasks'}
+                    : displayed
+                      ? displayed.label
+                      : 'Total Tasks'}
                 </p>
                 <p className="task-status-chart-center-value">
-                  {active?.value ?? total}
+                  {total === 0
+                    ? '0'
+                    : displayed
+                      ? `${pct}%`
+                      : total}
                 </p>
               </motion.div>
             </AnimatePresence>

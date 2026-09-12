@@ -2,6 +2,8 @@ import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
+const PULL_OUT_PX = 2
+
 export interface DonutChartSegment {
   value: number
   color: string
@@ -19,6 +21,7 @@ interface DonutChartProps extends React.HTMLAttributes<HTMLDivElement> {
   highlightOnHover?: boolean
   centerContent?: React.ReactNode
   onSegmentHover?: (segment: DonutChartSegment | null) => void
+  onSegmentClick?: (segment: DonutChartSegment) => void
 }
 
 const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
@@ -33,6 +36,7 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
       highlightOnHover = true,
       centerContent,
       onSegmentHover,
+      onSegmentClick,
       className,
       ...props
     },
@@ -40,6 +44,15 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
   ) => {
     const [hoveredSegment, setHoveredSegment] =
       React.useState<DonutChartSegment | null>(null)
+
+    const [reducedMotion, setReducedMotion] = React.useState(false)
+    React.useEffect(() => {
+      const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+      setReducedMotion(mq.matches)
+      const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
+      mq.addEventListener('change', handler)
+      return () => mq.removeEventListener('change', handler)
+    }, [])
 
     const internalTotalValue = React.useMemo(
       () =>
@@ -98,6 +111,13 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
               const strokeDashoffset = (cumulativePercentage / 100) * circumference
 
               const isActive = hoveredSegment?.label === segment.label
+              const isDimmed = hoveredSegment !== null && !isActive
+
+              // Pull-out offset along the segment's radial midpoint
+              const midAngle = ((cumulativePercentage + percentage / 2) / 100) * 2 * Math.PI
+              const pullOut = isActive && !reducedMotion ? PULL_OUT_PX : 0
+              const dx = pullOut * Math.cos(midAngle)
+              const dy = pullOut * Math.sin(midAngle)
 
               cumulativePercentage += percentage
 
@@ -115,8 +135,10 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
                   strokeLinecap="round"
                   initial={{ opacity: 0, strokeDashoffset: circumference }}
                   animate={{
-                    opacity: 1,
-                    strokeDashoffset: -strokeDashoffset
+                    opacity: isDimmed ? 0.4 : 1,
+                    strokeDashoffset: -strokeDashoffset,
+                    x: dx,
+                    y: dy
                   }}
                   transition={{
                     opacity: { duration: 0.3, delay: index * animationDelayPerSegment },
@@ -124,7 +146,9 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
                       duration: animationDuration,
                       delay: index * animationDelayPerSegment,
                       ease: 'easeOut'
-                    }
+                    },
+                    x: { duration: 0.2, ease: 'easeOut' },
+                    y: { duration: 0.2, ease: 'easeOut' }
                   }}
                   className={cn(
                     'donut-chart-segment',
@@ -133,12 +157,10 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
                   style={{
                     filter: isActive
                       ? `drop-shadow(0px 0px 6px ${segment.color}) brightness(1.1)`
-                      : 'none',
-                    transform: isActive ? 'scale(1.03)' : 'scale(1)',
-                    transformOrigin: 'center',
-                    transition: 'filter 0.2s ease-out, transform 0.2s ease-out'
+                      : 'none'
                   }}
                   onMouseEnter={() => setHoveredSegment(segment)}
+                  onClick={() => onSegmentClick?.(segment)}
                 />
               )
             })}

@@ -718,7 +718,7 @@ export function buildAdminNotifications(adminId) {
         title: 'Task marked done',
         body: `${nameOf(task.assigneeId)} completed "${task.title}". Approve closure.`,
         on: bestTime(task.completedOn, task.createdAt, task.createdOn),
-        href: '/my-team?tab=tasks'
+        href: '/tasks'
       })
     }
   }
@@ -770,7 +770,7 @@ export function buildAdminNotifications(adminId) {
       id: `overtime-pending-${req.id}`,
       category: 'overtime',
       title: 'Overtime request pending',
-      body: `${nameOf(req.employeeId)} logged ${req.hours}h overtime for ${monthLabel(req.monthKey)} — manager approved, final approval needed.`,
+      body: `${nameOf(req.employeeId)} logged ${req.hours}h overtime for ${monthLabel(req.monthKey)}${req.managerStatus === 'approved' ? ' — manager approved, final approval needed' : ' — final approval needed'}.`,
       on: req.managerDecidedOn || req.requestedOn,
       href: '/overtime?tab=requests'
     })

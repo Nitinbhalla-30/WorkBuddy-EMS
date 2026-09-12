@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
   getAttendance,
   getEmployees,
@@ -141,6 +141,20 @@ export default function AdminDashboard() {
   const onLeave = allRows.filter(({ emp, rec }) => onLeaveIds.has(emp.id) && !(rec && rec.timeIn)).length
   const absent = employees.length - present - onLeave
 
+  const chartAreaRef = useRef(null)
+
+  // Clear quick-filter when clicking outside the stat cards / donut area
+  useEffect(() => {
+    const clearQuick = (e) => {
+      if (e.type === 'click' && table.filters.quick) {
+        table.setFilter('quick', null)
+        setRowsPage(1)
+      }
+    }
+    document.addEventListener('click', clearQuick)
+    return () => document.removeEventListener('click', clearQuick)
+  }, [table.filters.quick, table.setFilter, setRowsPage])
+
   return (
     <div>
       <div className="page-head">
@@ -153,6 +167,7 @@ export default function AdminDashboard() {
         <span className="muted">{formatDate(today)}</span>
       </div>
 
+      <div ref={chartAreaRef} onClick={(e) => e.stopPropagation()}>
       <AttendanceTodayChart
         employees={employees.length}
         present={present}
@@ -167,6 +182,7 @@ export default function AdminDashboard() {
           setRowsPage(1)
         }}
       />
+      </div>
 
       <div className="section-head-row">
         <h3 className="section-title first">
@@ -268,9 +284,9 @@ export default function AdminDashboard() {
                   <span
                     className={`tag ${
                       onLeaveIds.has(emp.id) && !(rec && rec.timeIn)
-                        ? 'tag-absent'
+                        ? 'tag-info'
                         : !rec || !rec.timeIn
-                          ? 'tag-absent'
+                          ? 'tag-bad'
                           : isLate(rec, resolveStartTime(emp.id), settings.lateGraceMinutes)
                             ? 'tag-late'
                             : 'tag-ok'

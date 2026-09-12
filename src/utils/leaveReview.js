@@ -8,9 +8,10 @@ export function leaveStatusLabel(leaveOrStatus) {
   if (status === 'approved') return 'Approved'
   if (status === 'rejected') return 'Rejected'
   if (status === 'withdrawn') return 'Withdrawn'
-  if (status === 'pending') {
-    if (stage === 'hr') return 'Pending (HR)'
-    return 'Pending (Manager)'
+  if (status === 'pending' && typeof leaveOrStatus === 'object') {
+    // Object callers (admin views) keep the stage suffix; plain status
+    // strings get the simple label.
+    return stage === 'hr' ? 'Pending (HR)' : 'Pending (Manager)'
   }
   return 'Pending'
 }

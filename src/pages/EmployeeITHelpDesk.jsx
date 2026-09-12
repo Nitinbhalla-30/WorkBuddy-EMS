@@ -484,7 +484,7 @@ export default function EmployeeITHelpDesk() {
             </button>
           }
         />
-        <table className="table table-compact" style={{ tableLayout: 'fixed' }}>
+        <table className="table table-compact table-it" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '20%' }} />
             <col style={{ width: '14%' }} />
@@ -513,13 +513,16 @@ export default function EmployeeITHelpDesk() {
             )}
             {issuesPage.map((issue) => {
               const assignedStaff = issue.assignedTo ? getITStaffById(issue.assignedTo) : null
+              // One-line label for the Assigned To cell; null renders no tooltip.
+              const assignedLabel = assignedStaff
+                ? `${assignedStaff.name}${assignedStaff.mobile ? ` (${assignedStaff.mobile})` : ''}`
+                : null
               return (
                 <tr key={issue.id}>
-                  <td>
+                  {/* Single-line title ending in an ellipsis; the full title is
+                      the tooltip and the full details live in the view dialog. */}
+                  <td className="cell-ellipsis" title={issue.issue}>
                     <strong>{issue.issue}</strong>
-                    {issue.description && (
-                      <div className="muted small cell-ellipsis" title={issue.description}>{issue.description}</div>
-                    )}
                   </td>
                   <td>{itIssueCategoryLabel(issue.category)}</td>
                   <td>
@@ -532,14 +535,21 @@ export default function EmployeeITHelpDesk() {
                       {itIssueStatusLabel(itIssueDisplayStatus(issue))}
                     </span>
                   </td>
+                  {/* Number sits under the name; .table-it fixes every row's
+                      height, so assigned and unassigned rows stay equal and the
+                      pager below never moves. */}
                   <td>
                     {assignedStaff ? (
-                      <div>
-                        <div>{assignedStaff.name}</div>
+                      <>
+                        <div className="cell-line" title={assignedLabel}>{assignedStaff.name}</div>
                         {assignedStaff.mobile
-                          ? <a href={`tel:${assignedStaff.mobile}`} className="phone-link small">({assignedStaff.mobile})</a>
+                          ? (
+                            <div className="muted small cell-line">
+                              <a href={`tel:${assignedStaff.mobile}`} className="phone-link small">({assignedStaff.mobile})</a>
+                            </div>
+                          )
                           : null}
-                      </div>
+                      </>
                     ) : (
                       <span className="muted">Not assigned</span>
                     )}

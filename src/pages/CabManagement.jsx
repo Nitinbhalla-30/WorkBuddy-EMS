@@ -46,7 +46,7 @@ import {
   tripLabel,
   vehicleById
 } from '../utils/cab.js'
-import { CarFront, Check, Copy, ExternalLink, Eye, MoreVertical, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
+import { CarFront, Check, CircleCheck, Copy, ExternalLink, Eye, MoreVertical, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Change Requests', 'Messages', 'Today']
@@ -124,8 +124,9 @@ export default function CabManagement() {
 
       <p className="hint">
         Manage vehicles, drivers, and trips from the tabs above. Use Assign to link employees
-        to pickup and drop trips. Open a driver&rsquo;s run sheet to share their schedule on the
-        driver&rsquo;s phone. Cancellation summary shows who opted out of today&rsquo;s cab.
+        to pickup and drop trips; changes are saved automatically when you select a trip. Open a
+        driver&rsquo;s run sheet to share their schedule on the driver&rsquo;s phone. Cancellation
+        summary shows who opted out of today&rsquo;s cab.
       </p>
     </div>
   )
@@ -142,12 +143,16 @@ function VehiclesTab({ vehicles, bump }) {
   const editVehicle = vehicles.find((v) => v.id === editId) || null
 
   const vehiclesTable = useTableControls(vehicles, {
+    getSearchText: (v) => [v.number, v.label || ''].join(' '),
     getSortValue: (v, key) => {
       if (key === 'label') return v.label || ''
       return v[key]
     },
     initialSortKey: 'number',
-    initialSortDir: 'asc'
+    initialSortDir: 'asc',
+    filterFns: {
+      label: (v, val) => (v.label || '') === val
+    }
   })
 
   const {
@@ -212,10 +217,28 @@ function VehiclesTab({ vehicles, bump }) {
 
   return (
     <div className="card">
-      <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
-        <h3 className="section-title first">Company vehicles</h3>
-        <button className="btn btn-primary btn-tiny" onClick={openAdd}><Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add vehicle</button>
-      </div>
+      <TableToolbar
+        search={vehiclesTable.search}
+        onSearchChange={vehiclesTable.setSearch}
+        showing={vehiclesTable.count}
+        total={vehiclesTable.total}
+        placeholder="Search vehicles..."
+        filters={[
+          {
+            key: 'label',
+            label: 'Label',
+            value: vehiclesTable.filters.label || 'all',
+            options: [
+              { value: 'all', label: 'All labels' },
+              ...Array.from(new Set(vehicles.map((v) => v.label).filter(Boolean))).sort().map((label) => ({ value: label, label }))
+            ]
+          }
+        ]}
+        onFilterChange={vehiclesTable.setFilter}
+        actions={
+          <button className="btn btn-primary btn-tiny" onClick={openAdd}><Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add vehicle</button>
+        }
+      />
       <table className="table">
         <thead>
           <tr>
@@ -359,8 +382,12 @@ function DriversTab({ drivers, bump }) {
   const editDriver = drivers.find((d) => d.id === editId) || null
 
   const driversTable = useTableControls(drivers, {
+    getSearchText: (d) => [d.name, d.mobile || '', d.id || ''].join(' '),
     initialSortKey: 'name',
-    initialSortDir: 'asc'
+    initialSortDir: 'asc',
+    filterFns: {
+      pin: (d, val) => (val === 'set' ? Boolean(d.pin) : !d.pin)
+    }
   })
 
   const {
@@ -439,10 +466,29 @@ function DriversTab({ drivers, bump }) {
 
   return (
     <div className="card">
-      <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
-        <h3 className="section-title first">Company drivers</h3>
-        <button className="btn btn-primary btn-tiny" onClick={openAdd}><Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add driver</button>
-      </div>
+      <TableToolbar
+        search={driversTable.search}
+        onSearchChange={driversTable.setSearch}
+        showing={driversTable.count}
+        total={driversTable.total}
+        placeholder="Search drivers..."
+        filters={[
+          {
+            key: 'pin',
+            label: 'Login PIN',
+            value: driversTable.filters.pin || 'all',
+            options: [
+              { value: 'all', label: 'All drivers' },
+              { value: 'set', label: 'PIN set' },
+              { value: 'none', label: 'No PIN' }
+            ]
+          }
+        ]}
+        onFilterChange={driversTable.setFilter}
+        actions={
+          <button className="btn btn-primary btn-tiny" onClick={openAdd}><Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add driver</button>
+        }
+      />
       <p className="hint first">
         Each driver needs a <strong>WorkBuddy ID</strong> and <strong>PIN</strong> to log in and
         view their run sheet. Set or reset a driver&rsquo;s PIN using the table below.
@@ -1172,7 +1218,6 @@ function AssignTab({ employees, trips, assignments, bump }) {
         endIndex={assignEnd}
         onPageChange={setAssignPage}
       />
-      <p className="hint">Changes are saved automatically when you select a trip.</p>
     </div>
   )
 }
@@ -1744,8 +1789,12 @@ function TodayTab({ employees, bump }) {
   }, [openMenuId])
 
   const runsTable = useTableControls(drivers, {
+    getSearchText: (d) => [d.name, d.mobile || '', d.id || ''].join(' '),
     initialSortKey: 'name',
-    initialSortDir: 'asc'
+    initialSortDir: 'asc',
+    filterFns: {
+      pin: (d, val) => (val === 'set' ? Boolean(d.pin) : !d.pin)
+    }
   })
 
   const {
@@ -1787,6 +1836,9 @@ function TodayTab({ employees, bump }) {
   const todayLabel = new Date().toLocaleDateString('en-IN', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   })
+  const todayShort = new Date().toLocaleDateString('en-IN', {
+    weekday: 'short', day: 'numeric', month: 'short'
+  })
 
   const origin = window.location.origin
 
@@ -1807,6 +1859,26 @@ function TodayTab({ employees, bump }) {
         {drivers.length === 0 && <p className="muted">No drivers added yet.</p>}
         {drivers.length > 0 && (
           <>
+            <TableToolbar
+              search={runsTable.search}
+              onSearchChange={runsTable.setSearch}
+              showing={runsTable.count}
+              total={runsTable.total}
+              placeholder="Search drivers..."
+              filters={[
+                {
+                  key: 'pin',
+                  label: 'Login PIN',
+                  value: runsTable.filters.pin || 'all',
+                  options: [
+                    { value: 'all', label: 'All drivers' },
+                    { value: 'set', label: 'PIN set' },
+                    { value: 'none', label: 'No PIN' }
+                  ]
+                }
+              ]}
+              onFilterChange={runsTable.setFilter}
+            />
             <table className="table">
               <colgroup>
                 <col style={{ width: '35%' }} />
@@ -1885,63 +1957,74 @@ function TodayTab({ employees, bump }) {
         <Modal onClose={() => setShowCancellation(false)} title="Cancellation summary">
           <div className="modal-form modal-form-wide">
             <div className="modal-header">
-              <h3 className="section-title first">Cancellation summary</h3>
+              <h3 className="section-title first">Cancellation summary — {todayShort}</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowCancellation(false)} aria-label="Close"><X size={15} /></button>
             </div>
 
-            <h4 className="sub-title">Not taking pickup today</h4>
-            {skippingPickup.length === 0 ? (
-              <p className="muted">All employees are taking the pickup cab today.</p>
-            ) : (
-              <table className="table">
-                <thead><tr><th>Employee</th><th>ID</th></tr></thead>
-                <tbody>
-                  {pickupPage.map((c) => (
-                    <tr key={c.employeeId}>
-                      <td><strong>{nameOf(c.employeeId)}</strong></td>
-                      <td className="muted">{c.employeeId}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {skippingPickup.length > 0 && (
-              <Pagination
-                page={pickupPageNum}
-                totalPages={pickupTotalPages}
-                total={pickupTotal}
-                startIndex={pickupStart}
-                endIndex={pickupEnd}
-                onPageChange={setPickupPage}
-              />
-            )}
-
-            <h4 className="sub-title" style={{ marginTop: '1.5rem' }}>Not taking drop today</h4>
-            {skippingDrop.length === 0 ? (
-              <p className="muted">All employees are taking the drop cab today.</p>
-            ) : (
-              <table className="table">
-                <thead><tr><th>Employee</th><th>ID</th></tr></thead>
-                <tbody>
-                  {dropPage.map((c) => (
-                    <tr key={c.employeeId}>
-                      <td><strong>{nameOf(c.employeeId)}</strong></td>
-                      <td className="muted">{c.employeeId}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {skippingDrop.length > 0 && (
-              <Pagination
-                page={dropPageNum}
-                totalPages={dropTotalPages}
-                total={dropTotal}
-                startIndex={dropStart}
-                endIndex={dropEnd}
-                onPageChange={setDropPage}
-              />
-            )}
+            <div className="cancel-summary-grid">
+              <div>
+                <h4 className="sub-title">Not taking pickup today<span className="cancel-count">{skippingPickup.length}</span></h4>
+                {skippingPickup.length === 0 ? (
+                  <div className="cancel-empty">
+                    <CircleCheck size={18} aria-hidden="true" />
+                    <span>All employees are taking the pickup cab today.</span>
+                  </div>
+                ) : (
+                  <table className="table">
+                    <thead><tr><th>Employee</th><th>ID</th></tr></thead>
+                    <tbody>
+                      {pickupPage.map((c) => (
+                        <tr key={c.employeeId}>
+                          <td><strong>{nameOf(c.employeeId)}</strong></td>
+                          <td className="muted">{c.employeeId}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {skippingPickup.length > 0 && (
+                  <Pagination
+                    page={pickupPageNum}
+                    totalPages={pickupTotalPages}
+                    total={pickupTotal}
+                    startIndex={pickupStart}
+                    endIndex={pickupEnd}
+                    onPageChange={setPickupPage}
+                  />
+                )}
+              </div>
+              <div>
+                <h4 className="sub-title">Not taking drop today<span className="cancel-count">{skippingDrop.length}</span></h4>
+                {skippingDrop.length === 0 ? (
+                  <div className="cancel-empty">
+                    <CircleCheck size={18} aria-hidden="true" />
+                    <span>All employees are taking the drop cab today.</span>
+                  </div>
+                ) : (
+                  <table className="table">
+                    <thead><tr><th>Employee</th><th>ID</th></tr></thead>
+                    <tbody>
+                      {dropPage.map((c) => (
+                        <tr key={c.employeeId}>
+                          <td><strong>{nameOf(c.employeeId)}</strong></td>
+                          <td className="muted">{c.employeeId}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {skippingDrop.length > 0 && (
+                  <Pagination
+                    page={dropPageNum}
+                    totalPages={dropTotalPages}
+                    total={dropTotal}
+                    startIndex={dropStart}
+                    endIndex={dropEnd}
+                    onPageChange={setDropPage}
+                  />
+                )}
+              </div>
+            </div>
           </div>
         </Modal>
       )}

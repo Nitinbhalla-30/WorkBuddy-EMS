@@ -205,7 +205,7 @@ export default function AdminITHelpDesk() {
           ]}
           onFilterChange={table.setFilter}
         />
-        <table className="table table-compact" style={{ tableLayout: 'fixed' }}>
+        <table className="table table-compact table-it" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '12%' }} /> {/* Employee */}
             <col style={{ width: '16%' }} /> {/* Issue */}
@@ -244,6 +244,10 @@ export default function AdminITHelpDesk() {
             {pageRows.map((issue) => {
               const employee = getEmployeeById(issue.employeeId)
               const assignedStaff = issue.assignedTo ? itStaff.find((s) => s.id === issue.assignedTo) : null
+              // One-line label for the Assigned To cell; null renders no tooltip.
+              const assignedLabel = assignedStaff
+                ? `${assignedStaff.name}${assignedStaff.mobile ? ` (${assignedStaff.mobile})` : ''}`
+                : null
 
               return (
                 <tr key={issue.id}>
@@ -255,12 +259,11 @@ export default function AdminITHelpDesk() {
                     </div>
                   </td>
                   <td>
-                    <button type="button" className="issue-link" onClick={() => setViewId(issue.id)} title="Open issue details and discussion">
+                    {/* Single line ending in an ellipsis; the full title is the
+                        tooltip and the full details live in the modal. */}
+                    <button type="button" className="issue-link" onClick={() => setViewId(issue.id)} title={issue.issue}>
                       <strong>{issue.issue}</strong>
                     </button>
-                    {issue.description && (
-                      <div className="muted small cell-ellipsis" title={issue.description}>{issue.description}</div>
-                    )}
                   </td>
                   <td>{itIssueCategoryLabel(issue.category)}</td>
                   <td>
@@ -297,6 +300,10 @@ export default function AdminITHelpDesk() {
                       </span>
                     )}
                   </td>
+                  {/* Number sits under the name; .table-it fixes every row's
+                      height, so assigned and unassigned rows stay equal and the
+                      pager below never moves. The manager's assign dropdown is
+                      unaffected. */}
                   <td>
                     {canAssign ? (
                       /* The manager picks the person here directly — one choice,
@@ -313,10 +320,14 @@ export default function AdminITHelpDesk() {
                         ))}
                       </select>
                     ) : assignedStaff ? (
-                      <div>
-                        <div>{assignedStaff.name}</div>
-                        <div className="muted small">{assignedStaff.mobile}</div>
-                      </div>
+                      <>
+                        <div className="cell-line" title={assignedLabel}>{assignedStaff.name}</div>
+                        {assignedStaff.mobile && (
+                          <div className="muted small cell-line">
+                            <a href={`tel:${assignedStaff.mobile}`} className="phone-link small">({assignedStaff.mobile})</a>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <span className="muted">Not assigned</span>
                     )}

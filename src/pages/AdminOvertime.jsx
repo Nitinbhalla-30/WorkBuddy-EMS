@@ -166,7 +166,7 @@ function RequestsTab({ refresh, onDecided }) {
 
   const STATUS_OPTIONS = [
     { value: 'all', label: 'All statuses' },
-    { value: 'pending-hr', label: 'Pending (HR)' },
+    { value: 'pending-hr', label: 'Pending' },
     { value: 'approved', label: 'Approved' },
     { value: 'rejected', label: 'Rejected' }
   ]
@@ -234,7 +234,7 @@ function RequestsTab({ refresh, onDecided }) {
                   <td className="cell-ellipsis" title={r.reason || undefined}>{r.reason || <span className="muted">--</span>}</td>
                   <td>
                     <span className={`tag ${statusClass}`}>
-                      {overtimeStatusLabel(r)}
+                      {overtimeStatusLabel(r.status)}
                     </span>
                   </td>
                   <td>
