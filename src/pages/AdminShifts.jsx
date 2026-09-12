@@ -193,10 +193,9 @@ function ShiftsTab() {
     <>
       <div className="card">
         <TableToolbar
-          showSearch={false}
-          total={total}
-          startIndex={startIndex}
-          endIndex={endIndex}
+          search={table.search}
+          onSearchChange={table.setSearch}
+          placeholder="Search shifts..."
           actions={
             <button type="button" className="btn btn-primary btn-tiny" onClick={() => setShowForm(true)}>
               <Plus size={14} style={{ marginRight: 4 }} />Add shift
@@ -222,7 +221,7 @@ function ShiftsTab() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={5} message="No shifts defined yet." />
+              <TableEmpty colSpan={5} message={table.total === 0 ? 'No shifts defined yet.' : 'No shifts found.'} />
             )}
             {page.map((s) => {
               const empCount = getEmployees().filter((e) => e.shiftId === s.id).length
@@ -474,7 +473,7 @@ function AssignmentsTab() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={5} message="No employees found." />
+              <TableEmpty colSpan={5} message={table.total === 0 ? 'No employees yet.' : 'No employees found.'} />
             )}
             {page.map((e) => {
               const currentShift = getShiftById(e.shiftId)
@@ -669,7 +668,7 @@ function RequestsTab({ onDecided }) {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={6} message="No shift change requests." />
+              <TableEmpty colSpan={6} message="No shift change requests yet." />
             )}
             {page.map((r) => {
               const emp = getEmployeeById(r.employeeId)

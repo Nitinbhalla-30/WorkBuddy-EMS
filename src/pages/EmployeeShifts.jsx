@@ -288,7 +288,7 @@ function ChangeRequestsTab({ userId }) {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={5} message="No shift change requests." />
+              <TableEmpty colSpan={5} message="No shift change requests yet." />
             )}
             {page.map((r) => {
               const toShift = getShiftById(r.toShiftId)

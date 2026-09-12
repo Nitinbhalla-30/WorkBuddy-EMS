@@ -6,7 +6,7 @@ export default function TableEmpty({ colSpan, message, icon: Icon = SearchX }) {
     <tr className="table-empty">
       <td colSpan={colSpan}>
         <span className="table-empty-icon" aria-hidden="true">
-          <Icon size={18} />
+          <Icon size={20} />
         </span>
         <span className="table-empty-msg">{message}</span>
       </td>

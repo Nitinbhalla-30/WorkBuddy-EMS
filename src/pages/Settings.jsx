@@ -6,7 +6,7 @@ import {
 import { fetchPublicIp } from '../utils/network.js'
 import Modal from '../components/Modal.jsx'
 import TimeInput from '../components/TimeInput.jsx'
-import { Building2, Clock, Car, Coffee, CalendarDays, CalendarHeart, Shield, Wifi, Plus, Trash2, Check, Inbox, Settings as SettingsIcon, X } from 'lucide-react'
+import { Building2, Clock, Car, Coffee, CalendarDays, CalendarHeart, Shield, Wifi, Plus, Trash2, Check, Settings as SettingsIcon, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 // HR/Admin settings: branding, timing rules, and the office-internet check.
@@ -380,7 +380,7 @@ export default function Settings() {
           </thead>
           <tbody>
             {(form.companyHolidays || []).length === 0 && (
-              <TableEmpty colSpan={4} message="No dates added yet." icon={Inbox} />
+              <TableEmpty colSpan={4} message="No dates added yet." />
             )}
             {(form.companyHolidays || []).map((h) => (
               <tr key={h.id}>

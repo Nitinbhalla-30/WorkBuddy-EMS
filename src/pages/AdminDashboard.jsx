@@ -259,7 +259,7 @@ export default function AdminDashboard() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={8} message="No employees match your filters." />
+              <TableEmpty colSpan={8} message={table.total === 0 ? 'No employees yet.' : 'No employees found.'} />
             )}
             {rowsPage.map(({ emp, rec }) => {
               const leaveType = leaveTypeByEmployee.get(emp.id)

@@ -248,6 +248,9 @@ function VehiclesTab({ vehicles, bump }) {
           </tr>
         </thead>
         <tbody>
+          {vehiclesTable.count === 0 && (
+            <TableEmpty colSpan={3} message={vehiclesTable.total === 0 ? 'No vehicles yet.' : 'No vehicles found.'} />
+          )}
           {vehiclesPage.map((v) => (
             <tr key={v.id}>
               <td><strong>{v.number}</strong></td>
@@ -489,10 +492,6 @@ function DriversTab({ drivers, bump }) {
           <button className="btn btn-primary btn-tiny" onClick={openAdd}><Plus size={14} style={{ marginRight: 4 }} aria-hidden="true" />Add driver</button>
         }
       />
-      <p className="hint first">
-        Each driver needs a <strong>WorkBuddy ID</strong> and <strong>PIN</strong> to log in and
-        view their run sheet. Set or reset a driver&rsquo;s PIN using the table below.
-      </p>
       <table className="table">
         <colgroup>
           <col style={{ width: '18%' }} />
@@ -511,6 +510,9 @@ function DriversTab({ drivers, bump }) {
           </tr>
         </thead>
         <tbody>
+          {driversTable.count === 0 && (
+            <TableEmpty colSpan={5} message={driversTable.total === 0 ? 'No drivers yet.' : 'No drivers found.'} />
+          )}
           {driversPage.map((d) => (
             <tr key={d.id}>
               <td>
@@ -951,6 +953,9 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
           </tr>
         </thead>
         <tbody>
+          {tripsTable.count === 0 && (
+            <TableEmpty colSpan={8} message={tripsTable.total === 0 ? 'No trips yet.' : 'No trips found.'} />
+          )}
           {tripsPage.map((t) => {
             const v = vehicleById(vehicles, t.vehicleId)
             const d = driverById(drivers, t.driverId)
@@ -1171,6 +1176,9 @@ function AssignTab({ employees, trips, assignments, bump }) {
           </tr>
         </thead>
         <tbody>
+          {assignTable.count === 0 && (
+            <TableEmpty colSpan={4} message={assignTable.total === 0 ? 'No employees yet.' : 'No employees found.'} />
+          )}
           {employeesPage.map((emp) => {
             const a = assignedTo(emp.id)
             return (
@@ -1354,7 +1362,7 @@ function RequestsTab({ requests, nameOf, bump }) {
               message={
                 requests.length === 0
                   ? 'No change requests yet.'
-                  : 'No requests match your search.'
+                  : 'No requests found.'
               }
             />
           )}
@@ -1846,109 +1854,102 @@ function TodayTab({ employees, bump }) {
     <>
       {/* Driver run-sheet links */}
       <div className="card">
-        <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
-          <h3 className="section-title first">Driver run sheets — {todayLabel}</h3>
-          <button className="btn btn-primary btn-tiny" onClick={() => setShowCancellation(true)}>
-            Cancellation summary
-          </button>
-        </div>
-        <p className="hint first">
-          Open or share a driver&rsquo;s run sheet link on their phone before the shift begins.
-          The page shows their complete pickup and drop list with addresses, times, and map links.
-        </p>
-        {drivers.length === 0 && <p className="muted">No drivers added yet.</p>}
-        {drivers.length > 0 && (
-          <>
-            <TableToolbar
-              search={runsTable.search}
-              onSearchChange={runsTable.setSearch}
-              showing={runsTable.count}
-              total={runsTable.total}
-              placeholder="Search drivers..."
-              filters={[
-                {
-                  key: 'pin',
-                  label: 'Login PIN',
-                  value: runsTable.filters.pin || 'all',
-                  options: [
-                    { value: 'all', label: 'All drivers' },
-                    { value: 'set', label: 'PIN set' },
-                    { value: 'none', label: 'No PIN' }
-                  ]
-                }
-              ]}
-              onFilterChange={runsTable.setFilter}
-            />
-            <table className="table">
-              <colgroup>
-                <col style={{ width: '35%' }} />
-                <col style={{ width: '25%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <SortableTh label="Driver" keyName="name" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
-                  <SortableTh label="Mobile" keyName="mobile" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
-                  <SortableTh label="WorkBuddy ID" keyName="id" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {driversPage.map((d) => (
-                  <tr key={d.id}>
-                    <td>
-                      <div className="person-cell">
-                        <Avatar name={d.name} size={34} />
-                        <strong>{d.name}</strong>
-                      </div>
-                    </td>
-                    <td>{d.mobile}</td>
-                    <td><code>{d.id}</code></td>
-                    <td>
-                      <div className="task-menu-container">
+        <TableToolbar
+          search={runsTable.search}
+          onSearchChange={runsTable.setSearch}
+          placeholder="Search drivers..."
+          filters={[
+            {
+              key: 'pin',
+              label: 'Login PIN',
+              value: runsTable.filters.pin || 'all',
+              options: [
+                { value: 'all', label: 'All drivers' },
+                { value: 'set', label: 'PIN set' },
+                { value: 'none', label: 'No PIN' }
+              ]
+            }
+          ]}
+          onFilterChange={runsTable.setFilter}
+          actions={
+            <button className="btn btn-primary" onClick={() => setShowCancellation(true)}>
+              Cancellation summary
+            </button>
+          }
+        />
+        <table className="table">
+          <colgroup>
+            <col style={{ width: '35%' }} />
+            <col style={{ width: '25%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '20%' }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <SortableTh label="Driver" keyName="name" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
+              <SortableTh label="Mobile" keyName="mobile" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
+              <SortableTh label="WorkBuddy ID" keyName="id" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {runsTable.count === 0 && (
+              <TableEmpty colSpan={4} message={runsTable.total === 0 ? 'No drivers yet.' : 'No drivers found.'} />
+            )}
+            {driversPage.map((d) => (
+              <tr key={d.id}>
+                <td>
+                  <div className="person-cell">
+                    <Avatar name={d.name} size={34} />
+                    <strong>{d.name}</strong>
+                  </div>
+                </td>
+                <td>{d.mobile}</td>
+                <td><code>{d.id}</code></td>
+                <td>
+                  <div className="task-menu-container">
+                    <button
+                      type="button"
+                      className="btn btn-tiny btn-light task-menu-button"
+                      onClick={() => toggleMenu(d.id)}
+                      aria-label="Run sheet actions"
+                     ><MoreVertical size={16} /></button>
+                    {openMenuId === d.id && (
+                      <div className="task-menu-dropdown">
+                        <a
+                          href={`${origin}/driver/${d.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="task-menu-item"
+                          onClick={closeMenu}
+                        >
+                          <ExternalLink size={14} aria-hidden="true" />
+                          Open run sheet
+                        </a>
                         <button
                           type="button"
-                          className="btn btn-tiny btn-light task-menu-button"
-                          onClick={() => toggleMenu(d.id)}
-                          aria-label="Run sheet actions"
-                         ><MoreVertical size={16} /></button>
-                        {openMenuId === d.id && (
-                          <div className="task-menu-dropdown">
-                            <a
-                              href={`${origin}/driver/${d.id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="task-menu-item"
-                              onClick={closeMenu}
-                            >
-                              <ExternalLink size={14} aria-hidden="true" />
-                              Open run sheet
-                            </a>
-                            <button
-                              type="button"
-                              className="task-menu-item"
-                              onClick={() => copyRunSheetLink(d)}
-                            >
-                              {copiedId === d.id ? (<><Check size={14} aria-hidden="true" /> Link copied</>) : (<><Copy size={14} aria-hidden="true" /> Copy link</>)}
-                            </button>
-                          </div>
-                        )}
+                          className="task-menu-item"
+                          onClick={() => copyRunSheetLink(d)}
+                        >
+                          {copiedId === d.id ? (<><Check size={14} aria-hidden="true" /> Link copied</>) : (<><Copy size={14} aria-hidden="true" /> Copy link</>)}
+                        </button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <Pagination
-              page={runsPageNum}
-              totalPages={runsTotalPages}
-              total={runsTotal}
-              startIndex={runsStart}
-              endIndex={runsEnd}
-              onPageChange={setRunsPage}
-            />
-          </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {runsTable.count > 0 && (
+          <Pagination
+            page={runsPageNum}
+            totalPages={runsTotalPages}
+            total={runsTotal}
+            startIndex={runsStart}
+            endIndex={runsEnd}
+            onPageChange={setRunsPage}
+          />
         )}
       </div>
 

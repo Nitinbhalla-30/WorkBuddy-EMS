@@ -204,7 +204,7 @@ export default function AdminReimbursements() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={8} message="No claims match your filters." />
+              <TableEmpty colSpan={8} message={table.total === 0 ? 'No reimbursement claims yet.' : 'No reimbursement claims found.'} />
             )}
             {claimsPage.map((c) => {
               const emp = getEmployeeById(c.employeeId)

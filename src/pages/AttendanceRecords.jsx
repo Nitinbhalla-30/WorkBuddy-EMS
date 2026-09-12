@@ -76,7 +76,7 @@ function monthFilterOptions() {
   const keys = []
   for (let i = 0; i < HISTORY_MONTH_RANGE; i++) keys.push(monthKeyOffset(i))
   return [
-    { value: 'all', label: 'Cached months' },
+    { value: 'all', label: 'All months' },
     ...keys.map((k) => ({ value: k, label: monthLabel(k) }))
   ]
 }
@@ -630,7 +630,7 @@ export default function AttendanceRecords() {
                 colSpan="10"
                 message={historyPending
                   ? 'Loading older attendance records from the server...'
-                  : 'No records match your filters.'}
+                  : (recordsTotal === 0 ? 'No attendance records yet.' : 'No attendance records found.')}
               />
             )}
             {recordsPage.map((r) => {
@@ -734,7 +734,7 @@ export default function AttendanceRecords() {
           </thead>
           <tbody>
             {correctionsTotal === 0 && (
-              <TableEmpty colSpan={7} message="No correction requests match your filters." />
+              <TableEmpty colSpan={7} message={correctionsTotal === 0 ? 'No correction requests yet.' : 'No correction requests found.'} />
             )}
             {correctionsPage.map((c) => {
               const emp = getEmployeeById(c.employeeId)

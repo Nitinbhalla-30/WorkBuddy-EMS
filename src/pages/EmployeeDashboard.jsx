@@ -653,7 +653,7 @@ export default function EmployeeDashboard() {
                 message={
                   attendancePending
                     ? 'Loading attendance for this month…'
-                    : `No attendance records for ${monthLabel(selectedHistoryMonth)}.`
+                    : (historyTable.total === 0 ? `No attendance records for ${monthLabel(selectedHistoryMonth)} yet.` : `No attendance records for ${monthLabel(selectedHistoryMonth)}.`)
                 }
               />
             )}
@@ -754,7 +754,7 @@ export default function EmployeeDashboard() {
               </thead>
               <tbody>
                 {correctionsPage.length === 0 && (
-                  <TableEmpty colSpan={6} message="No correction requests." />
+                  <TableEmpty colSpan={6} message="No correction requests yet." />
                 )}
                 {correctionsPage.map((c) => (
                   <tr key={c.id}>

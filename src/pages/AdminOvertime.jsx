@@ -212,7 +212,7 @@ function RequestsTab({ refresh, onDecided }) {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={6} message="No overtime requests." />
+              <TableEmpty colSpan={6} message={table.total === 0 ? 'No overtime requests yet.' : 'No overtime requests found.'} />
             )}
             {page.map((r) => {
               const emp = getEmployeeById(r.employeeId)
@@ -384,67 +384,67 @@ function SummaryTab({ refresh }) {
 
   return (
     <div className="card">
-      <div className="section-head-row" style={{ marginTop: 0, marginBottom: 12 }}>
-        <h3 className="section-title first">Monthly overtime summary</h3>
-        <label className="field inline">
-          <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-            {months.map((m) => (
-              <option key={m.key} value={m.key}>{m.label}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {summary.length === 0 && (
-        <p className="muted">No overtime recorded for {monthLabel(selectedMonth)}.</p>
-      )}
-
-      {summary.length > 0 && (
-        <>
-          <table className="table" style={{ tableLayout: 'fixed' }}>
-            <colgroup>
-              <col style={{ width: '50%' }} />
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '25%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <SortableTh label="Employee" keyName="name" sortKey={summaryTable.sortKey} sortDir={summaryTable.sortDir} onSort={summaryTable.toggleSort} />
-                <SortableTh label="Approved hours" keyName="hours" sortKey={summaryTable.sortKey} sortDir={summaryTable.sortDir} onSort={summaryTable.toggleSort} />
-                <SortableTh label="Overtime pay" keyName="pay" sortKey={summaryTable.sortKey} sortDir={summaryTable.sortDir} onSort={summaryTable.toggleSort} />
-              </tr>
-            </thead>
-            <tbody>
-              {summaryPage.map((s) => (
-                <tr key={s.employee.id}>
-                  <td>
-                    <div className="person-cell">
-                      <Avatar name={s.employee.name} size={34} />
-                      <div>
-                        <strong>{s.employee.name}</strong>
-                        <div className="muted small">{s.employee.id}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td><strong>{s.totalHours}h</strong></td>
-                  <td><strong>{formatRupees(s.totalPay)}</strong></td>
-                </tr>
+      <TableToolbar
+        search={summaryTable.search}
+        onSearchChange={summaryTable.setSearch}
+        placeholder="Search by name or ID..."
+        actions={
+          <label className="field inline" style={{ margin: 0 }}>
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+              {months.map((m) => (
+                <option key={m.key} value={m.key}>{m.label}</option>
               ))}
-              <tr>
-                <td colSpan="2" style={{ textAlign: 'right' }}><strong>Total</strong></td>
-                <td><strong>{formatRupees(grandTotalPay)}</strong></td>
-              </tr>
-            </tbody>
-          </table>
-          <Pagination
-            page={summaryPageNum}
-            totalPages={summaryTotalPages}
-            total={summaryTotal}
-            startIndex={summaryStart}
-            endIndex={summaryEnd}
-            onPageChange={setSummaryPage}
-          />
-        </>
+            </select>
+          </label>
+        }
+      />
+      <table className="table" style={{ tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: '50%' }} />
+          <col style={{ width: '25%' }} />
+          <col style={{ width: '25%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <SortableTh label="Employee" keyName="name" sortKey={summaryTable.sortKey} sortDir={summaryTable.sortDir} onSort={summaryTable.toggleSort} />
+            <SortableTh label="Approved hours" keyName="hours" sortKey={summaryTable.sortKey} sortDir={summaryTable.sortDir} onSort={summaryTable.toggleSort} />
+            <SortableTh label="Overtime pay" keyName="pay" sortKey={summaryTable.sortKey} sortDir={summaryTable.sortDir} onSort={summaryTable.toggleSort} />
+          </tr>
+        </thead>
+        <tbody>
+          {summaryPage.length === 0 && (
+            <TableEmpty colSpan={3} message="No overtime records yet." />
+          )}
+          {summaryPage.map((s) => (
+            <tr key={s.employee.id}>
+              <td>
+                <div className="person-cell">
+                  <Avatar name={s.employee.name} size={34} />
+                  <div>
+                    <strong>{s.employee.name}</strong>
+                    <div className="muted small">{s.employee.id}</div>
+                  </div>
+                </div>
+              </td>
+              <td><strong>{s.totalHours}h</strong></td>
+              <td><strong>{formatRupees(s.totalPay)}</strong></td>
+            </tr>
+          ))}
+          <tr>
+            <td colSpan="2" style={{ textAlign: 'right' }}><strong>Total</strong></td>
+            <td><strong>{formatRupees(grandTotalPay)}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      {summaryPage.length > 0 && (
+        <Pagination
+          page={summaryPageNum}
+          totalPages={summaryTotalPages}
+          total={summaryTotal}
+          startIndex={summaryStart}
+          endIndex={summaryEnd}
+          onPageChange={setSummaryPage}
+        />
       )}
     </div>
   )

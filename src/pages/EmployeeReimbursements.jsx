@@ -352,7 +352,7 @@ export default function EmployeeReimbursements() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={7} message="No claims match your filters." />
+              <TableEmpty colSpan={7} message={table.total === 0 ? 'No reimbursement claims yet.' : 'No reimbursement claims found.'} />
             )}
             {claimsPage.map((c) => (
               <tr key={c.id}>

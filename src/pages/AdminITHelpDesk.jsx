@@ -238,7 +238,7 @@ export default function AdminITHelpDesk() {
             {table.count === 0 && (
               <TableEmpty
                 colSpan={canAssign ? 9 : 8}
-                message={isITStaff ? 'No IT issues are assigned to you right now.' : 'No IT issues match your filters.'}
+                message={isITStaff ? (table.total === 0 ? 'No IT issues are assigned to you yet.' : 'No IT issues are assigned to you right now.') : (table.total === 0 ? 'No IT issues yet.' : 'No IT issues found.')}
               />
             )}
             {pageRows.map((issue) => {

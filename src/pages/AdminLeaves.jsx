@@ -255,7 +255,7 @@ export default function AdminLeaves() {
           </thead>
           <tbody>
             {leavesTotal === 0 && (
-              <TableEmpty colSpan={9} message="No requests match your filters." />
+              <TableEmpty colSpan={9} message={leavesTotal === 0 ? 'No leave requests yet.' : 'No leave requests found.'} />
             )}
             {leavesPage.map((lv) => {
               const emp = getEmployeeById(lv.employeeId)

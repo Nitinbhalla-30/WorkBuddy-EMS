@@ -154,7 +154,7 @@ export default function AdminTickets() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={7} message="Nothing matches your filters." />
+              <TableEmpty colSpan={7} message={table.total === 0 ? 'No queries & grievances yet.' : 'No queries & grievances found.'} />
             )}
             {ticketsPage.map((t) => {
               const ticketEmp = !t.anonymous ? getEmployeeById(t.employeeId) : null

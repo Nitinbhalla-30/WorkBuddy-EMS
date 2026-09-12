@@ -365,7 +365,7 @@ export default function AdminTasks() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={9} message="No tasks match your filters." />
+              <TableEmpty colSpan={9} message={table.total === 0 ? 'No tasks yet.' : 'No tasks found.'} />
             )}
             {tasksPage.map((task) => {
               const assignee = getEmployeeById(task.assigneeId)

@@ -369,11 +369,10 @@ export default function MyTeam() {
                 </thead>
                 <tbody>
                   {table.count === 0 && (
-                    <tr>
-                      <td colSpan={11} className="muted">
-                        {teammates.length === 0 ? emptyMessage : 'No team members match your search.'}
-                      </td>
-                    </tr>
+                    <TableEmpty
+                      colSpan={11}
+                      message={teammates.length === 0 ? emptyMessage : 'No team members found.'}
+                    />
                   )}
                   {pageRows.map((m) => {
                     const st = memberStats[m.id] || {}
@@ -447,11 +446,10 @@ export default function MyTeam() {
                 </thead>
                 <tbody>
                   {table.count === 0 && (
-                    <tr>
-                      <td colSpan={6} className="muted">
-                        {teammates.length === 0 ? emptyMessage : 'No team members match your search.'}
-                      </td>
-                    </tr>
+                    <TableEmpty
+                      colSpan={6}
+                      message={teammates.length === 0 ? emptyMessage : 'No team members found.'}
+                    />
                   )}
                   {pageRows.map((m) => (
                     <tr key={m.id}>

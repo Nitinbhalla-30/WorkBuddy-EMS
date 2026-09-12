@@ -486,7 +486,7 @@ export default function EmployeeLeaves() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={8} message="No leave requests match your filters." />
+              <TableEmpty colSpan={8} message={table.total === 0 ? 'No leave requests yet.' : 'No leave requests found.'} />
             )}
             {leavesPage.map((lv) => {
               const docs = lv.type === 'sick' ? leaveSupportingDocuments(lv) : []

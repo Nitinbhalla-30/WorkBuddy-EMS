@@ -237,7 +237,7 @@ export default function EmployeeTickets() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={7} message="No tickets match your filters." />
+              <TableEmpty colSpan={7} message={table.total === 0 ? 'No queries & grievances yet.' : 'No queries & grievances found.'} />
             )}
             {ticketsPage.map((t) => (
               <tr key={t.id}>

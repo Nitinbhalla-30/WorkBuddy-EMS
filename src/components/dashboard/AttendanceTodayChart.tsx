@@ -161,18 +161,14 @@ export function AttendanceTodayChart({
                 className="task-status-chart-center"
               >
                 <p className="muted small task-status-chart-center-label">
-                  {total === 0
-                    ? 'No employees'
-                    : displayed
-                      ? displayed.label
-                      : 'Employees'}
+                  {displayed
+                    ? displayed.label
+                    : 'Employees'}
                 </p>
                 <p className="task-status-chart-center-value">
-                  {total === 0
-                    ? '0'
-                    : displayed
-                      ? `${pct}%`
-                      : total}
+                  {displayed
+                    ? `${pct}%`
+                    : total}
                 </p>
               </motion.div>
             </AnimatePresence>

@@ -251,7 +251,7 @@ export default function CelebrationAdminPanel({ user, settings, events, onChange
                 colSpan={7}
                 message={(table.total || 0) === 0
                   ? 'No company occasions yet. Add one and everyone will see it on the Celebrations page.'
-                  : 'No occasions match your filters.'}
+                  : 'No occasions found.'}
                 icon={Sparkles}
               />
             )}
@@ -384,7 +384,7 @@ export default function CelebrationAdminPanel({ user, settings, events, onChange
           </thead>
           <tbody>
             {calendar.count === 0 && (
-              <TableEmpty colSpan={5} message="No calendar dates match your filters." icon={CalendarHeart} />
+              <TableEmpty colSpan={5} message={calendar.total === 0 ? 'No calendar dates yet.' : 'No calendar dates found.'} icon={CalendarHeart} />
             )}
             {calendar.rows.map((row) => {
               const hidden = hiddenIds.has(row.id)

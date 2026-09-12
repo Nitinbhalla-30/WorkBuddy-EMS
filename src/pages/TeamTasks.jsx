@@ -362,7 +362,7 @@ export default function TeamTasksPanel() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={7} message="No tasks match your filters." />
+              <TableEmpty colSpan={7} message={table.total === 0 ? 'No tasks yet.' : 'No tasks found.'} />
             )}
             {tasksPage.map((task) => (
               <tr key={task.id}>

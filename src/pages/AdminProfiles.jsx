@@ -355,7 +355,7 @@ export default function EmployeeRecords() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={9} message="No employees match your filters." />
+              <TableEmpty colSpan={9} message={table.total === 0 ? 'No employees yet.' : 'No employees found.'} />
             )}
             {recordsPage.map((e) => {
               const profile = profileOf(e)

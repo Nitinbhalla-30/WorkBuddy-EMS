@@ -444,7 +444,7 @@ export default function EmployeeTasks() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={8} message="No tasks match your filters." />
+              <TableEmpty colSpan={8} message={table.total === 0 ? 'No tasks yet.' : 'No tasks found.'} />
             )}
             {tasksPage.map((task) => (
               <tr key={task.id}>

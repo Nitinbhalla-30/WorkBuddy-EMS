@@ -245,7 +245,7 @@ export default function AdminAnnouncements() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={6} message="No announcements match your filters." />
+              <TableEmpty colSpan={6} message={table.total === 0 ? 'No announcements yet.' : 'No announcements found.'} />
             )}
             {announcementsPage.map((announcement) => {
               const creator = getEmployeeById(announcement.createdBy)

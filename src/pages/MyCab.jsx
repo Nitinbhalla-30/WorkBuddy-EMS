@@ -435,7 +435,7 @@ export default function MyCab() {
                   message={
                     requests.length === 0
                       ? 'No change requests yet. Use "Request temporary change" to raise one.'
-                      : 'No requests match your search.'
+                      : 'No requests found.'
                   }
                 />
               )}

@@ -509,7 +509,7 @@ export default function EmployeeITHelpDesk() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={8} message="No IT issues match your filters." />
+              <TableEmpty colSpan={8} message={table.total === 0 ? 'No IT issues yet.' : 'No IT issues found.'} />
             )}
             {issuesPage.map((issue) => {
               const assignedStaff = issue.assignedTo ? getITStaffById(issue.assignedTo) : null

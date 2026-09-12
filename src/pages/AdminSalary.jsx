@@ -265,7 +265,7 @@ export default function AdminSalary() {
             {table.count === 0 && (
               <TableEmpty
                 colSpan={8}
-                message={monthReady ? 'No employees match your filters.' : 'Loading attendance for this month…'}
+                message={monthReady ? (table.total === 0 ? 'No employees yet.' : 'No employees found.') : 'Loading attendance for this month…'}
               />
             )}
             {rowsPage.map(({ emp, calc }) => (

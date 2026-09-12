@@ -202,7 +202,7 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={5} message="No overtime requests yet." />
+              <TableEmpty colSpan={5} message={table.total === 0 ? 'No overtime requests yet.' : 'No overtime requests found.'} />
             )}
             {page.map((r) => {
               const statusClass = overtimeStatusTagClass(r.status)

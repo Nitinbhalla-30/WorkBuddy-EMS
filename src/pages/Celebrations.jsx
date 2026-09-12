@@ -271,37 +271,12 @@ function CelebrationEmptyTab({ tab, nextUp, today }) {
   return (
     <div className={`celebration-empty-card ${nextUp ? celebrationToneClass(nextUp.kind) : ''}`}>
       <span className="table-empty-icon" aria-hidden="true">
-        <Icon size={19} />
+        <Icon size={20} />
       </span>
       <p className="celebration-empty-title">{tab.emptyTitle}</p>
       <p className="celebration-empty-text">
         This page covers {CELEBRATION_PAST_DAYS} days back and {CELEBRATION_FUTURE_DAYS} days ahead of today.
       </p>
-
-      {nextUp ? (
-        <div className="celebration-next">
-          <span className="celebration-next-label">Next up</span>
-          {nextUp.person ? (
-            <Avatar src={nextUp.person.photoUrl} name={nextUp.person.name} size={28} />
-          ) : (
-            <span className="celebration-next-icon" aria-hidden="true">
-              <Icon size={15} />
-            </span>
-          )}
-          <span className="celebration-next-text">
-            {/* The name is the whole point of the line, so it gets the title
-                attribute the cards use too - long names clip, never wrap. */}
-            <strong className="celebration-next-name" title={name}>{name}</strong>
-            <span className="celebration-next-when">
-              {celebrationKindLabel(nextUp.kind)} · {formatDate(nextUp.date)} · in {days} day{days === 1 ? '' : 's'}
-            </span>
-          </span>
-        </div>
-      ) : (
-        <p className="celebration-empty-text">
-          Nothing coming up in the next {CELEBRATION_LOOKAHEAD_DAYS} days either.
-        </p>
-      )}
     </div>
   )
 }

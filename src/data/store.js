@@ -12,20 +12,7 @@ import { canManageCelebrations } from '../utils/celebrations.js'
 
 // Sample employee data used as fallback when Supabase is not configured or empty.
 const SAMPLE_EMPLOYEES = [
-  {"id":"EMP001","name":"Arjun Mehta","pin":"1111","role":"employee","department":"Sales","isManager":true,"managerId":null,"email":"arjun.mehta@company.com","designation":"Sales Manager","dateJoined":"2024-06-10","salary":{"basic":45000,"hra":20000,"other":8000,"tdsMonthly":3000}},
-  {"id":"EMP002","name":"Kavya Reddy","pin":"2222","role":"employee","department":"Design","isManager":false,"managerId":"EMP001","email":"kavya.reddy@company.com","designation":"UI Designer","dateJoined":"2025-03-15","salary":{"basic":22000,"hra":10000,"other":4000,"tdsMonthly":0}},
-  {"id":"EMP003","name":"Sameer Joshi","pin":"3333","role":"employee","department":"Support","isManager":false,"managerId":"EMP001","email":"sameer.joshi@company.com","designation":"Support Executive","dateJoined":"2025-01-10","salary":{"basic":12000,"hra":5000,"other":2000,"tdsMonthly":0}},
-  {"id":"EMP004","name":"Divya Menon","pin":"4444","role":"employee","department":"Sales","isManager":false,"managerId":"EMP001","email":"divya.menon@company.com","designation":"Sales Executive","dateJoined":"2024-11-01","salary":{"basic":16000,"hra":7000,"other":3000,"tdsMonthly":0}},
-  {"id":"EMP005","name":"Rahul Verma","pin":"8888","role":"employee","department":"Marketing","isManager":false,"managerId":"EMP001","email":"rahul.verma@company.com","designation":"Marketing Associate","dateJoined":"2025-05-02","salary":{"basic":14000,"hra":6000,"other":2500,"tdsMonthly":0}},
-  {"id":"EMP006","name":"Neha Kulkarni","pin":"9999","role":"employee","department":"Operations","isManager":true,"managerId":null,"email":"neha.kulkarni@company.com","designation":"Operations Manager","dateJoined":"2024-04-18","salary":{"basic":40000,"hra":18000,"other":7000,"tdsMonthly":2500}},
-  {"id":"EMP007","name":"Aditya Rao","pin":"1010","role":"employee","department":"Operations","isManager":false,"managerId":"EMP006","email":"aditya.rao@company.com","designation":"Operations Executive","dateJoined":"2025-02-20","salary":{"basic":13000,"hra":5500,"other":2000,"tdsMonthly":0}},
-  {"id":"EMP008","name":"Ishita Bose","pin":"2020","role":"employee","department":"Marketing","isManager":false,"managerId":"EMP001","email":"ishita.bose@company.com","designation":"Content Writer","dateJoined":"2025-06-09","salary":{"basic":15000,"hra":6500,"other":2500,"tdsMonthly":0}},
-  {"id":"EMP009","name":"Karan Malhotra","pin":"3030","role":"employee","department":"Quality","isManager":false,"managerId":"EMP006","email":"karan.malhotra@company.com","designation":"QA Analyst","dateJoined":"2025-04-07","salary":{"basic":17000,"hra":7500,"other":3000,"tdsMonthly":0}},
-  {"id":"EMP010","name":"Pooja Hegde","pin":"4040","role":"employee","department":"Human Resources","isManager":false,"managerId":"EMP006","email":"pooja.hegde@company.com","designation":"HR Executive","dateJoined":"2025-07-01","salary":{"basic":18000,"hra":8000,"other":3500,"tdsMonthly":0}},
-  {"id":"ADM001","name":"Meera Kapoor","pin":"0000","role":"admin","department":"Human Resources","isManager":false,"managerId":null,"salary":{"basic":0,"hra":0,"other":0,"tdsMonthly":0}},
-  {"id":"IT001","name":"Rajesh Kumar","pin":"5555","role":"it","department":"IT Support","isManager":false,"managerId":null,"salary":{"basic":20000,"hra":8000,"other":5000,"tdsMonthly":1000}},
-  {"id":"IT002","name":"Anita Desai","pin":"6666","role":"it","department":"IT Support","isManager":false,"managerId":null,"salary":{"basic":18000,"hra":7000,"other":4000,"tdsMonthly":800}},
-  {"id":"IT003","name":"Vikram Singh","pin":"7777","role":"it","department":"IT Support","isManager":true,"managerId":null,"salary":{"basic":25000,"hra":10000,"other":6000,"tdsMonthly":1500}}
+  {"id":"ADM001","name":"Meera Kapoor","pin":"0000","role":"admin","department":"Human Resources","isManager":false,"managerId":null,"salary":{"basic":0,"hra":0,"other":0,"tdsMonthly":0}}
 ]
 
 const SAMPLE_DRIVERS = [
