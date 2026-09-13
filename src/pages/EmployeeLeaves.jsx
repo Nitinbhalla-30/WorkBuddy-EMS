@@ -151,19 +151,7 @@ export default function EmployeeLeaves() {
     setPage: setLeavesPage
   } = usePagination(table.rows)
 
-  // Click outside the balance cards to clear the type quick-filter, the
-  // same way the task module's stat cards reset.
   const statAreaRef = useRef(null)
-  useEffect(() => {
-    function clearType(e) {
-      if (e.type === 'click' && table.filters.type) {
-        table.setFilter('type', null)
-        setLeavesPage(1)
-      }
-    }
-    document.addEventListener('click', clearType)
-    return () => document.removeEventListener('click', clearType)
-  }, [table.filters.type, table.setFilter, setLeavesPage])
 
   const openLeave = leaves.find((lv) => lv.id === openId) || null
   const editLeave = leaves.find((lv) => lv.id === editId) || null
