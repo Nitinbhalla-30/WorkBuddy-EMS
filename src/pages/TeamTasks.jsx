@@ -116,18 +116,6 @@ export default function TeamTasksPanel() {
     setPage: setTasksPage
   } = usePagination(table.rows)
 
-  // Clear quick-filter when clicking outside the stat cards / donut area
-  useEffect(() => {
-    const clearQuick = (e) => {
-      if (e.type === 'click' && table.filters.quick) {
-        table.setFilter('quick', null)
-        setTasksPage(1)
-      }
-    }
-    document.addEventListener('click', clearQuick)
-    return () => document.removeEventListener('click', clearQuick)
-  }, [table.filters.quick, table.setFilter, setTasksPage])
-
   const openTask = tasks.find((t) => t.id === openTaskId) || null
 
   function nameOf(id) {

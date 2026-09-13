@@ -142,17 +142,6 @@ export default function EmployeeTasks() {
     setPage: setTasksPage
   } = usePagination(table.rows)
 
-  useEffect(() => {
-    const clearQuick = (e) => {
-      if (e.type === 'click' && table.filters.quick) {
-        table.setFilter('quick', null)
-        setTasksPage(1)
-      }
-    }
-    document.addEventListener('click', clearQuick)
-    return () => document.removeEventListener('click', clearQuick)
-  }, [table.filters.quick, table.setFilter, setTasksPage])
-
   const openTask = tasks.find((t) => t.id === openTaskId) || null
   const editTask = tasks.find((t) => t.id === editTaskId) || null
 

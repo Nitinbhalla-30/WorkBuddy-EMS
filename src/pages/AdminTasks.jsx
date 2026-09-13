@@ -175,17 +175,6 @@ export default function AdminTasks() {
     return () => document.removeEventListener('mousedown', handleMenuOutside)
   }, [openMenuId])
 
-  useEffect(() => {
-    const clearQuick = (e) => {
-      if (e.type === 'click' && table.filters.quick) {
-        table.setFilter('quick', null)
-        setTasksPage(1)
-      }
-    }
-    document.addEventListener('click', clearQuick)
-    return () => document.removeEventListener('click', clearQuick)
-  }, [table.filters.quick, table.setFilter, setTasksPage])
-
   return (
     <div>
       <div className="page-head">
