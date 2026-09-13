@@ -292,6 +292,13 @@ export default function TeamTasksPanel() {
           placeholder="Search tasks..."
           filters={[
             {
+              key: 'quick',
+              label: 'Quick',
+              value: table.filters.quick || 'all',
+              options: [],
+              hidden: true
+            },
+            {
               key: 'priority',
               label: 'Priority',
               value: table.filters.priority || 'all',

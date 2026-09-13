@@ -286,6 +286,13 @@ export default function AdminTasks() {
           placeholder="Search tasks..."
           filters={[
             {
+              key: 'quick',
+              label: 'Quick',
+              value: table.filters.quick || 'all',
+              options: [],
+              hidden: true
+            },
+            {
               key: 'assignee',
               label: 'Assigned to',
               value: table.filters.assignee || 'all',

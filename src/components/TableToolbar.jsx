@@ -46,17 +46,19 @@ export default function TableToolbar({
           </label>
         )}
         {filters.map((f) => (
-          <label key={f.key} className="table-toolbar-field table-toolbar-filter">
-            <span className="table-toolbar-label">{f.label}</span>
-            <select
-              value={f.value || 'all'}
-              onChange={(e) => onFilterChange(f.key, e.target.value)}
-            >
-              {f.options.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </label>
+          !f.hidden && (
+            <label key={f.key} className="table-toolbar-field table-toolbar-filter">
+              <span className="table-toolbar-label">{f.label}</span>
+              <select
+                value={f.value || 'all'}
+                onChange={(e) => onFilterChange(f.key, e.target.value)}
+              >
+                {f.options.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </label>
+          )
         ))}
         {hasActiveFilters && (
           <button

@@ -367,6 +367,13 @@ export default function EmployeeTasks() {
           placeholder="Search tasks..."
           filters={[
             {
+              key: 'quick',
+              label: 'Quick',
+              value: table.filters.quick || 'all',
+              options: [],
+              hidden: true
+            },
+            {
               key: 'assignedDuring',
               label: 'Assigned During',
               value: table.filters.assignedDuring || 'all',
