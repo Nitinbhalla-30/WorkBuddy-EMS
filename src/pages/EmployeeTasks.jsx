@@ -461,11 +461,14 @@ export default function EmployeeTasks() {
                 </td>
                 <td>{statusCell(task)}</td>
                 <td
-                  className={`cell-ellipsis ${isOverdue(task) ? 'text-bad' : ''}`}
+                  className={isOverdue(task) ? 'text-bad' : ''}
                   title={task.dueDate ? `${formatDate(task.dueDate)}${isOverdue(task) ? ' (Overdue)' : ''}` : undefined}
+                  style={{ minHeight: 44 }}
                 >
-                  {task.dueDate ? formatDate(task.dueDate) : <span className="muted">--</span>}
-                  {isOverdue(task) && <span className="muted small"> (Overdue)</span>}
+                  <div>
+                    {task.dueDate ? formatDate(task.dueDate) : <span className="muted">--</span>}
+                  </div>
+                  {isOverdue(task) && <div className="muted small">(Overdue)</div>}
                 </td>
                 <td>
                   <div className="task-menu-container">
