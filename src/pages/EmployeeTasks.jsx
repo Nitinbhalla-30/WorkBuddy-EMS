@@ -463,12 +463,13 @@ export default function EmployeeTasks() {
                 <td
                   className={isOverdue(task) ? 'text-bad' : ''}
                   title={task.dueDate ? `${formatDate(task.dueDate)}${isOverdue(task) ? ' (Overdue)' : ''}` : undefined}
-                  style={{ minHeight: 44 }}
                 >
-                  <div>
-                    {task.dueDate ? formatDate(task.dueDate) : <span className="muted">--</span>}
+                  <div style={{ display: 'flex', flexDirection: 'column', height: 36, justifyContent: 'center' }}>
+                    <div>
+                      {task.dueDate ? formatDate(task.dueDate) : <span className="muted">--</span>}
+                    </div>
+                    {isOverdue(task) && <div className="muted small">(Overdue)</div>}
                   </div>
-                  {isOverdue(task) && <div className="muted small">(Overdue)</div>}
                 </td>
                 <td>
                   <div className="task-menu-container">
