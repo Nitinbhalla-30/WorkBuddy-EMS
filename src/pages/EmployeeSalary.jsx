@@ -74,23 +74,28 @@ export default function EmployeeSalary() {
           </h2>
           <p className="muted small" style={{ margin: '4px 0 0' }}>Review your monthly payslip and salary breakdown</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <label className="field inline">
-            <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-              {months.map((m) => (
-                <option key={m.key} value={m.key}>{m.label}</option>
-              ))}
-            </select>
-          </label>
-          <button className="btn btn-primary btn-tiny" onClick={downloadPDF}>
-            <Download size={14} style={{ marginRight: 4 }} />Download PDF
-          </button>
-        </div>
       </div>
 
       {calc ? (
-        <div className="card" ref={payslipRef}>
-          <Payslip employee={user} monthKey={selected} calc={calc} />
+        <div className="card">
+          <div className="table-toolbar">
+            <div />
+            <div className="table-toolbar-right">
+              <label className="field inline" style={{ margin: 0 }}>
+                <select value={selected} onChange={(e) => setSelected(e.target.value)}>
+                  {months.map((m) => (
+                    <option key={m.key} value={m.key}>{m.label}</option>
+                  ))}
+                </select>
+              </label>
+              <button className="btn btn-primary" onClick={downloadPDF}>
+                <Download size={14} style={{ marginRight: 4 }} />Download PDF
+              </button>
+            </div>
+          </div>
+          <div ref={payslipRef}>
+            <Payslip employee={user} monthKey={selected} calc={calc} />
+          </div>
         </div>
       ) : (
         <div className="card">
