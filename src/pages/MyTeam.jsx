@@ -14,7 +14,7 @@ import {
   STORE_KEYS
 } from '../data/store.js'
 import { computeMonthAverages, computeMonthRawAverages, formatDate } from '../utils/attendance.js'
-import { leaveDays, leaveTypeLabel, leaveTypeLabelWithPart } from '../utils/leaves.js'
+import { leaveDays, leaveHalfLabel, leaveTypeLabel, leaveTypeLabelWithPart } from '../utils/leaves.js'
 import { LEAVE_TYPES } from '../data/sampleData.js'
 import { overtimeStatusLabel, overtimeStatusTagClass } from '../utils/overtime.js'
 import { monthLabel } from '../utils/salary.js'
@@ -733,7 +733,12 @@ function TeamLeavesTab({ teamLeaves, openApproveLeave, openReject }) {
                   <span>{getEmployeeById(lv.employeeId)?.name || lv.employeeId}</span>
                 </div>
               </td>
-              <td>{leaveTypeLabelWithPart(lv)}</td>
+              <td>
+                <div style={{ display: 'flex', flexDirection: 'column', height: 36, justifyContent: 'center' }}>
+                  <div>{leaveTypeLabel(lv.type)}</div>
+                  {leaveHalfLabel(lv) && <div className="muted small">({leaveHalfLabel(lv).toLowerCase()})</div>}
+                </div>
+              </td>
               <td>
                 {lv.fromDate === lv.toDate
                   ? formatDate(lv.fromDate)
