@@ -273,9 +273,17 @@ export default function EmployeeTasks() {
         <TaskStatusChart
           tasks={tasks}
           activeKey={table.filters.quick || null}
-          onToggleKey={(key) =>
-            table.setFilter('quick', table.filters.quick === key ? null : key)
-          }
+          onToggleKey={(key) => {
+            const isTogglingOff = table.filters.quick === key
+            table.setFilter('quick', isTogglingOff ? 'all' : key)
+            if (isTogglingOff) {
+              table.setFilter('status', 'all')
+            } else if (key === 'overdue') {
+              table.setFilter('status', 'all')
+            } else {
+              table.setFilter('status', key)
+            }
+          }}
         />
       </div>
 

@@ -75,9 +75,9 @@ export function TaskStatusChart({
           type="button"
           className={cn(
             'stat-card task-status-stat-card stat-neutral',
-            (hovered === 'Total' || activeKey === 'all') && 'task-status-stat-card-active'
+            hovered === 'Total' && 'task-status-stat-card-active'
           )}
-          aria-pressed={activeKey === 'all'}
+          aria-pressed={false}
           onClick={() => onToggleKey?.('all')}
           onMouseEnter={() => setHovered('Total')}
           onMouseLeave={() => setHovered(null)}

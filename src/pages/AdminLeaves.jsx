@@ -273,14 +273,16 @@ export default function AdminLeaves() {
                     </div>
                   </td>
                   <td>
-                    {lv.type === 'halfday' ? (
-                      <>
-                        <div>Half day</div>
-                        <div className="muted small">({leaveHalfLabel(lv).toLowerCase()})</div>
-                      </>
-                    ) : (
-                      leaveTypeLabel(lv.type)
-                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', height: 36, justifyContent: 'center' }}>
+                      {lv.type === 'halfday' ? (
+                        <>
+                          <div>Half day</div>
+                          <div className="muted small">({leaveHalfLabel(lv).toLowerCase()})</div>
+                        </>
+                      ) : (
+                        <div>{leaveTypeLabel(lv.type)}</div>
+                      )}
+                    </div>
                   </td>
                   <td>{formatDate(lv.fromDate)}</td>
                   <td>{formatDate(lv.toDate)}</td>

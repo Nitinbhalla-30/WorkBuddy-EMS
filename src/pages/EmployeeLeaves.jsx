@@ -481,7 +481,12 @@ export default function EmployeeLeaves() {
               const docNames = docs.map((d) => d.name).join(', ')
               return (
               <tr key={lv.id}>
-                <td>{leaveTypeLabelWithPart(lv)}</td>
+                <td>
+                  <div style={{ display: 'flex', flexDirection: 'column', height: 36, justifyContent: 'center' }}>
+                    <div>{leaveTypeLabel(lv.type)}</div>
+                    {leaveHalfLabel(lv) && <div className="muted small">({leaveHalfLabel(lv).toLowerCase()})</div>}
+                  </div>
+                </td>
                 <td>{formatDate(lv.fromDate)}</td>
                 <td>{formatDate(lv.toDate)}</td>
                 <td>{leaveDays(lv)}</td>
