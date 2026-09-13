@@ -2,7 +2,7 @@
 // an ID + PIN. Real, secure login will come in a later phase.
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { getEmployeeById, getDriverById, initStore, whenDataReady } from '../data/store.js'
+import { getEmployeeById, getDriverById, initStore, isEmployeeActive, whenDataReady } from '../data/store.js'
 
 const AuthContext = createContext(null)
 
@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
           if (found) setUser({ ...found, role: 'driver' })
         } else {
           const found = getEmployeeById(savedId)
-          if (found) {
+          if (found && isEmployeeActive(found)) {
             // IT staff get admin-like access
             const role = found.role === 'it' ? 'admin' : found.role
             setUser({ ...found, role })
@@ -51,6 +51,7 @@ export function AuthProvider({ children }) {
     // Check employees (includes admin and IT staff)
     const emp = getEmployeeById(cleanId)
     if (emp) {
+      if (!isEmployeeActive(emp)) return 'This account has been deactivated. Please contact HR.'
       if (emp.pin !== cleanPin) return 'The PIN is not correct.'
       // IT staff get admin-like access for IT Help Desk
       const role = emp.role === 'it' ? 'admin' : emp.role

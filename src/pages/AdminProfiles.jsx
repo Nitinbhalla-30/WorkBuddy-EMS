@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
   addEmployee,
+  deactivateEmployee,
   getAttendanceForEmployee,
   getEmployees,
   getProfileForEmployee,
+  isEmployeeActive,
+  reactivateEmployee,
   reviewProfile,
   reviewProfileUpdateRequest,
   updateEmployeeTeam
@@ -18,7 +21,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
-import { Calendar, Contact, Eye, MoreVertical, UserPlus, X } from 'lucide-react'
+import { Calendar, Contact, Eye, MoreVertical, UserPlus, UserX, RotateCcw, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
 
@@ -29,14 +32,15 @@ const ROLE_FILTER_OPTS = [
 ]
 
 const RECORD_FILTER_OPTS = [
-  { value: 'all', label: 'All records' },
+  { value: 'all', label: 'All statuses' },
   { value: 'draft', label: 'Not submitted' },
   { value: 'submitted', label: 'Submitted (awaiting review)' },
   { value: 'verified', label: 'Verified' },
   { value: 'returned', label: 'Returned for correction' },
   { value: 'update_requested', label: 'Update requested (awaiting HR)' },
   { value: 'update_approved', label: 'Update approved — please edit' },
-  { value: 'none', label: 'No record' }
+  { value: 'none', label: 'No record' },
+  { value: 'deactivated', label: 'Deactivated' }
 ]
 
 // Combined "Employee Records" page. It shows the staff directory with team
@@ -61,14 +65,37 @@ export default function EmployeeRecords() {
     designation: '',
     isManager: false,
     managerId: '',
-    dateJoined: ''
+    dateJoined: '',
+    basic: '',
+    hra: '',
+    other: '',
+    tdsMonthly: ''
   })
   const [addError, setAddError] = useState('')
   const [newDept, setNewDept] = useState('')
   const [addingDept, setAddingDept] = useState(false)
   const dateJoinedRef = useRef(null)
 
+  // Deactivation modal
+  const [showDeactivate, setShowDeactivate] = useState(false)
+  const [deactivateTarget, setDeactivateTarget] = useState(null)
+  const [deactivateForm, setDeactivateForm] = useState({ reason: 'Resigned', date: '', note: '' })
+  const [deactivateError, setDeactivateError] = useState('')
+
+  // Reactivation confirmation
+  const [showReactivate, setShowReactivate] = useState(false)
+  const [reactivateTarget, setReactivateTarget] = useState(null)
+
+  // Show inactive toggle
+  const [showInactive, setShowInactive] = useState(false)
+
   const employees = useMemo(() => getEmployees(), [refresh])
+
+  // Filter out inactive employees unless "Show inactive" is enabled
+  const visibleEmployees = useMemo(() => {
+    if (showInactive) return employees
+    return employees.filter((e) => isEmployeeActive(e))
+  }, [employees, showInactive])
 
   // Only real employees can be picked as a manager.
   const managers = employees
@@ -92,7 +119,7 @@ export default function EmployeeRecords() {
     ]
   }, [managers])
 
-  const table = useTableControls(employees, {
+  const table = useTableControls(visibleEmployees, {
     getSearchText: (e) => {
       const profile = e.role === 'employee' ? getProfileForEmployee(e.id) : null
       const manager = e.managerId ? employees.find((m) => m.id === e.managerId) : null
@@ -125,6 +152,7 @@ export default function EmployeeRecords() {
         return e.managerId === val
       },
       record: (e, val) => {
+        if (val === 'deactivated') return !isEmployeeActive(e)
         if (e.role !== 'employee') return val === 'none'
         const profile = getProfileForEmployee(e.id)
         return (profile?.status || 'draft') === val
@@ -250,7 +278,7 @@ export default function EmployeeRecords() {
   }, [employees, addForm.department])
 
   function openAddEmployee() {
-    setAddForm({ name: '', id: getNextEmployeeId(), department: '', designation: '', isManager: false, managerId: '', dateJoined: '' })
+    setAddForm({ name: '', id: getNextEmployeeId(), department: '', designation: '', isManager: false, managerId: '', dateJoined: '', basic: '', hra: '', other: '', tdsMonthly: '' })
     setAddError('')
     setShowAdd(true)
   }
@@ -274,13 +302,69 @@ export default function EmployeeRecords() {
       designation: addForm.designation.trim(),
       isManager: addForm.isManager,
       managerId: addForm.managerId || null,
-      dateJoined: addForm.dateJoined
+      dateJoined: addForm.dateJoined,
+      salary: {
+        basic: Number(addForm.basic) || 0,
+        hra: Number(addForm.hra) || 0,
+        other: Number(addForm.other) || 0,
+        tdsMonthly: Number(addForm.tdsMonthly) || 0
+      }
     })
     if (!result) {
       setAddError('An employee with this ID already exists.')
       return
     }
     closeAddEmployee()
+    setRefresh((n) => n + 1)
+  }
+
+  // ---- deactivate employee ----
+  function openDeactivate(emp) {
+    setDeactivateTarget(emp)
+    setDeactivateForm({ reason: 'Resigned', date: '', note: '' })
+    setDeactivateError('')
+    setShowDeactivate(true)
+  }
+
+  function closeDeactivate() {
+    setShowDeactivate(false)
+    setDeactivateTarget(null)
+    setDeactivateForm({ reason: 'Resigned', date: '', note: '' })
+    setDeactivateError('')
+  }
+
+  function handleDeactivate() {
+    if (!deactivateForm.date) {
+      setDeactivateError('Separation date is required.')
+      return
+    }
+    if (deactivateForm.reason === 'Other' && !deactivateForm.note.trim()) {
+      setDeactivateError('Please provide a reason for "Other".')
+      return
+    }
+    deactivateEmployee(deactivateTarget.id, {
+      reason: deactivateForm.reason,
+      date: deactivateForm.date,
+      note: deactivateForm.reason === 'Other' ? deactivateForm.note.trim() : ''
+    })
+    closeDeactivate()
+    setRefresh((n) => n + 1)
+  }
+
+  // ---- reactivate employee ----
+  function openReactivate(emp) {
+    setReactivateTarget(emp)
+    setShowReactivate(true)
+  }
+
+  function closeReactivate() {
+    setShowReactivate(false)
+    setReactivateTarget(null)
+  }
+
+  function handleReactivate() {
+    reactivateEmployee(reactivateTarget.id)
+    closeReactivate()
     setRefresh((n) => n + 1)
   }
 
@@ -316,16 +400,29 @@ export default function EmployeeRecords() {
             },
             {
               key: 'record',
-              label: 'Record',
+              label: 'Record Status',
               value: table.filters.record || 'all',
               options: RECORD_FILTER_OPTS
             }
           ]}
-          onFilterChange={table.setFilter}
+          onFilterChange={(key, value) => {
+            if (key === 'record' && value === 'deactivated') setShowInactive(true)
+            table.setFilter(key, value)
+          }}
           actions={
-            <button type="button" className="btn btn-primary" onClick={openAddEmployee}>
-              <UserPlus size={14} aria-hidden="true" style={{ marginRight: 6 }} />Add Employee
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <label className="checkbox-row" style={{ margin: 0, whiteSpace: 'nowrap' }}>
+                <input
+                  type="checkbox"
+                  checked={showInactive}
+                  onChange={(e) => setShowInactive(e.target.checked)}
+                />
+                <span>Show inactive</span>
+              </label>
+              <button type="button" className="btn btn-primary" onClick={openAddEmployee}>
+                <UserPlus size={14} aria-hidden="true" style={{ marginRight: 6 }} />Add Employee
+              </button>
+            </div>
           }
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
@@ -417,21 +514,25 @@ export default function EmployeeRecords() {
                       : <span className="muted">--</span>}
                   </td>
                   <td>
-                    {profile ? (
-                      <span className={`tag ${profileStatusTagClass(profile.status)}`} style={{ whiteSpace: 'normal', lineHeight: 1.4 }}>
+                    {!isEmployeeActive(e) ? (
+                      <>
+                        <div>{e.separationReason || 'Inactive'}</div>
+                        {e.separationDate && <div className="muted" style={{ fontSize: '0.85em' }}>{e.separationDate}</div>}
+                        {e.separationReason === 'Other' && e.separationNote && <div className="muted" style={{ fontSize: '0.85em' }}>{e.separationNote}</div>}
+                      </>
+                    ) : profile ? (
+                      <>
                         {(() => {
                           const label = profileStatusLabel(profile.status)
                           const match = label.match(/^(.+?)\s*(\(.*\)$)/)
                           if (match) {
-                            return <>{match[1]}<br /><span style={{ opacity: 0.8, fontSize: '0.9em' }}>{match[2]}</span></>
+                            return <><div>{match[1]}</div><div className="muted" style={{ fontSize: '0.85em' }}>{match[2]}</div></>
                           }
-                          return label
+                          return <div>{label}</div>
                         })()}
-                      </span>
+                      </>
                     ) : (
-                      <span className={`tag ${profileStatusTagClass('none')}`}>
-                        No record
-                      </span>
+                      <span className="muted">No record</span>
                     )}
                   </td>
                   <td>
@@ -453,6 +554,26 @@ export default function EmployeeRecords() {
                             <Eye size={14} aria-hidden="true" />
                             {!profile || profile.status === 'draft' ? 'Not filled' : 'Open'}
                           </button>
+                          {isEmployeeActive(e) && e.role !== 'admin' && (
+                            <button
+                              type="button"
+                              className="task-menu-item"
+                              onClick={() => { closeMenu(); openDeactivate(e) }}
+                            >
+                              <UserX size={14} aria-hidden="true" />
+                              Deactivate
+                            </button>
+                          )}
+                          {!isEmployeeActive(e) && (
+                            <button
+                              type="button"
+                              className="task-menu-item"
+                              onClick={() => { closeMenu(); openReactivate(e) }}
+                            >
+                              <RotateCcw size={14} aria-hidden="true" />
+                              Reactivate
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -730,6 +851,52 @@ export default function EmployeeRecords() {
               />
             </label>
 
+            <p className="sub-title" style={{ margin: '16px 0 8px' }}>Salary structure</p>
+            <div className="two-col">
+              <label className="field">
+                <span>Basic</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={addForm.basic}
+                  onChange={(e) => setAddForm({ ...addForm, basic: e.target.value })}
+                  placeholder="e.g. 25000"
+                />
+              </label>
+              <label className="field">
+                <span>HRA</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={addForm.hra}
+                  onChange={(e) => setAddForm({ ...addForm, hra: e.target.value })}
+                  placeholder="e.g. 10000"
+                />
+              </label>
+            </div>
+            <div className="two-col">
+              <label className="field">
+                <span>Other allowances</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={addForm.other}
+                  onChange={(e) => setAddForm({ ...addForm, other: e.target.value })}
+                  placeholder="e.g. 5000"
+                />
+              </label>
+              <label className="field">
+                <span>TDS per month</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={addForm.tdsMonthly}
+                  onChange={(e) => setAddForm({ ...addForm, tdsMonthly: e.target.value })}
+                  placeholder="e.g. 2000"
+                />
+              </label>
+            </div>
+
             <div className="info-box" style={{ marginTop: 8 }}>
               The employee will be assigned a default PIN of <strong>1234</strong>. Share the Employee ID and PIN so they can log in and fill in their details under &ldquo;My Details&rdquo;.
             </div>
@@ -737,6 +904,95 @@ export default function EmployeeRecords() {
             <div className="button-row">
               <button type="button" className="btn btn-primary" onClick={handleAddEmployee}>Add Employee</button>
               <button type="button" className="btn btn-light" onClick={closeAddEmployee}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Deactivation modal */}
+      {showDeactivate && deactivateTarget && (
+        <Modal onClose={closeDeactivate} title={`Deactivate — ${deactivateTarget.name}`}>
+          <div className="modal-form">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>Deactivate employee</h3>
+                <div className="muted small">{deactivateTarget.name} ({deactivateTarget.id})</div>
+              </div>
+              <button type="button" className="btn btn-tiny btn-light" onClick={closeDeactivate} aria-label="Close"><X size={15} /></button>
+            </div>
+
+            {deactivateError && <div className="error-box">{deactivateError}</div>}
+
+            <div className="info-box" style={{ marginBottom: 16 }}>
+              This will block the employee from logging in. Their historical records (attendance, leaves, salary) will be preserved.
+            </div>
+
+            <label className="field">
+              <span>Reason *</span>
+              <select
+                value={deactivateForm.reason}
+                onChange={(e) => setDeactivateForm({ ...deactivateForm, reason: e.target.value })}
+              >
+                <option value="Resigned">Resigned</option>
+                <option value="Retired">Retired</option>
+                <option value="Terminated">Terminated</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+
+            {deactivateForm.reason === 'Other' && (
+              <label className="field">
+                <span>Custom reason *</span>
+                <input
+                  value={deactivateForm.note}
+                  onChange={(e) => setDeactivateForm({ ...deactivateForm, note: e.target.value })}
+                  placeholder="e.g. Contract ended, Relocated, etc."
+                />
+              </label>
+            )}
+
+            <label className="field">
+              <span>Separation date *</span>
+              <input
+                type="date"
+                value={deactivateForm.date}
+                onChange={(e) => setDeactivateForm({ ...deactivateForm, date: e.target.value })}
+              />
+            </label>
+
+            <div className="button-row">
+              <button type="button" className="btn btn-primary" onClick={handleDeactivate} style={{ backgroundColor: 'var(--danger, #dc3545)' }}>Deactivate</button>
+              <button type="button" className="btn btn-light" onClick={closeDeactivate}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Reactivation confirmation modal */}
+      {showReactivate && reactivateTarget && (
+        <Modal onClose={closeReactivate} title={`Reactivate — ${reactivateTarget.name}`}>
+          <div className="modal-form">
+            <div className="modal-header">
+              <div>
+                <h3 className="section-title first" style={{ margin: 0 }}>Reactivate employee</h3>
+                <div className="muted small">{reactivateTarget.name} ({reactivateTarget.id})</div>
+              </div>
+              <button type="button" className="btn btn-tiny btn-light" onClick={closeReactivate} aria-label="Close"><X size={15} /></button>
+            </div>
+
+            <div className="info-box" style={{ marginBottom: 16 }}>
+              Are you sure you want to reactivate <strong>{reactivateTarget.name}</strong>? They will be able to log in again.
+              {reactivateTarget.separationReason && (
+                <div style={{ marginTop: 8 }}>
+                  Previous separation: <strong>{reactivateTarget.separationReason}</strong>
+                  {reactivateTarget.separationDate && ` on ${reactivateTarget.separationDate}`}
+                </div>
+              )}
+            </div>
+
+            <div className="button-row">
+              <button type="button" className="btn btn-primary" onClick={handleReactivate}>Reactivate</button>
+              <button type="button" className="btn btn-light" onClick={closeReactivate}>Cancel</button>
             </div>
           </div>
         </Modal>

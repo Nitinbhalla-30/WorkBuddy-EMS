@@ -996,6 +996,11 @@ export function getEmployeeById(id) {
   return getEmployees().find((e) => e.id === id) || null
 }
 
+// Check if an employee is active. Legacy employees without a status field are treated as active.
+export function isEmployeeActive(emp) {
+  return !emp || emp.status !== 'inactive'
+}
+
 // Update one employee's salary structure. `salary` = { basic, hra, other, tdsMonthly }.
 export function updateEmployeeSalary(employeeId, salary) {
   const all = getEmployees()
@@ -1016,7 +1021,7 @@ export function updateEmployeeTeam(employeeId, team) {
   return all[idx]
 }
 
-// Add a new employee record. `data` = { id, name, department, designation, isManager, managerId, dateJoined }.
+// Add a new employee record. `data` = { id, name, department, designation, isManager, managerId, dateJoined, salary }.
 // A default PIN of "1234" is assigned so the employee can log in immediately.
 export function addEmployee(data) {
   const all = getEmployees()
@@ -1032,10 +1037,44 @@ export function addEmployee(data) {
     managerId: data.managerId || null,
     dateJoined: data.dateJoined || '',
     email: '',
-    salary: { basic: 0, hra: 0, other: 0, tdsMonthly: 0 }
+    status: 'active',
+    salary: data.salary || { basic: 0, hra: 0, other: 0, tdsMonthly: 0 }
   })
   write(KEYS.employees, all)
   return all[all.length - 1]
+}
+
+// Deactivate an employee (resigned, retired, terminated, etc.).
+// `info` = { reason, date, note }. reason = 'Resigned' | 'Retired' | 'Terminated' | 'Other'.
+export function deactivateEmployee(employeeId, info) {
+  const all = getEmployees()
+  const idx = all.findIndex((e) => e.id === employeeId)
+  if (idx < 0) return null
+  all[idx] = {
+    ...all[idx],
+    status: 'inactive',
+    separationReason: info.reason || '',
+    separationDate: info.date || '',
+    separationNote: info.note || ''
+  }
+  write(KEYS.employees, all)
+  return all[idx]
+}
+
+// Reactivate a previously deactivated employee.
+export function reactivateEmployee(employeeId) {
+  const all = getEmployees()
+  const idx = all.findIndex((e) => e.id === employeeId)
+  if (idx < 0) return null
+  all[idx] = {
+    ...all[idx],
+    status: 'active',
+    separationReason: '',
+    separationDate: '',
+    separationNote: ''
+  }
+  write(KEYS.employees, all)
+  return all[idx]
 }
 
 // The people who report to a given manager (only real employees).
