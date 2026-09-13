@@ -392,7 +392,7 @@ export default function EmployeeTasks() {
                 <button
                   type="button"
                   className="quick-filter-chip"
-                  onClick={() => table.setFilter('quick', null)}
+                  onClick={() => table.setFilter('quick', 'all')}
                   aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
                 >
                   {QUICK_FILTER_LABELS[table.filters.quick]}
