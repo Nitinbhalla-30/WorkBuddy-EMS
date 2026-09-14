@@ -63,7 +63,7 @@ export default function TicketForm({ onCreate, onCancel, initial = null, submitL
       <label className="field">
         <span>Category</span>
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option value="">-- choose --</option>
+          <option value="">Select a category</option>
           {categories.map((c) => (
             <option key={c.key} value={c.key}>{c.label}</option>
           ))}

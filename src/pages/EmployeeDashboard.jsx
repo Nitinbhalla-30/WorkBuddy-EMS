@@ -471,7 +471,7 @@ export default function EmployeeDashboard() {
     if (status === 'approved') return 'tag-ok'
     if (status === 'rejected') return 'tag-late'
     if (status === 'withdrawn') return 'tag-absent'
-    return 'tag-absent'
+    return 'tag-pending'
   }
 
   function toggleMenu(id) {

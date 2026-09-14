@@ -113,11 +113,11 @@ function ITIssueForm({ formData, onChange, onSubmit, onCancel, submitLabel = 'Su
       </label>
       <label className="field">
         <span>Description</span>
-        <input
-          type="text"
+        <textarea
           value={formData.description}
           onChange={(e) => onChange({ ...formData, description: e.target.value })}
           placeholder="Describe the problem in detail..."
+          rows={3}
         />
       </label>
       <div className="field">
@@ -125,7 +125,7 @@ function ITIssueForm({ formData, onChange, onSubmit, onCancel, submitLabel = 'Su
         <DropdownSelect
           value={formData.category}
           options={[
-            { value: '', label: '-- choose --' },
+            { value: '', label: 'Select a category' },
             ...IT_ISSUE_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))
           ]}
           onChange={(v) => onChange({ ...formData, category: v })}
@@ -361,6 +361,9 @@ export default function EmployeeITHelpDesk() {
               <h3 className="section-title first">Report IT Issue</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)} aria-label="Close"><X size={15} /></button>
             </div>
+            <p className="hint first">
+              Describe the technical issue you are facing. Attach a screenshot to help IT diagnose and resolve it faster.
+            </p>
             <ITIssueForm
               formData={formData}
               onChange={setFormData}

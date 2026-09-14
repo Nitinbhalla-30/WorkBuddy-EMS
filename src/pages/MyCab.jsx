@@ -771,8 +771,8 @@ function RequestForm({ pickupTrip, onSubmit, onCancel, initial }) {
 
       <label className="field">
         <span>Reason *</span>
-        <input value={reason} onChange={(e) => setReason(e.target.value)}
-          placeholder="e.g. Staying at a relative's place" />
+        <textarea value={reason} onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Staying at a relative's place" rows={3} />
       </label>
 
       <div className="button-row">

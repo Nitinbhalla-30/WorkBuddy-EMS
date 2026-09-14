@@ -23,7 +23,7 @@ export default function TaskForm({
   const [title, setTitle] = useState(initial?.title || '')
   const [description, setDescription] = useState(initial?.description || '')
   const [assigneeId, setAssigneeId] = useState(
-    initial?.assigneeId || defaultAssigneeId || (hasPicker ? people[0].id : '')
+    initial?.assigneeId || defaultAssigneeId || ''
   )
   const [dueDate, setDueDate] = useState(initial?.dueDate || '')
   const [priority, setPriority] = useState(initial?.priority || 'medium')
@@ -34,6 +34,10 @@ export default function TaskForm({
     setError('')
     if (!title.trim()) {
       setError('Please type a task title.')
+      return
+    }
+    if (hasPicker && !assigneeId) {
+      setError('Please select a team member to assign the task to.')
       return
     }
     onCreate({
@@ -68,6 +72,7 @@ export default function TaskForm({
           <label className="field">
             <span>Assign to</span>
             <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+              <option value="">Select your team member</option>
               {people.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
@@ -78,10 +83,11 @@ export default function TaskForm({
 
       <label className="field">
         <span>Details (optional)</span>
-        <input
+        <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="A short note about the task"
+          rows={3}
         />
       </label>
 

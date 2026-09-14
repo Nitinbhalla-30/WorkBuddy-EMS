@@ -61,6 +61,7 @@ export default function TeamTasksPanel() {
 
   const people = useMemo(() => {
     const members = getTeamMembers(user.id)
+      .sort((a, b) => a.name.localeCompare(b.name))
     return [{ id: user.id, name: `${user.name} (me)` }, ...members]
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id, refresh])

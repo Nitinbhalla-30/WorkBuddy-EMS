@@ -13,7 +13,7 @@ export default function AttendanceCorrectionForm({
   const isEdit = Boolean(initial)
 
   const [date, setDate] = useState(initial?.date || defaultDate)
-  const [issueType, setIssueType] = useState(initial?.issueType || 'missed_time_in')
+  const [issueType, setIssueType] = useState(initial?.issueType || '')
   const [description, setDescription] = useState(initial?.description || '')
   const [suggestedTimeIn, setSuggestedTimeIn] = useState(initial?.suggestedTimeIn || '')
   const [suggestedTimeOut, setSuggestedTimeOut] = useState(initial?.suggestedTimeOut || '')
@@ -26,6 +26,10 @@ export default function AttendanceCorrectionForm({
     e.preventDefault()
     setError('')
 
+    if (!issueType) {
+      setError('Please select what went wrong.')
+      return
+    }
     if (!date) {
       setError('Please choose the date of the attendance record.')
       return
@@ -45,7 +49,7 @@ export default function AttendanceCorrectionForm({
 
     if (!isEdit) {
       setDate(defaultDate)
-      setIssueType('missed_time_in')
+      setIssueType('')
       setDescription('')
       setSuggestedTimeIn('')
       setSuggestedTimeOut('')
@@ -65,6 +69,7 @@ export default function AttendanceCorrectionForm({
         <label className="field">
           <span>What went wrong?</span>
           <select value={issueType} onChange={(e) => setIssueType(e.target.value)}>
+            <option value="">Select what went wrong</option>
             {ATTENDANCE_CORRECTION_ISSUES.map((i) => (
               <option key={i.key} value={i.key}>{i.label}</option>
             ))}

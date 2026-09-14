@@ -365,7 +365,7 @@ function EditModal({ request, onClose, onSaved }) {
 function SubmitModal({ userId, onClose, onSubmitted }) {
   const months = listRecentMonths(3)
   const [form, setForm] = useState({
-    monthKey: monthKey(),
+    monthKey: '',
     hours: '',
     reason: ''
   })
@@ -389,6 +389,7 @@ function SubmitModal({ userId, onClose, onSubmitted }) {
             <label className="field">
               <span>Month</span>
               <select value={form.monthKey} onChange={(e) => setForm({ ...form, monthKey: e.target.value })}>
+                <option value="">Select a month</option>
                 {months.map((m) => (
                   <option key={m.key} value={m.key}>{m.label}</option>
                 ))}
@@ -419,7 +420,7 @@ function SubmitModal({ userId, onClose, onSubmitted }) {
             />
           </label>
           <div className="button-row">
-            <button type="submit" className="btn btn-primary" disabled={!form.hours || Number(form.hours) <= 0}>
+            <button type="submit" className="btn btn-primary" disabled={!form.monthKey || !form.hours || Number(form.hours) <= 0}>
               <Timer size={14} style={{ marginRight: 4 }} />Submit request
             </button>
             <button type="button" className="btn btn-light" onClick={onClose}>Cancel</button>
