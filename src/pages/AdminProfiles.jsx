@@ -6,6 +6,7 @@ import {
   getAttendanceForEmployee,
   getEmployees,
   getProfileForEmployee,
+  getShifts,
   isEmployeeActive,
   reactivateEmployee,
   reviewProfile,
@@ -69,7 +70,9 @@ export default function EmployeeRecords() {
     basic: '',
     hra: '',
     other: '',
-    tdsMonthly: ''
+    tdsMonthly: '',
+    shiftId: '',
+    weekOffDays: []
   })
   const [addError, setAddError] = useState('')
   const [newDept, setNewDept] = useState('')
@@ -278,7 +281,7 @@ export default function EmployeeRecords() {
   }, [employees, addForm.department])
 
   function openAddEmployee() {
-    setAddForm({ name: '', id: getNextEmployeeId(), department: '', designation: '', isManager: false, managerId: '', dateJoined: '', basic: '', hra: '', other: '', tdsMonthly: '' })
+    setAddForm({ name: '', id: getNextEmployeeId(), department: '', designation: '', isManager: false, managerId: '', dateJoined: '', basic: '', hra: '', other: '', tdsMonthly: '', shiftId: '', weekOffDays: [] })
     setAddError('')
     setShowAdd(true)
   }
@@ -303,6 +306,8 @@ export default function EmployeeRecords() {
       isManager: addForm.isManager,
       managerId: addForm.managerId || null,
       dateJoined: addForm.dateJoined,
+      shiftId: addForm.shiftId || null,
+      weekOffDays: addForm.weekOffDays,
       salary: {
         basic: Number(addForm.basic) || 0,
         hra: Number(addForm.hra) || 0,
@@ -850,6 +855,41 @@ export default function EmployeeRecords() {
                 onChange={(e) => setAddForm({ ...addForm, dateJoined: e.target.value })}
               />
             </label>
+
+            <div className="two-col">
+              <label className="field">
+                <span>Shift</span>
+                <select
+                  value={addForm.shiftId}
+                  onChange={(e) => setAddForm({ ...addForm, shiftId: e.target.value })}
+                >
+                  <option value="">-- No shift assigned --</option>
+                  {getShifts().map((s) => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.startTime}–{s.endTime})</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Weekly off days</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 4 }}>
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label, idx) => (
+                    <label key={idx} className="checkbox-row" style={{ margin: 0, fontSize: 13 }}>
+                      <input
+                        type="checkbox"
+                        checked={addForm.weekOffDays.includes(idx)}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...addForm.weekOffDays, idx]
+                            : addForm.weekOffDays.filter((d) => d !== idx)
+                          setAddForm({ ...addForm, weekOffDays: next })
+                        }}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </label>
+            </div>
 
             <p className="sub-title" style={{ margin: '16px 0 8px' }}>Salary structure</p>
             <div className="two-col">

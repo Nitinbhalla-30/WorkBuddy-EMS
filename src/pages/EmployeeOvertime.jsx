@@ -8,6 +8,7 @@ import {
   updateOvertimeRequest
 } from '../data/store.js'
 import Modal from '../components/Modal.jsx'
+import Toast from '../components/Toast.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableEmpty from '../components/TableEmpty.jsx'
@@ -58,7 +59,7 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
   const [editId, setEditId] = useState(null)
   const [withdrawId, setWithdrawId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
-  const [message, setMessage] = useState('')
+  const [toast, setToast] = useState(null)
   // Manager-less employees' requests go straight to HR, so a single Pending
   // option/label is clearer than the manager/HR split.
   const hasManager = Boolean(getEmployeeById(userId)?.managerId)
@@ -123,8 +124,7 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
     withdrawOvertimeRequest(withdrawId, userId)
     refreshRequests()
     setWithdrawId(null)
-    setMessage('Your overtime request was withdrawn.')
-    setTimeout(() => setMessage(''), 4000)
+    setToast({ message: 'Your overtime request was withdrawn.', type: 'success' })
   }
 
   const STATUS_OPTIONS = [
@@ -142,7 +142,7 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
 
   return (
     <>
-      {message && <div className="info-box" style={{ marginBottom: '16px' }}>{message}</div>}
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
 
       {showForm && (
         <SubmitModal
@@ -151,8 +151,7 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
           onSubmitted={() => {
             bump()
             setShowForm(false)
-            setMessage('Your overtime request was submitted. Your manager will review it.')
-            setTimeout(() => setMessage(''), 4000)
+            setToast({ message: 'Your overtime request was submitted. Your manager will review it.', type: 'success' })
           }}
         />
       )}
@@ -276,8 +275,7 @@ function OvertimeTable({ userId, refresh, bump, showForm, setShowForm }) {
           onSaved={() => {
             refreshRequests()
             setEditId(null)
-            setMessage('Your overtime request was updated.')
-            setTimeout(() => setMessage(''), 4000)
+            setToast({ message: 'Your overtime request was updated.', type: 'success' })
           }}
         />
       )}
@@ -381,7 +379,7 @@ function SubmitModal({ userId, onClose, onSubmitted }) {
 
   return (
     <Modal onClose={onClose} title="Submit overtime request">
-      <div className="modal-form">
+      <div className="modal-form modal-form-wide">
         <div className="modal-header">
           <h3 className="section-title first">Submit overtime request</h3>
           <button type="button" className="btn btn-tiny btn-light" onClick={onClose} aria-label="Close"><X size={15} /></button>

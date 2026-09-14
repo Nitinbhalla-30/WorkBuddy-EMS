@@ -29,6 +29,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { Eye, MoreVertical, Pencil, Plus, ReceiptText, Trash2, Undo2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Toast from '../components/Toast.jsx'
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All statuses' },
@@ -50,7 +51,7 @@ export default function EmployeeReimbursements() {
   const [editId, setEditId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [withdrawId, setWithdrawId] = useState(null)
-  const [message, setMessage] = useState('')
+  const [toast, setToast] = useState(null)
   // Holds a claim that was saved locally but failed to reach the server, so we
   // can show a "Failed — tap to retry" banner instead of silently losing it.
   const [syncError, setSyncError] = useState(null)
@@ -108,17 +109,18 @@ export default function EmployeeReimbursements() {
   }
 
   async function handleSubmit(data) {
-    setMessage('')
+    setToast(null)
     setSyncError(null)
     const result = await submitReimbursementClaimSynced({ employeeId: user.id, ...data })
     refreshClaims()
     setShowForm(false)
     if (result.ok) {
-      setMessage(
-        result.offline
-          ? 'Your claim was saved on this device (no server configured).'
-          : 'Your reimbursement claim was sent to HR for review.'
-      )
+      setToast({
+        message: result.offline
+          ? 'Claim saved on this device (no server configured).'
+          : 'Reimbursement claim sent to HR for review.',
+        type: 'success'
+      })
     } else {
       setSyncError({ claim: result.claim, reason: result.error })
     }
@@ -131,7 +133,7 @@ export default function EmployeeReimbursements() {
     setRetrying(false)
     if (res.ok) {
       setSyncError(null)
-      setMessage('Saved. Your claim is now up to date for HR.')
+      setToast({ message: 'Claim saved and synced to HR.', type: 'success' })
       refreshClaims()
     } else {
       setSyncError({ ...syncError, reason: res.error })
@@ -146,9 +148,9 @@ export default function EmployeeReimbursements() {
     if (!res) return
     if (res.ok) {
       setSyncError(null)
-      setMessage('Your reimbursement claim was updated.')
+      setToast({ message: 'Reimbursement claim updated.', type: 'success' })
     } else {
-      setMessage('')
+      setToast(null)
       setSyncError({ claim: res.claim, reason: res.error })
     }
   }
@@ -168,9 +170,9 @@ export default function EmployeeReimbursements() {
     if (!res) return
     if (res.ok) {
       setSyncError(null)
-      setMessage('Your reimbursement claim was withdrawn.')
+      setToast({ message: 'Reimbursement claim withdrawn.', type: 'success' })
     } else {
-      setMessage('')
+      setToast(null)
       setSyncError({ claim: res.claim, reason: res.error })
     }
   }
@@ -208,7 +210,7 @@ export default function EmployeeReimbursements() {
         </div>
       </div>
 
-      {message && <div className="info-box">{message}</div>}
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
 
       {syncError && (
         <div
@@ -240,7 +242,7 @@ export default function EmployeeReimbursements() {
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Submit reimbursement claim">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Submit reimbursement claim</h3>
               <button
@@ -249,6 +251,7 @@ export default function EmployeeReimbursements() {
                 onClick={() => setShowForm(false)}
                aria-label="Close"><X size={15} /></button>
             </div>
+            <p className="hint first">Submit work-related expenses for HR review and approval. Keep descriptions clear and attach receipts where possible.</p>
             <ReimbursementForm
               onSubmit={handleSubmit}
               onCancel={() => setShowForm(false)}
@@ -259,7 +262,7 @@ export default function EmployeeReimbursements() {
 
       {editClaim && (
         <Modal onClose={() => setEditId(null)} title="Edit reimbursement claim">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Edit reimbursement claim</h3>
               <button
@@ -331,13 +334,13 @@ export default function EmployeeReimbursements() {
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '13%' }} />
-            <col style={{ width: '13%' }} />
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '10%' }} />
             <col style={{ width: '9%' }} />
             <col style={{ width: '32%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '14%' }} />
-            <col style={{ width: '8%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '9%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -356,7 +359,7 @@ export default function EmployeeReimbursements() {
             )}
             {claimsPage.map((c) => (
               <tr key={c.id}>
-                <td>{categoryLabel(c.category)}</td>
+                <td className="cell-ellipsis" title={categoryLabel(c.category)}>{categoryLabel(c.category)}</td>
                 <td>{formatDateDDMMYYYY(c.expenseDate)}</td>
                 <td><strong>{formatAmount(c.amount)}</strong></td>
                 <td className="cell-ellipsis" title={c.description || undefined}>

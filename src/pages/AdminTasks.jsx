@@ -378,7 +378,10 @@ export default function AdminTasks() {
                 <td>
                   <div className="person-cell">
                     <Avatar src={assignee?.photoUrl} name={nameOf(task.assigneeId)} size={34} />
-                    <span>{nameOf(task.assigneeId)}</span>
+                    <div>
+                      <span>{nameOf(task.assigneeId)}</span>
+                      <div className="muted small">{task.assigneeId}</div>
+                    </div>
                   </div>
                 </td>
                 <td className="cell-ellipsis" title={task.title || undefined}><strong>{task.title}</strong></td>

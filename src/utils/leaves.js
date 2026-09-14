@@ -38,6 +38,8 @@ export function isPartialLeaveType(type) {
 }
 
 export function leaveDayFraction(type) {
+  // Short leave counts as 1 whole unit per request (30 min – 1 hr bursts).
+  if (type === 'short') return 1
   return isPartialLeaveType(type) ? 0.5 : 1
 }
 
@@ -77,8 +79,9 @@ export function usedDaysByType(leaves) {
     if (lv.status !== 'approved') continue
     const y = new Date(`${lv.fromDate}T00:00:00`).getFullYear()
     if (y !== year) continue
-    // Partial-day leaves are allotted by count, so each approved request uses one.
-    const amount = isPartialLeaveType(lv.type) ? 1 : leaveDays(lv)
+    // Each approved request consumes its actual day count (0.5 for partial
+    // types like short/half-day, 1 for full-day types).
+    const amount = leaveDays(lv)
     used[lv.type] = (used[lv.type] || 0) + amount
   }
   return used

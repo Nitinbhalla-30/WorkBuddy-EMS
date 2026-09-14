@@ -182,13 +182,13 @@ export default function AdminReimbursements() {
         <table className="table table-compact" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '16%' }} />
-            <col style={{ width: '13%' }} />
-            <col style={{ width: '10%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '9%' }} />
             <col style={{ width: '9%' }} />
             <col style={{ width: '20%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '14%' }} />
-            <col style={{ width: '5%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '9%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -219,7 +219,7 @@ export default function AdminReimbursements() {
                       </div>
                     </div>
                   </td>
-                  <td>{categoryLabel(c.category)}</td>
+                  <td className="cell-ellipsis" title={categoryLabel(c.category)}>{categoryLabel(c.category)}</td>
                   <td>{formatDateDDMMYYYY(c.expenseDate)}</td>
                   <td><strong>{formatAmount(c.amount)}</strong></td>
                   <td className="cell-ellipsis" title={c.description || ''}>
@@ -356,7 +356,7 @@ export default function AdminReimbursements() {
 
       {rejectId && (
         <Modal onClose={() => { setRejectId(null); setRejectNote('') }} title="Reject claim">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Reject claim</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => { setRejectId(null); setRejectNote('') }} aria-label="Close"><X size={15} /></button>

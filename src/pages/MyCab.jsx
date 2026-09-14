@@ -26,6 +26,7 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
+import Toast from '../components/Toast.jsx'
 import TimeInput from '../components/TimeInput.jsx'
 import Avatar from '../components/Avatar.jsx'
 import {
@@ -82,6 +83,7 @@ export default function MyCab() {
   const [openRequestId, setOpenRequestId] = useState(null)
   const [editRequestId, setEditRequestId] = useState(null)
   const [withdrawRequestId, setWithdrawRequestId] = useState(null)
+  const [toast, setToast] = useState(null)
 
   function toggleMenu(id) {
     setOpenMenuId(openMenuId === id ? null : id)
@@ -112,6 +114,7 @@ export default function MyCab() {
       if (openRequestId === withdrawRequestId) setOpenRequestId(null)
       if (editRequestId === withdrawRequestId) setEditRequestId(null)
       setWithdrawRequestId(null)
+      setToast({ message: 'Change request withdrawn.', type: 'success' })
     }
   }
 
@@ -579,6 +582,7 @@ export default function MyCab() {
                 updateCabRequest(editRequest.id, data)
                 setEditRequestId(null)
                 setRefresh((n) => n + 1)
+                setToast({ message: 'Change request updated.', type: 'success' })
               }}
               onCancel={() => setEditRequestId(null)}
             />
@@ -620,7 +624,7 @@ export default function MyCab() {
       {/* Temporary change request form - Modal */}
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Request a temporary change">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Request a temporary change</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)} aria-label="Close"><X size={15} /></button>
@@ -632,12 +636,15 @@ export default function MyCab() {
                 setShowForm(false)
                 setTab(1)
                 setRefresh((n) => n + 1)
+                setToast({ message: 'Change request submitted.', type: 'success' })
               }}
               onCancel={() => setShowForm(false)}
             />
           </div>
         </Modal>
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

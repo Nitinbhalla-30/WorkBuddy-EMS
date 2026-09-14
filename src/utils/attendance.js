@@ -1,18 +1,36 @@
 // Helpers to turn raw time stamps into useful numbers for the screens.
 
 import { ATTENDANCE_CORRECTION_ISSUES } from '../data/sampleData.js'
-import { getShiftForEmployee, getSettings } from '../data/store.js'
+import { getEmployeeById, getShiftForEmployee, getSettings } from '../data/store.js'
 
 function toDate(iso) {
-  return iso ? new Date(iso) : null
+  if (!iso) return null
+  // PostgreSQL timestamptz returns "YYYY-MM-DD HH:MM:SS+HH" (space instead of T,
+  // and timezone offset without colon like +00). JavaScript's Date constructor does
+  // not reliably parse this format. Normalize to proper ISO 8601 first.
+  let s = String(iso)
+  // Replace the space between date and time with T
+  s = s.replace(' ', 'T')
+  // Fix timezone offsets that are missing the colon: "+00" -> "+00:00", "-05" -> "-05:00"
+  // Match a sign followed by exactly 2 digits at end of string (no colon present)
+  s = s.replace(/([+-]\d{2})$/, '$1:00')
+  const d = new Date(s)
+  return Number.isNaN(d.getTime()) ? null : d
 }
 
 // Difference between two ISO times in minutes (0 if missing).
+// Handles overnight shifts: when time_out is chronologically before time_in
+// (e.g. clocked in at 9 PM, clocked out at 6 AM next day), the end time is
+// treated as belonging to the following day.
 function minutesBetween(startIso, endIso) {
   const s = toDate(startIso)
   const e = toDate(endIso)
   if (!s || !e) return 0
-  return Math.max(0, Math.round((e - s) / 60000))
+  let diff = Math.round((e - s) / 60000)
+  // Overnight shift: time_out is before time_in on the same date record.
+  // Assume the employee clocked out after midnight and add 24 hours.
+  if (diff < 0) diff += 24 * 60
+  return Math.max(0, diff)
 }
 
 // Normalize the breaks field — it may arrive as a JSON string from the
@@ -339,4 +357,16 @@ export function resolveStartTime(employeeId) {
   const shift = getShiftForEmployee(employeeId)
   if (shift) return shift.startTime
   return getSettings().officeStartTime
+}
+
+// Check whether a given date (YYYY-MM-DD) is a weekly off day for the employee.
+// weekOffDays is an array of JS day-of-week numbers (0=Sunday … 6=Saturday).
+// Returns true when the date falls on one of the employee's configured off days.
+export function isWeekOffDay(employeeId, dateKey) {
+  if (!dateKey) return false
+  const emp = getEmployeeById(employeeId)
+  if (!emp || !Array.isArray(emp.weekOffDays) || emp.weekOffDays.length === 0) return false
+  const d = new Date(`${dateKey}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return false
+  return emp.weekOffDays.includes(d.getDay())
 }

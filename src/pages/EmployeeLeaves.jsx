@@ -31,6 +31,7 @@ import LeaveForm from '../components/LeaveForm.jsx'
 import LeaveDocumentList from '../components/LeaveDocumentList.jsx'
 import LeaveThread from '../components/LeaveThread.jsx'
 import Modal from '../components/Modal.jsx'
+import Toast from '../components/Toast.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
@@ -96,7 +97,7 @@ export default function EmployeeLeaves() {
   const [editId, setEditId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [withdrawId, setWithdrawId] = useState(null)
-  const [message, setMessage] = useState('')
+  const [toast, setToast] = useState(null)
   const [hoveredType, setHoveredType] = useState(null)
 
   // Refresh from Supabase on mount to pick up any data that was saved
@@ -128,9 +129,10 @@ export default function EmployeeLeaves() {
     getSortValue: (lv, key) => {
       if (key === 'days') return leaveDays(lv)
       if (key === 'type') return leaveTypeLabelWithPart(lv)
+      if (key === 'requested') return lv.createdAt
       return lv[key]
     },
-    initialSortKey: 'fromDate',
+    initialSortKey: 'requested',
     initialSortDir: 'desc',
     filterFns: {
       status: (lv, val) => {
@@ -177,9 +179,9 @@ export default function EmployeeLeaves() {
     applyLeave({ employeeId: user.id, ...data })
     refreshLeaves()
     setShowForm(false)
-    setMessage(user.managerId
+    setToast({ message: user.managerId
       ? 'Your leave request was sent to your manager for approval.'
-      : 'Your leave request was sent to HR/Admin.')
+      : 'Your leave request was sent to HR.', type: 'success' })
   }
 
   function handleEdit(data) {
@@ -196,7 +198,7 @@ export default function EmployeeLeaves() {
     updateLeave(editLeave.id, user.id, data)
     refreshLeaves()
     setEditId(null)
-    setMessage('Your leave request was updated.')
+    setToast({ message: 'Your leave request was updated.', type: 'success' })
   }
 
   function handleWithdraw(leaveId) {
@@ -210,7 +212,7 @@ export default function EmployeeLeaves() {
       if (openId === withdrawId) setOpenId(null)
       if (editId === withdrawId) setEditId(null)
       setWithdrawId(null)
-      setMessage('Your leave request was withdrawn.')
+      setToast({ message: 'Your leave request was withdrawn.', type: 'success' })
     }
   }
 
@@ -266,11 +268,11 @@ export default function EmployeeLeaves() {
         </div>
       </div>
 
-      {message && <div className="info-box">{message}</div>}
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
 
       {showHolidays && (
         <Modal onClose={() => setShowHolidays(false)} title="Company Holidays">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Company Holidays — {currentYear}</h3>
               <button
@@ -317,7 +319,7 @@ export default function EmployeeLeaves() {
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Apply for leave">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
               <div className="modal-header">
                 <h3 className="section-title first">Apply for leave</h3>
                 <button
@@ -326,22 +328,20 @@ export default function EmployeeLeaves() {
                   onClick={() => setShowForm(false)}
                  aria-label="Close"><X size={15} /></button>
               </div>
+              <p className="hint first">
+                Weekends are excluded. Sick leave needs a medical certificate. Your manager reviews first, then HR.
+              </p>
               <LeaveForm
                 onApply={handleApply}
                 onCancel={() => setShowForm(false)}
               />
-              <p className="hint">
-                Weekends are excluded. Sick leave requires a medical certificate. Paid leave requires balance and completed
-                probation. Your request is reviewed by your manager first and then by HR; if no manager is assigned to you,
-                HR reviews it directly.
-              </p>
             </div>
         </Modal>
       )}
 
       {editLeave && (
         <Modal onClose={() => setEditId(null)} title="Edit leave request">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Edit leave request</h3>
               <button
@@ -429,17 +429,6 @@ export default function EmployeeLeaves() {
           onFilterChange={table.setFilter}
           actions={
             <>
-              {table.filters.type && table.filters.type !== 'all' && (
-                <button
-                  type="button"
-                  className="quick-filter-chip"
-                  onClick={() => table.setFilter('type', 'all')}
-                  aria-label={`Clear ${table.filters.type} filter`}
-                >
-                  {LEAVE_TYPES.find((t) => t.key === table.filters.type)?.label || table.filters.type}
-                  <X size={13} aria-hidden="true" />
-                </button>
-              )}
               <button
                 className="btn btn-primary btn-tiny"
                 onClick={() => setShowForm(true)}
@@ -451,14 +440,15 @@ export default function EmployeeLeaves() {
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '24%' }} />
-            <col style={{ width: '12%' }} />
             <col style={{ width: '11%' }} />
-            <col style={{ width: '9%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '24%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '8%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -466,6 +456,7 @@ export default function EmployeeLeaves() {
               <SortableTh label="From" keyName="fromDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="To" keyName="toDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Days" keyName="days" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Requested" keyName="requested" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Reason" keyName="reason" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Supporting doc</th>
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -474,7 +465,7 @@ export default function EmployeeLeaves() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={8} message={table.total === 0 ? 'No leave requests yet.' : 'No leave requests found.'} />
+              <TableEmpty colSpan={9} message={table.total === 0 ? 'No leave requests yet.' : 'No leave requests found.'} />
             )}
             {leavesPage.map((lv) => {
               const docs = lv.type === 'sick' ? leaveSupportingDocuments(lv) : []
@@ -490,6 +481,7 @@ export default function EmployeeLeaves() {
                 <td>{formatDate(lv.fromDate)}</td>
                 <td>{formatDate(lv.toDate)}</td>
                 <td>{leaveDays(lv)}</td>
+                <td>{formatDate(lv.appliedOn)}</td>
                 <td className="cell-ellipsis" title={lv.reason || undefined}>{lv.reason || <span className="muted">--</span>}</td>
                 <td className="cell-ellipsis" title={docNames || undefined}>
                   {lv.type === 'sick'

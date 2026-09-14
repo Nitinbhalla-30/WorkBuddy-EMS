@@ -2,8 +2,7 @@ import { REIMBURSEMENT_CATEGORIES, REIMBURSEMENT_STATUSES } from '../data/sample
 import { formatRupees } from './salary.js'
 
 export function categoryLabel(key) {
-  const normalized = key === 'convenience' ? 'conveyance' : key
-  const c = REIMBURSEMENT_CATEGORIES.find((x) => x.key === normalized)
+  const c = REIMBURSEMENT_CATEGORIES.find((x) => x.key === key)
   return c ? c.label : key
 }
 

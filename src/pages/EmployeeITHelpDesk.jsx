@@ -29,6 +29,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import ITIssueThread from '../components/ITIssueThread.jsx'
 import Modal from '../components/Modal.jsx'
+import Toast from '../components/Toast.jsx'
 import { Eye, MoreVertical, Pencil, Plus, RefreshCw, Trash2, Undo2, Wrench, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 
@@ -163,6 +164,7 @@ export default function EmployeeITHelpDesk() {
   const [openMenuId, setOpenMenuId] = useState(null)
   const [withdrawId, setWithdrawId] = useState(null)
   const [reopenId, setReopenId] = useState(null)
+  const [toast, setToast] = useState(null)
   const [formData, setFormData] = useState(BLANK_FORM)
 
   const issues = useMemo(
@@ -242,6 +244,7 @@ export default function EmployeeITHelpDesk() {
     setFormData(BLANK_FORM)
     setShowForm(false)
     setRefresh((n) => n + 1)
+    setToast({ message: 'IT issue reported successfully.', type: 'success' })
   }
 
   function handleEditSubmit(e) {
@@ -259,6 +262,7 @@ export default function EmployeeITHelpDesk() {
     setEditId(null)
     setFormData(BLANK_FORM)
     setRefresh((n) => n + 1)
+    setToast({ message: 'IT issue updated successfully.', type: 'success' })
   }
 
   // Sending an issue back to IT is a decision, so both doors — the row menu and
@@ -275,6 +279,7 @@ export default function EmployeeITHelpDesk() {
     reopenITIssue(reopenId, user.id)
     setReopenId(null)
     setRefresh((n) => n + 1)
+    setToast({ message: 'IT issue reopened.', type: 'success' })
   }
 
   function cancelReopen() {
@@ -284,6 +289,7 @@ export default function EmployeeITHelpDesk() {
   function handleReply(issueId, text) {
     addITIssueComment(issueId, { byId: user.id, byName: user.name, byRole: 'employee' }, text)
     setRefresh((n) => n + 1)
+    setToast({ message: 'Reply sent.', type: 'success' })
   }
 
   function handleWithdraw(issueId) {
@@ -297,6 +303,7 @@ export default function EmployeeITHelpDesk() {
       if (openId === withdrawId) setOpenId(null)
       setWithdrawId(null)
       setRefresh((n) => n + 1)
+      setToast({ message: 'IT issue withdrawn.', type: 'success' })
     }
   }
 
@@ -349,7 +356,7 @@ export default function EmployeeITHelpDesk() {
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Report IT Issue">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Report IT Issue</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)} aria-label="Close"><X size={15} /></button>
@@ -683,6 +690,8 @@ export default function EmployeeITHelpDesk() {
         Use this page to report computer or software issues. You can edit or withdraw your request
         while it is still open. Once IT staff are assigned, please contact them directly for any changes.
       </p>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

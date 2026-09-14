@@ -92,11 +92,12 @@ export const LEAVE_TYPES = [
 
 // Expense categories employees can claim for reimbursement.
 export const REIMBURSEMENT_CATEGORIES = [
-  { key: 'conveyance', label: 'Conveyance / local travel' },
-  { key: 'travel', label: 'Travel' },
-  { key: 'meals', label: 'Meals & refreshments' },
-  { key: 'office', label: 'Office supplies' },
-  { key: 'other', label: 'Other' }
+  { key: 'business_travel', label: 'Business Travel Expenses' },
+  { key: 'telecom', label: 'Telecom & Utility Bills' },
+  { key: 'office_supplies', label: 'Office Supplies & Remote Work Setup' },
+  { key: 'client_meals', label: 'Client Entertainment & Business Meals' },
+  { key: 'training', label: 'Training & Professional Development' },
+  { key: 'others', label: 'Others' }
 ]
 
 // Reimbursement claim workflow statuses.

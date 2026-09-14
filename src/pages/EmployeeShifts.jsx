@@ -14,6 +14,7 @@ import {
 import { formatDate } from '../utils/attendance.js'
 import { formatTime12 } from '../utils/cab.js'
 import Modal from '../components/Modal.jsx'
+import Toast from '../components/Toast.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
@@ -163,7 +164,7 @@ function ChangeRequestsTab({ userId }) {
   const [editRequest, setEditRequest] = useState(null)
   const [withdrawId, setWithdrawId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
-  const [message, setMessage] = useState('')
+  const [toast, setToast] = useState(null)
 
   const currentShift = getShiftForEmployee(userId)
   const pendingRequests = requests.filter((r) => r.status === 'pending')
@@ -226,7 +227,7 @@ function ChangeRequestsTab({ userId }) {
     withdrawShiftChangeRequest(withdrawId, userId)
     refreshRequests()
     setWithdrawId(null)
-    setMessage('Your shift change request was withdrawn.')
+    setToast({ message: 'Your shift change request was withdrawn.', type: 'success' })
   }
 
   const STATUS_OPTIONS = [
@@ -239,8 +240,6 @@ function ChangeRequestsTab({ userId }) {
 
   return (
     <>
-      {message && <div className="info-box" style={{ marginBottom: '16px' }}>{message}</div>}
-
       <div className="card">
         <TableToolbar
           search={table.search}
@@ -357,7 +356,7 @@ function ChangeRequestsTab({ userId }) {
             requestShiftChange(userId, data.toShiftId, data.reason)
             refreshRequests()
             setShowRequestForm(false)
-            setMessage('Your shift change request has been sent to HR.')
+            setToast({ message: 'Your shift change request has been sent to HR.', type: 'success' })
           }}
           onCancel={() => setShowRequestForm(false)}
         />
@@ -371,7 +370,7 @@ function ChangeRequestsTab({ userId }) {
             updateShiftChangeRequest(editRequest.id, userId, data)
             refreshRequests()
             setEditRequest(null)
-            setMessage('Your shift change request was updated.')
+            setToast({ message: 'Your shift change request was updated.', type: 'success' })
           }}
           onCancel={() => setEditRequest(null)}
         />
@@ -394,6 +393,8 @@ function ChangeRequestsTab({ userId }) {
           </div>
         </Modal>
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </>
   )
 }
@@ -411,7 +412,7 @@ function ShiftRequestModal({ initial, currentShift, onSubmit, onCancel }) {
 
   return (
     <Modal onClose={onCancel} title={initial ? 'Edit shift change request' : 'Request shift change'}>
-      <div className="modal-form">
+      <div className="modal-form modal-form-wide">
         <div className="modal-header">
           <h3 className="section-title first">{initial ? 'Edit request' : 'Request shift change'}</h3>
           <button type="button" className="btn btn-tiny btn-light" onClick={onCancel} aria-label="Close"><X size={15} /></button>
@@ -426,7 +427,7 @@ function ShiftRequestModal({ initial, currentShift, onSubmit, onCancel }) {
           <label className="field">
             <span>Requested shift</span>
             <select value={toShiftId} onChange={(e) => setToShiftId(e.target.value)} required>
-              <option value="">-- Select a shift --</option>
+              <option value="">Select a shift</option>
               {allShifts.filter((s) => !currentShift || s.id !== currentShift.id).map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name} ({formatTime12(s.startTime)} – {formatTime12(s.endTime)})

@@ -1021,7 +1021,7 @@ export function updateEmployeeTeam(employeeId, team) {
   return all[idx]
 }
 
-// Add a new employee record. `data` = { id, name, department, designation, isManager, managerId, dateJoined, salary }.
+// Add a new employee record. `data` = { id, name, department, designation, isManager, managerId, dateJoined, salary, shiftId, weekOffDays }.
 // A default PIN of "1234" is assigned so the employee can log in immediately.
 export function addEmployee(data) {
   const all = getEmployees()
@@ -1038,7 +1038,9 @@ export function addEmployee(data) {
     dateJoined: data.dateJoined || '',
     email: '',
     status: 'active',
-    salary: data.salary || { basic: 0, hra: 0, other: 0, tdsMonthly: 0 }
+    salary: data.salary || { basic: 0, hra: 0, other: 0, tdsMonthly: 0 },
+    shiftId: data.shiftId || null,
+    weekOffDays: Array.isArray(data.weekOffDays) ? data.weekOffDays : []
   })
   write(KEYS.employees, all)
   return all[all.length - 1]
@@ -1628,7 +1630,8 @@ export async function submitReimbursementClaimSynced({
   category,
   expenseDate,
   amount,
-  description
+  description,
+  receipts = []
 }) {
   const all = getReimbursements()
   const claim = {
@@ -1638,6 +1641,7 @@ export async function submitReimbursementClaimSynced({
     expenseDate,
     amount,
     description: description || '',
+    receipts: Array.isArray(receipts) ? receipts : [],
     status: 'pending',
     appliedOn: new Date().toISOString(),
     decidedBy: null,
@@ -1683,7 +1687,8 @@ export async function updateReimbursementClaim(claimId, employeeId, {
   category,
   expenseDate,
   amount,
-  description
+  description,
+  receipts
 }) {
   const all = getReimbursements()
   const idx = all.findIndex((r) => r.id === claimId)
@@ -1697,6 +1702,7 @@ export async function updateReimbursementClaim(claimId, employeeId, {
     expenseDate,
     amount,
     description: description || '',
+    receipts: receipts !== undefined ? receipts : claim.receipts || [],
     reviewNote: '',
     decidedBy: null,
     decidedOn: null
@@ -1809,7 +1815,7 @@ export function addTask({ title, description, assigneeId, createdById, dueDate, 
     dueDate: dueDate || '',
     priority: priority || 'medium',
     status: 'todo',
-    createdOn: todayKey(),
+    createdOn: new Date().toISOString(),
     createdAt: new Date().toISOString(),
     messages: []
   }
@@ -3317,8 +3323,8 @@ export function updateOvertimeRequest(requestId, employeeId, updates) {
   const all = getOvertimeRequests()
   const idx = all.findIndex((r) => r.id === requestId && r.employeeId === employeeId)
   if (idx < 0) return null
-  // Can only update if still pending and at manager stage
-  if (all[idx].status !== 'pending' || otStage(all[idx]) !== 'manager') return null
+  // Can only update while still pending and no manager decision has been made.
+  if (all[idx].status !== 'pending' || all[idx].managerStatus === 'approved' || all[idx].managerStatus === 'rejected') return null
   all[idx] = { ...all[idx], ...updates }
   write(KEYS.overtimeRequests, all)
   return all[idx]

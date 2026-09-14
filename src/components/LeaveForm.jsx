@@ -6,7 +6,7 @@ import FileField from './FileField.jsx'
 // Form to apply for leave.
 // onApply({ type, fromDate, toDate, reason, supportingDocuments }).
 export default function LeaveForm({ onApply, onCancel, initial = null, submitLabel = 'Send request' }) {
-  const [type, setType] = useState(initial?.type || 'casual')
+  const [type, setType] = useState(initial?.type || '')
   const [halfDayPart, setHalfDayPart] = useState(initial?.halfDayPart || '')
   const [fromDate, setFromDate] = useState(initial?.fromDate || '')
   const [toDate, setToDate] = useState(initial?.toDate || '')
@@ -33,6 +33,10 @@ export default function LeaveForm({ onApply, onCancel, initial = null, submitLab
     e.preventDefault()
     setError('')
 
+    if (!type) {
+      setError('Please select a leave type.')
+      return
+    }
     if (partial && !fromDate) {
       setError('Please choose a date.')
       return
@@ -68,7 +72,7 @@ export default function LeaveForm({ onApply, onCancel, initial = null, submitLab
     }
 
     if (!initial) {
-      setType('casual')
+      setType('')
       setHalfDayPart('')
       setFromDate('')
       setToDate('')
@@ -86,6 +90,7 @@ export default function LeaveForm({ onApply, onCancel, initial = null, submitLab
         <label className="field">
           <span>Leave type</span>
           <select value={type} onChange={(e) => changeType(e.target.value)}>
+            <option value="">Select a leave type</option>
             {LEAVE_TYPES.map((t) => (
               <option key={t.key} value={t.key}>
                 {t.label}

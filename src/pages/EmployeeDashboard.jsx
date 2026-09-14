@@ -27,6 +27,7 @@ import {
   formatDate,
   formatMinutes,
   isLate,
+  isWeekOffDay,
   monthKey,
   monthKeyOffset,
   monthLabel,
@@ -45,12 +46,14 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import Modal from '../components/Modal.jsx'
+import Toast from '../components/Toast.jsx'
 import AttendanceCorrectionForm from '../components/AttendanceCorrectionForm.jsx'
 import AttendanceCorrectionThread from '../components/AttendanceCorrectionThread.jsx'
 import { formatTime12 } from '../utils/cab.js'
 import { Briefcase, Clock, Coffee, Download, Eye, LogIn, LogOut, MoreVertical, Pencil, Plus, Trash2, Undo2, X } from 'lucide-react'
 import { downloadExcelXlsx } from '../utils/exportExcel.js'
 import { leaveTypeLabel } from '../utils/leaves.js'
+import { isObservedCompanyHoliday } from '../utils/holidays.js'
 import TableEmpty from '../components/TableEmpty.jsx'
 
 const TABS = ['Today', 'Attendance History', 'Correction Request']
@@ -74,7 +77,7 @@ export default function EmployeeDashboard() {
     if (!Array.isArray(rec.breaks)) rec.breaks = []
     return rec
   })
-  const [message, setMessage] = useState('')
+  const [toast, setToast] = useState(null)
   const [busy, setBusy] = useState(false)
   const [showLunchPolicy, setShowLunchPolicy] = useState(false)
   const [showCorrectionForm, setShowCorrectionForm] = useState(false)
@@ -167,9 +170,42 @@ export default function EmployeeDashboard() {
 
   const history = useMemo(() => {
     const all = getAttendanceForEmployee(user.id)
-    return all.filter((r) => r.date.startsWith(selectedHistoryMonth))
+    const existingByDate = new Map()
+    all.forEach((r) => {
+      if (r.date.startsWith(selectedHistoryMonth)) existingByDate.set(r.date, r)
+    })
+
+    // Build a row for every calendar day of the month (up to today) so the
+    // table shows a complete picture — not only the days the employee punched in.
+    const [year, month] = selectedHistoryMonth.split('-').map(Number)
+    const daysInMonth = new Date(year, month, 0).getDate()
+    const todayStr = today.date
+    const pad = (n) => String(n).padStart(2, '0')
+    const holidays = settings.companyHolidays || []
+
+    const rows = []
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateKey = `${selectedHistoryMonth}-${pad(day)}`
+      if (dateKey > todayStr) continue
+      if (joinDate && dateKey < joinDate) continue
+
+      const existing = existingByDate.get(dateKey)
+      if (existing) {
+        rows.push(existing)
+      } else {
+        rows.push({
+          id: `absent-${dateKey}`,
+          employeeId: user.id,
+          date: dateKey,
+          timeIn: null,
+          timeOut: null,
+          breaks: []
+        })
+      }
+    }
+    return rows
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.id, selectedHistoryMonth, today, attendanceTick])
+  }, [user.id, selectedHistoryMonth, today, attendanceTick, joinDate])
 
   const historyMonthOptions = useMemo(() => {
     const keys = new Set(
@@ -200,14 +236,18 @@ export default function EmployeeDashboard() {
         }
       })
     return map
-  }, [user.id])
+  }, [user.id, attendanceTick])
+
+  const holidays = settings.companyHolidays || []
 
   const historyTable = useTableControls(history, {
     getSortValue: (r, key) => {
       if (key === 'worked') return workedMinutes(r)
       if (key === 'break') return totalBreakMinutes(r)
       if (key === 'status') {
-        if (approvedLeavesByDate.has(r.date) && (!r || !r.timeIn)) return 'On leave'
+        if (isObservedCompanyHoliday(r.date, holidays)) return 'Holiday'
+        if (isWeekOffDay(user.id, r.date)) return 'Week off'
+        if (approvedLeavesByDate.has(r.date)) return 'On leave'
         return statusOf(r, shiftStartTime, settings.lateGraceMinutes)
       }
       if (key === 'leaveType') return leaveTypeLabel(approvedLeavesByDate.get(r.date) || '')
@@ -217,10 +257,14 @@ export default function EmployeeDashboard() {
     initialSortDir: 'desc',
     filterFns: {
       status: (r, val) => {
-        const onLeave = approvedLeavesByDate.has(r.date) && (!r || !r.timeIn)
-        if (val === 'On leave') return onLeave
-        if (val === 'Absent') return !onLeave && (!r || !r.timeIn)
-        return !onLeave && statusOf(r, shiftStartTime, settings.lateGraceMinutes) === val
+        const isHoliday = isObservedCompanyHoliday(r.date, holidays)
+        const isWeekOff = isWeekOffDay(user.id, r.date)
+        const onLeave = approvedLeavesByDate.has(r.date)
+        if (val === 'Holiday') return isHoliday
+        if (val === 'Week off') return !isHoliday && isWeekOff
+        if (val === 'On leave') return !isHoliday && !isWeekOff && onLeave
+        if (val === 'Absent') return !isHoliday && !isWeekOff && !onLeave && (!r || !r.timeIn)
+        return !isHoliday && !isWeekOff && !onLeave && statusOf(r, shiftStartTime, settings.lateGraceMinutes) === val
       }
     }
   })
@@ -239,8 +283,9 @@ export default function EmployeeDashboard() {
     { value: 'all', label: 'All statuses' },
     { value: 'On time', label: 'On time' },
     { value: 'Late', label: 'Late' },
-    { value: 'Absent', label: 'Absent' },
-    { value: 'On leave', label: 'On leave' }
+    { value: 'On leave', label: 'On leave' },
+    { value: 'Week off', label: 'Week off' },
+    { value: 'Absent', label: 'Absent' }
   ]
 
   const CORRECTION_ISSUE_FILTERS = [
@@ -283,15 +328,15 @@ export default function EmployeeDashboard() {
   } = usePagination(correctionsTable.rows)
 
   function refreshCorrections() {
-    setCorrections(getAttendanceCorrectionsForEmployee(user.id))
+    setCorrections([...getAttendanceCorrectionsForEmployee(user.id)])
   }
 
   async function guard(action) {
     setBusy(true)
-    setMessage('')
+    setToast(null)
     const check = await checkOfficeNetwork()
     if (!check.allowed) {
-      setMessage(`Blocked: ${check.reason}`)
+      setToast({ message: `Blocked: ${check.reason}`, type: 'error' })
       setBusy(false)
       return
     }
@@ -304,7 +349,7 @@ export default function EmployeeDashboard() {
       const rec = { ...today, timeIn: new Date().toISOString() }
       upsertRecord(rec)
       setToday(rec)
-      setMessage(`Timed in. ${check.reason}`)
+      setToast({ message: `Timed in. ${check.reason}`, type: 'success' })
     })
   }
 
@@ -314,7 +359,7 @@ export default function EmployeeDashboard() {
       const rec = { ...today, breaks }
       upsertRecord(rec)
       setToday(rec)
-      setMessage('Break started.')
+      setToast({ message: 'Break started.', type: 'success' })
     })
   }
 
@@ -326,7 +371,7 @@ export default function EmployeeDashboard() {
       const rec = { ...today, breaks }
       upsertRecord(rec)
       setToday(rec)
-      setMessage('Break ended.')
+      setToast({ message: 'Break ended.', type: 'success' })
     })
   }
 
@@ -338,7 +383,7 @@ export default function EmployeeDashboard() {
       const rec = { ...today, breaks, timeOut: new Date().toISOString() }
       upsertRecord(rec)
       setToday(rec)
-      setMessage('Timed out. Have a good day!')
+      setToast({ message: 'Timed out. Have a good day!', type: 'success' })
     })
   }
 
@@ -346,7 +391,7 @@ export default function EmployeeDashboard() {
     submitAttendanceCorrection({ employeeId: user.id, ...data })
     refreshCorrections()
     setShowCorrectionForm(false)
-    setMessage('Your attendance correction request was sent to HR.')
+    setToast({ message: 'Your attendance correction request was sent to HR.', type: 'success' })
   }
 
   function handleCorrectionEdit(data) {
@@ -354,7 +399,7 @@ export default function EmployeeDashboard() {
     updateAttendanceCorrection(editCorrectionId, user.id, data)
     refreshCorrections()
     setEditCorrectionId(null)
-    setMessage('Your correction request was updated.')
+    setToast({ message: 'Your correction request was updated.', type: 'success' })
   }
 
   function handleCorrectionWithdraw(id) {
@@ -369,12 +414,37 @@ export default function EmployeeDashboard() {
       if (openCorrectionId === withdrawCorrectionId) setOpenCorrectionId(null)
       if (editCorrectionId === withdrawCorrectionId) setEditCorrectionId(null)
       setWithdrawCorrectionId(null)
-      setMessage('Your correction request was withdrawn.')
+      setToast({ message: 'Your correction request was withdrawn.', type: 'success' })
     }
   }
 
   function cancelCorrectionWithdraw() {
     setWithdrawCorrectionId(null)
+  }
+
+  function exportHistoryExcel() {
+    const headers = ['Date', 'Time In', 'Time Out', 'Worked', 'Break', 'Leave Type', 'Status']
+    const rows = historyTable.rows.map((r) => {
+      const isHoliday = isObservedCompanyHoliday(r.date, holidays)
+      const isWeekOff = !isHoliday && isWeekOffDay(user.id, r.date)
+      const onLeave = !isHoliday && !isWeekOff && approvedLeavesByDate.has(r.date)
+      const noClock = isWeekOff || onLeave
+      const leaveType = approvedLeavesByDate.get(r.date)
+      return [
+        formatDate(r.date),
+        noClock ? '--' : formatClock(r.timeIn),
+        noClock ? '--' : formatClock(r.timeOut),
+        noClock ? '--' : formatMinutes(workedMinutes(r)),
+        noClock ? '--' : formatMinutes(totalBreakMinutes(r)),
+        leaveType ? leaveTypeLabel(leaveType) : '--',
+        isHoliday ? 'Holiday' : isWeekOff ? 'Week off' : onLeave ? 'On leave' : statusOf(r, shiftStartTime, settings.lateGraceMinutes)
+      ]
+    })
+    // Resolves 'saved' | 'downloaded' | 'cancelled'; closing the save dialog
+    // means there is nothing to confirm back to the user.
+    downloadExcelXlsx(`attendance-history-${selectedHistoryMonth}`, headers, rows).then((result) => {
+      if (result !== 'cancelled') setToast({ message: 'Attendance history exported.', type: 'success' })
+    })
   }
 
   function handleCorrectionReply(text) {
@@ -427,6 +497,9 @@ export default function EmployeeDashboard() {
 
   return (
     <div>
+      {/* Page-level so confirmations show on every tab, not just Today. */}
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+
       <div className="page-head">
         <div>
           <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
@@ -513,8 +586,6 @@ export default function EmployeeDashboard() {
               </button>
             </div>
 
-            {message && <div className="info-box">{message}</div>}
-
             <p className="hint">
               Your worked hours and break times update automatically while you are clocked in.
               If you forgot to clock in or out, use <strong>Request correction</strong> to fix it.
@@ -585,7 +656,8 @@ export default function EmployeeDashboard() {
               label: 'Month',
               value: selectedHistoryMonth,
               defaultValue: monthKey(),
-              options: historyMonthOptions
+              options: historyMonthOptions,
+              clearable: false
             },
             {
               key: 'status',
@@ -602,23 +674,7 @@ export default function EmployeeDashboard() {
             <button
               type="button"
               className="btn btn-primary btn-tiny"
-              onClick={() => {
-                const headers = ['Date', 'Time In', 'Time Out', 'Worked', 'Break', 'Leave Type', 'Status']
-                const rows = historyTable.rows.map((r) => {
-                  const onLeave = approvedLeavesByDate.has(r.date) && (!r || !r.timeIn)
-                  const leaveType = approvedLeavesByDate.get(r.date)
-                  return [
-                    formatDate(r.date),
-                    formatClock(r.timeIn),
-                    formatClock(r.timeOut),
-                    formatMinutes(workedMinutes(r)),
-                    formatMinutes(totalBreakMinutes(r)),
-                    leaveType ? leaveTypeLabel(leaveType) : '--',
-                    onLeave ? 'On leave' : statusOf(r, shiftStartTime, settings.lateGraceMinutes)
-                  ]
-                })
-                downloadExcelXlsx(`attendance-history-${selectedHistoryMonth}`, headers, rows)
-              }}
+              onClick={exportHistoryExcel}
               disabled={historyTable.rows.length === 0}
             >
               <Download size={14} style={{ marginRight: 4 }} />Export to Excel
@@ -658,27 +714,35 @@ export default function EmployeeDashboard() {
               />
             )}
             {historyPage.map((r) => {
-              const onLeave = approvedLeavesByDate.has(r.date) && (!r || !r.timeIn)
+              const isHoliday = isObservedCompanyHoliday(r.date, holidays)
+              const isWeekOff = !isHoliday && isWeekOffDay(user.id, r.date)
+              const onLeave = !isHoliday && !isWeekOff && approvedLeavesByDate.has(r.date)
+              const isAbsent = !isHoliday && !isWeekOff && !onLeave && (!r || !r.timeIn)
+              const noClock = isAbsent || isWeekOff || onLeave
               const leaveType = approvedLeavesByDate.get(r.date)
               return (
               <tr key={r.id}>
                 <td>{formatDate(r.date)}</td>
-                <td>{formatClock(r.timeIn)}</td>
-                <td>{formatClock(r.timeOut)}</td>
-                <td>{formatMinutes(workedMinutes(r))}</td>
-                <td>{formatMinutes(totalBreakMinutes(r))}</td>
+                <td>{noClock ? '--' : formatClock(r.timeIn)}</td>
+                <td>{noClock ? '--' : formatClock(r.timeOut)}</td>
+                <td>{noClock ? '--' : formatMinutes(workedMinutes(r))}</td>
+                <td>{noClock ? '--' : formatMinutes(totalBreakMinutes(r))}</td>
                 <td>{leaveType ? leaveTypeLabel(leaveType) : '--'}</td>
                 <td>
                   <span className={`tag ${
-                    onLeave
-                      ? 'tag-absent'
-                      : isLate(r, shiftStartTime, settings.lateGraceMinutes)
-                        ? 'tag-late'
-                        : !r || !r.timeIn
-                          ? 'tag-absent'
-                          : 'tag-ok'
+                    isHoliday
+                      ? 'tag-holiday'
+                      : isWeekOff
+                        ? 'tag-weekoff'
+                        : onLeave
+                          ? 'tag-info'
+                          : isLate(r, shiftStartTime, settings.lateGraceMinutes)
+                            ? 'tag-late'
+                            : !r || !r.timeIn
+                              ? 'tag-bad'
+                              : 'tag-ok'
                   }`}>
-                    {onLeave ? 'On leave' : statusOf(r, shiftStartTime, settings.lateGraceMinutes)}
+                    {isHoliday ? 'Holiday' : isWeekOff ? 'Week off' : onLeave ? 'On leave' : statusOf(r, shiftStartTime, settings.lateGraceMinutes)}
                   </span>
                 </td>
               </tr>
@@ -835,7 +899,7 @@ export default function EmployeeDashboard() {
 
       {showCorrectionForm && (
         <Modal onClose={() => setShowCorrectionForm(false)} title="Request attendance correction">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Request correction</h3>
               <button

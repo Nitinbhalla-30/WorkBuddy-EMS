@@ -31,6 +31,7 @@ import TaskForm from '../components/TaskForm.jsx'
 import TaskThread from '../components/TaskThread.jsx'
 import { TaskStatusChart } from '../components/tasks/TaskStatusChart.tsx'
 import Modal from '../components/Modal.jsx'
+import Toast from '../components/Toast.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
@@ -82,6 +83,7 @@ export default function EmployeeTasks() {
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openTaskId, setOpenTaskId] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
+  const [toast, setToast] = useState(null)
   const chartAreaRef = useRef(null)
 
   const tasks = useMemo(
@@ -123,8 +125,8 @@ export default function EmployeeTasks() {
       if (key === 'status') return statusLabel(t.status)
       return t[key]
     },
-    initialSortKey: 'dueDate',
-    initialSortDir: 'asc',
+    initialSortKey: 'createdAt',
+    initialSortDir: 'desc',
     filterFns: {
       status: (t, val) => t.status === val,
       priority: (t, val) => t.priority === val,
@@ -164,6 +166,7 @@ export default function EmployeeTasks() {
     addTask({ ...data, createdById: user.id })
     bump()
     setShowForm(false)
+    setToast({ message: 'Task created successfully.', type: 'success' })
   }
 
   function handleEdit(data) {
@@ -171,6 +174,7 @@ export default function EmployeeTasks() {
     updateTaskByAssignee(editTask.id, user.id, data)
     bump()
     setEditTaskId(null)
+    setToast({ message: 'Task updated successfully.', type: 'success' })
   }
 
   function move(id, status) {
@@ -187,6 +191,7 @@ export default function EmployeeTasks() {
       deleteTaskByAssignee(deleteId, user.id)
       setDeleteId(null)
       bump()
+      setToast({ message: 'Task deleted successfully.', type: 'success' })
     }
   }
 
@@ -257,6 +262,8 @@ export default function EmployeeTasks() {
 
   return (
     <div>
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+
       <div className="page-head">
         <div>
           <h2 style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
@@ -289,7 +296,7 @@ export default function EmployeeTasks() {
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Add a task for myself">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
               <div className="modal-header">
                 <h3 className="section-title first">Add a task for myself</h3>
                 <button
@@ -379,7 +386,8 @@ export default function EmployeeTasks() {
               label: 'Quick',
               value: table.filters.quick || 'all',
               options: [],
-              hidden: true
+              hidden: true,
+              clearable: (f) => f.value !== 'overdue'
             },
             {
               key: 'assignedDuring',
@@ -403,14 +411,14 @@ export default function EmployeeTasks() {
           onFilterChange={table.setFilter}
           actions={
             <>
-              {table.filters.quick && table.filters.quick !== 'all' ? (
+              {table.filters.quick === 'overdue' ? (
                 <button
                   type="button"
                   className="quick-filter-chip"
                   onClick={() => table.setFilter('quick', 'all')}
-                  aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
+                  aria-label="Clear Overdue filter"
                 >
-                  {QUICK_FILTER_LABELS[table.filters.quick]}
+                  Overdue
                   <X size={13} aria-hidden="true" />
                 </button>
               ) : null}
@@ -439,7 +447,7 @@ export default function EmployeeTasks() {
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Description" keyName="description" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Assigned by" keyName="createdBy" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
-              <SortableTh label="Assigned on" keyName="createdOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Assigned on" keyName="createdAt" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Status" keyName="status" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Due Date" keyName="dueDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />

@@ -13,6 +13,7 @@ import { categoryLabel, kindLabel, statusLabel, statusTagClass, canEditTicket, c
 import TicketForm from '../components/TicketForm.jsx'
 import TicketThread from '../components/TicketThread.jsx'
 import Modal from '../components/Modal.jsx'
+import Toast from '../components/Toast.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
@@ -40,6 +41,7 @@ export default function EmployeeTickets() {
   const [openMenuId, setOpenMenuId] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [withdrawId, setWithdrawId] = useState(null)
+  const [toast, setToast] = useState(null)
 
   const tickets = useMemo(
     () => getTicketsForEmployee(user.id),
@@ -86,8 +88,8 @@ export default function EmployeeTickets() {
   function handleCreate(data) {
     const t = createTicket({ ...data, employeeId: user.id })
     setShowForm(false)
-    setOpenId(t.id)
     setRefresh((n) => n + 1)
+    setToast({ message: 'Query submitted successfully.', type: 'success' })
   }
 
   function handleEdit(data) {
@@ -95,7 +97,7 @@ export default function EmployeeTickets() {
     updateTicket(editTicket.id, user.id, data)
     setEditId(null)
     setRefresh((n) => n + 1)
-    setOpenId(editTicket.id)
+    setToast({ message: 'Query updated successfully.', type: 'success' })
   }
 
   function handleWithdraw(ticketId) {
@@ -109,6 +111,7 @@ export default function EmployeeTickets() {
       if (editId === withdrawId) setEditId(null)
       setWithdrawId(null)
       setRefresh((n) => n + 1)
+      setToast({ message: 'Query withdrawn.', type: 'success' })
     }
   }
 
@@ -137,6 +140,7 @@ export default function EmployeeTickets() {
   function handleReply(text) {
     addTicketMessage(open.id, { byId: user.id, byRole: 'employee', text })
     setRefresh((n) => n + 1)
+    setToast({ message: 'Reply sent.', type: 'success' })
   }
 
   const nameOf = (id) => (id === user.id ? user.name : id)
@@ -154,7 +158,7 @@ export default function EmployeeTickets() {
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Raise Query or Grievance">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
               <div className="modal-header">
                 <h3 className="section-title first">Raise Query or Grievance</h3>
                 <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)} aria-label="Close"><X size={15} /></button>
@@ -170,7 +174,7 @@ export default function EmployeeTickets() {
 
       {editTicket && (
         <Modal onClose={() => setEditId(null)} title="Edit ticket">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Edit ticket</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
@@ -369,6 +373,8 @@ export default function EmployeeTickets() {
           </div>
         </Modal>
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

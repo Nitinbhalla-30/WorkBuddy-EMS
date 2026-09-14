@@ -11,7 +11,8 @@ export default function TableToolbar({
   children
 }) {
   const hasActiveFilters = filters.some((f) => {
-    if (f.clearable === false) return false
+    const clearable = typeof f.clearable === 'function' ? f.clearable(f) : f.clearable !== false
+    if (!clearable) return false
     const def = f.defaultValue ?? 'all'
     const cur = f.value ?? 'all'
     return cur !== def
@@ -19,7 +20,8 @@ export default function TableToolbar({
 
   function handleClearFilters() {
     filters.forEach((f) => {
-      if (f.clearable === false) return
+      const clearable = typeof f.clearable === 'function' ? f.clearable(f) : f.clearable !== false
+      if (!clearable) return
       const def = f.defaultValue ?? 'all'
       const cur = f.value ?? 'all'
       if (cur !== def) {

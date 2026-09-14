@@ -368,7 +368,7 @@ export default function AttendanceRecords() {
   }
 
   function refreshCorrections() {
-    setCorrections(getAttendanceCorrections())
+    setCorrections([...getAttendanceCorrections()])
   }
 
   function openReview(id, startReject = false) {

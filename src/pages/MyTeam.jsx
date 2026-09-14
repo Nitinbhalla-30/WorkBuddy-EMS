@@ -20,6 +20,7 @@ import { overtimeStatusLabel, overtimeStatusTagClass } from '../utils/overtime.j
 import { monthLabel } from '../utils/salary.js'
 import Avatar from '../components/Avatar.jsx'
 import Modal from '../components/Modal.jsx'
+import Toast from '../components/Toast.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
@@ -115,6 +116,7 @@ export default function MyTeam() {
   const [approveOvertimeId, setApproveOvertimeId] = useState(null)
   const [rejectOvertimeId, setRejectOvertimeId] = useState(null)
   const [rejectOvertimeReason, setRejectOvertimeReason] = useState('')
+  const [toast, setToast] = useState(null)
 
   // Keep the leave and overtime queues fresh. Before reading, pull the latest
   // shared data from Supabase so an employee's freshly submitted request shows
@@ -162,6 +164,7 @@ export default function MyTeam() {
     managerDecideLeave(leaveId, user.id, true)
     setApproveLeaveId(null)
     setTeamLeaves(loadTeamLeaves())
+    setToast({ message: 'Leave request approved.', type: 'success' })
   }
 
   function openReject(lv) {
@@ -179,6 +182,7 @@ export default function MyTeam() {
     )
     setRejectLeave(null)
     setTeamLeaves(loadTeamLeaves())
+    setToast({ message: 'Leave request rejected.', type: 'success' })
   }
 
   function openApproveOvertime(req) {
@@ -189,6 +193,7 @@ export default function MyTeam() {
     managerDecideOvertime(requestId, user.id, true)
     setApproveOvertimeId(null)
     setTeamOvertime(loadTeamOvertime())
+    setToast({ message: 'Overtime request approved.', type: 'success' })
   }
 
   function openRejectOvertime(req) {
@@ -197,16 +202,17 @@ export default function MyTeam() {
   }
 
   function confirmRejectOvertime() {
-    if (!rejectOvertimeId) return
+    if (!rejectOvertimeId || !rejectOvertimeReason.trim()) return
     managerDecideOvertime(
       rejectOvertimeId,
       user.id,
       false,
-      rejectOvertimeReason.trim() || 'Rejected by manager'
+      rejectOvertimeReason.trim()
     )
     setRejectOvertimeId(null)
     setRejectOvertimeReason('')
     setTeamOvertime(loadTeamOvertime())
+    setToast({ message: 'Overtime request rejected.', type: 'success' })
   }
 
   const table = useTableControls(teammates, {
@@ -381,7 +387,10 @@ export default function MyTeam() {
                         <td>
                           <div className="person-cell">
                             <Avatar src={m.photoUrl} name={m.name} size={34} />
-                            <span>{m.id === user.id ? `${m.name} (me)` : m.name}</span>
+                            <div>
+                              <span>{m.id === user.id ? `${m.name} (me)` : m.name}</span>
+                              <div className="muted small">{m.id}</div>
+                            </div>
                           </div>
                         </td>
                         <td className="team-msg-cell">
@@ -546,7 +555,7 @@ export default function MyTeam() {
 
       {rejectLeave && (
         <Modal onClose={() => setRejectLeave(null)} title="Reject leave request">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Reject leave request</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setRejectLeave(null)} aria-label="Close"><X size={15} /></button>
@@ -566,7 +575,7 @@ export default function MyTeam() {
               />
             </label>
             <div className="button-row">
-              <button type="button" className="btn btn-primary" onClick={confirmReject} disabled={!rejectReason.trim()}>Reject request</button>
+              <button type="button" className="btn btn-danger" onClick={confirmReject} disabled={!rejectReason.trim()}>Confirm reject</button>
               <button type="button" className="btn btn-light" onClick={() => setRejectLeave(null)}>Cancel</button>
             </div>
           </div>
@@ -598,7 +607,7 @@ export default function MyTeam() {
 
       {rejectOvertimeId && (
         <Modal onClose={() => setRejectOvertimeId(null)} title="Reject overtime request">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Reject overtime request</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setRejectOvertimeId(null)} aria-label="Close"><X size={15} /></button>
@@ -618,12 +627,14 @@ export default function MyTeam() {
               />
             </label>
             <div className="button-row">
-              <button type="button" className="btn btn-primary" onClick={confirmRejectOvertime}>Reject request</button>
+              <button type="button" className="btn btn-danger" onClick={confirmRejectOvertime} disabled={!rejectOvertimeReason.trim()}>Confirm reject</button>
               <button type="button" className="btn btn-light" onClick={() => setRejectOvertimeId(null)}>Cancel</button>
             </div>
           </div>
         </Modal>
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }
@@ -642,10 +653,11 @@ function TeamLeavesTab({ teamLeaves, openApproveLeave, openReject }) {
       if (key === 'type') return leaveTypeLabelWithPart(lv)
       if (key === 'fromDate') return lv.fromDate
       if (key === 'days') return leaveDays(lv)
+      if (key === 'requestedOn') return lv.appliedOn || ''
       return lv[key]
     },
-    initialSortKey: 'fromDate',
-    initialSortDir: 'asc',
+    initialSortKey: 'requestedOn',
+    initialSortDir: 'desc',
     filterFns: {
       type: (lv, val) => lv.type === val
     }
@@ -704,12 +716,13 @@ function TeamLeavesTab({ teamLeaves, openApproveLeave, openReject }) {
         />
       <table className="table" style={{ tableLayout: 'fixed' }}>
         <colgroup>
-          <col style={{ width: '20%' }} />
-          <col style={{ width: '12%' }} />
           <col style={{ width: '18%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '16%' }} />
+          <col style={{ width: '7%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '29%' }} />
           <col style={{ width: '8%' }} />
-          <col style={{ width: '25%' }} />
-          <col style={{ width: '17%' }} />
         </colgroup>
         <thead>
           <tr>
@@ -717,20 +730,24 @@ function TeamLeavesTab({ teamLeaves, openApproveLeave, openReject }) {
             <SortableTh label="Type" keyName="type" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
             <SortableTh label="Dates" keyName="fromDate" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
             <SortableTh label="Days" keyName="days" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+            <SortableTh label="Requested" keyName="requestedOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
             <SortableTh label="Reason" keyName="reason" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
           {table.count === 0 && (
-            <TableEmpty colSpan={6} message="No leave requests waiting for your approval." />
+            <TableEmpty colSpan={7} message="No leave requests waiting for your approval." />
           )}
           {pageRows.map((lv) => (
             <tr key={lv.id}>
               <td>
                 <div className="person-cell">
                   <Avatar name={getEmployeeById(lv.employeeId)?.name || lv.employeeId} size={34} />
-                  <span>{getEmployeeById(lv.employeeId)?.name || lv.employeeId}</span>
+                  <div>
+                    <span>{getEmployeeById(lv.employeeId)?.name || lv.employeeId}</span>
+                    <div className="muted small">{lv.employeeId}</div>
+                  </div>
                 </div>
               </td>
               <td>
@@ -745,6 +762,7 @@ function TeamLeavesTab({ teamLeaves, openApproveLeave, openReject }) {
                   : `${formatDate(lv.fromDate)} – ${formatDate(lv.toDate)}`}
               </td>
               <td>{leaveDays(lv)}</td>
+              <td>{lv.appliedOn ? formatDate(lv.appliedOn) : <span className="muted">--</span>}</td>
               <td className="cell-ellipsis">{lv.reason || <span className="muted">--</span>}</td>
               <td>
                 <div className="task-menu-container">
@@ -810,10 +828,11 @@ function TeamOvertimeTab({ teamOvertime, openApproveOvertime, openRejectOvertime
       if (key === 'employee') return getEmployeeById(r.employeeId)?.name || ''
       if (key === 'month') return r.monthKey
       if (key === 'hours') return r.hours
+      if (key === 'requestedOn') return r.requestedOn || ''
       return r[key]
     },
     initialSortKey: 'requestedOn',
-    initialSortDir: 'asc'
+    initialSortDir: 'desc'
   })
 
   const {
@@ -857,10 +876,11 @@ function TeamOvertimeTab({ teamOvertime, openApproveOvertime, openRejectOvertime
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '22%' }} />
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '45%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '39%' }} />
             <col style={{ width: '8%' }} />
           </colgroup>
           <thead>
@@ -868,13 +888,14 @@ function TeamOvertimeTab({ teamOvertime, openApproveOvertime, openRejectOvertime
               <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Month" keyName="month" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Hours" keyName="hours" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Requested" keyName="requestedOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Reason" keyName="reason" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={5} message="No overtime requests waiting for your approval." />
+              <TableEmpty colSpan={6} message="No overtime requests waiting for your approval." />
             )}
             {pageRows.map((r) => {
               const emp = getEmployeeById(r.employeeId)
@@ -891,6 +912,7 @@ function TeamOvertimeTab({ teamOvertime, openApproveOvertime, openRejectOvertime
                   </td>
                   <td>{monthLabel(r.monthKey)}</td>
                   <td><strong>{r.hours}h</strong></td>
+                  <td>{r.requestedOn ? formatDate(r.requestedOn) : <span className="muted">--</span>}</td>
                   <td className="cell-ellipsis">{r.reason || <span className="muted">--</span>}</td>
                   <td>
                     <div className="task-menu-container">

@@ -1498,6 +1498,8 @@ textarea::placeholder {
 .tag-ok { background: #e6f5ec; color: var(--good); }
 .tag-late { background: #fdf0e2; color: var(--warn); }
 .tag-absent { background: #f0f2f6; color: var(--muted); }
+.tag-holiday { background: #e0f2f1; color: #00796b; }
+.tag-weekoff { background: #f3e8ff; color: #6b21a8; }
 .tag-pending { background: #e8f0fe; color: #1a73e8; }
 /* "Closed" — finished with a decision made. Kept apart from the faded grey of
    Withdrawn / Absent above: a withdrawn record was voided by the person who
@@ -3108,6 +3110,8 @@ button.task-status-stat-card {
 [data-theme="dark"] .tag-ok { background: #1a3d2a; }
 [data-theme="dark"] .tag-late { background: #3d2e1a; }
 [data-theme="dark"] .tag-absent { background: #252d3f; }
+[data-theme="dark"] .tag-holiday { background: #1a3d3a; color: #4db6ac; }
+[data-theme="dark"] .tag-weekoff { background: #3b2560; color: #d8b4fe; }
 [data-theme="dark"] .tag-pending { background: #1a2d4a; color: #8ab4f8; }
 [data-theme="dark"] .tag-closed { background: #3f4b5b; }
 [data-theme="dark"] .tag-bad { background: #3d2428; }
@@ -3722,6 +3726,65 @@ button.task-status-stat-card {
 }
 .inline-select option {
   background: var(--card);
+  color: var(--ink);
+}
+
+/* ── Toast notification ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  max-width: 340px;
+  transform: translateY(120%);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  pointer-events: none;
+}
+.toast--visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.toast--leaving {
+  transform: translateY(120%);
+  opacity: 0;
+}
+.toast--success {
+  border-left: 3px solid var(--good);
+}
+.toast--error {
+  border-left: 3px solid var(--bad);
+}
+.toast-message {
+  flex: 1;
+  line-height: 1.4;
+}
+.toast-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 2px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+.toast-close:hover {
   color: var(--ink);
 }
 

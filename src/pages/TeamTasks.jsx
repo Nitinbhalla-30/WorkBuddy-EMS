@@ -27,6 +27,7 @@ import TaskForm from '../components/TaskForm.jsx'
 import TaskThread from '../components/TaskThread.jsx'
 import { TaskStatusChart } from '../components/tasks/TaskStatusChart.tsx'
 import Modal from '../components/Modal.jsx'
+import Toast from '../components/Toast.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableToolbar from '../components/TableToolbar.jsx'
@@ -55,6 +56,7 @@ export default function TeamTasksPanel() {
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openTaskId, setOpenTaskId] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
+  const [toast, setToast] = useState(null)
   const chartAreaRef = useRef(null)
 
   const people = useMemo(() => {
@@ -98,8 +100,8 @@ export default function TeamTasksPanel() {
       if (key === 'status') return statusLabel(t.status)
       return t[key]
     },
-    initialSortKey: 'dueDate',
-    initialSortDir: 'asc',
+    initialSortKey: 'createdAt',
+    initialSortDir: 'desc',
     filterFns: {
       status: (t, val) => t.status === val,
       priority: (t, val) => t.priority === val,
@@ -133,11 +135,13 @@ export default function TeamTasksPanel() {
     addTask({ ...data, createdById: user.id })
     bump()
     setShowForm(false)
+    setToast({ message: 'Task assigned successfully.', type: 'success' })
   }
 
   function handleApproveClosure(id) {
     approveTaskClosure(id, user.id)
     bump()
+    setToast({ message: 'Task closure approved.', type: 'success' })
   }
 
   function handleTaskReply(text) {
@@ -155,6 +159,7 @@ export default function TeamTasksPanel() {
       deleteTaskByManager(deleteId, user.id)
       setDeleteId(null)
       bump()
+      setToast({ message: 'Task deleted successfully.', type: 'success' })
     }
   }
 
@@ -208,6 +213,8 @@ export default function TeamTasksPanel() {
 
   return (
     <div>
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+
       {/* Same stat cards + donut the employee and admin task boards use, so the
           manager reads their own team's workload the same way. Counts cover every
           task the manager assigned; clicking a card filters the table below. */}
@@ -231,7 +238,7 @@ export default function TeamTasksPanel() {
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="Assign a new task">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
               <div className="modal-header">
                 <h3 className="section-title first">Assign a new task</h3>
                 <button
@@ -254,7 +261,7 @@ export default function TeamTasksPanel() {
 
       {openTask && (
         <Modal onClose={() => setOpenTaskId(null)} title={openTask.title}>
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <div>
                 <h3 className="section-title first" style={{ margin: 0 }}>{openTask.title}</h3>
@@ -304,7 +311,8 @@ export default function TeamTasksPanel() {
               label: 'Quick',
               value: table.filters.quick || 'all',
               options: [],
-              hidden: true
+              hidden: true,
+              clearable: (f) => f.value !== 'overdue'
             },
             {
               key: 'priority',
@@ -322,14 +330,14 @@ export default function TeamTasksPanel() {
           onFilterChange={table.setFilter}
           actions={
             <>
-              {table.filters.quick && table.filters.quick !== 'all' ? (
+              {table.filters.quick === 'overdue' ? (
                 <button
                   type="button"
                   className="quick-filter-chip"
                   onClick={() => table.setFilter('quick', 'all')}
-                  aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
+                  aria-label="Clear Overdue filter"
                 >
-                  {QUICK_FILTER_LABELS[table.filters.quick]}
+                  Overdue
                   <X size={13} aria-hidden="true" />
                 </button>
               ) : null}
@@ -344,17 +352,19 @@ export default function TeamTasksPanel() {
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '26%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '16%' }} />
             <col style={{ width: '13%' }} />
             <col style={{ width: '9%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '30%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '8%' }} />
           </colgroup>
           <thead>
             <tr>
               <SortableTh label="Assigned To" keyName="assignee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Assigned On" keyName="createdAt" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Title" keyName="title" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Description" keyName="description" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Priority" keyName="priority" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -365,16 +375,20 @@ export default function TeamTasksPanel() {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={7} message={table.total === 0 ? 'No tasks yet.' : 'No tasks found.'} />
+              <TableEmpty colSpan={8} message={table.total === 0 ? 'No tasks yet.' : 'No tasks found.'} />
             )}
             {tasksPage.map((task) => (
               <tr key={task.id}>
                 <td>
                   <div className="person-cell">
                     <Avatar name={nameOf(task.assigneeId)} size={34} />
-                    <span>{nameOf(task.assigneeId)}</span>
+                    <div>
+                      <span>{nameOf(task.assigneeId)}</span>
+                      <div className="muted small">{task.assigneeId}</div>
+                    </div>
                   </div>
                 </td>
+                <td>{task.createdOn ? formatDate(task.createdOn) : <span className="muted">--</span>}</td>
                 <td className="cell-ellipsis" title={task.title || undefined}><strong>{task.title}</strong></td>
                 <td className="cell-ellipsis" title={task.description || undefined}>{task.description || <span className="muted">--</span>}</td>
                 <td>

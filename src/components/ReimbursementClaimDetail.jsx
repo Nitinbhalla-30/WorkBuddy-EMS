@@ -6,6 +6,7 @@ import {
   statusLabel,
   statusTagClass
 } from '../utils/reimbursements.js'
+import LeaveDocumentList from './LeaveDocumentList.jsx'
 import ReimbursementThread from './ReimbursementThread.jsx'
 
 // Shared, polished body for the reimbursement claim detail modal. Used by both
@@ -47,27 +48,30 @@ export default function ReimbursementClaimDetail({
         </div>
       </div>
 
-      <div className="claim-summary">
-        <div className="claim-summary-item">
-          <span className="claim-summary-label">Expense date</span>
-          <span className="claim-summary-value">{formatDateDDMMYYYY(claim.expenseDate)}</span>
+      <div className="first" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 24px', marginTop: '16px' }}>
+        <div>
+          <div className="muted small">Expense date</div>
+          <div style={{ fontWeight: 600 }}>{formatDateDDMMYYYY(claim.expenseDate)}</div>
         </div>
-        <div className="claim-summary-item">
-          <span className="claim-summary-label">Amount</span>
-          <span className="claim-summary-value claim-summary-amount">{formatAmount(claim.amount)}</span>
+        <div>
+          <div className="muted small">Amount</div>
+          <div style={{ fontWeight: 700, fontSize: '17px', color: 'var(--brand)' }}>{formatAmount(claim.amount)}</div>
         </div>
         {claim.status === 'paid' && claim.paidOn && (
-          <div className="claim-summary-item">
-            <span className="claim-summary-label">Paid on</span>
-            <span className="claim-summary-value">{formatDateDDMMYYYY(claim.paidOn)}</span>
+          <div>
+            <div className="muted small">Paid on</div>
+            <div style={{ fontWeight: 600 }}>{formatDateDDMMYYYY(claim.paidOn)}</div>
           </div>
         )}
-        {claim.description && (
-          <div className="claim-summary-item claim-summary-full">
-            <span className="claim-summary-label">Description</span>
-            <span className="claim-summary-desc">{claim.description}</span>
-          </div>
-        )}
+      </div>
+
+      {claim.description && (
+        <p className="hint" style={{ marginTop: '12px' }}><strong>Description:</strong> {claim.description}</p>
+      )}
+
+      <div className="first" style={{ marginTop: '12px' }}>
+        <div className="muted small" style={{ marginBottom: '6px' }}>Receipts</div>
+        <LeaveDocumentList documents={claim.receipts} emptyLabel="No receipts uploaded" />
       </div>
 
       {claim.status === 'rejected' && claim.reviewNote && (
