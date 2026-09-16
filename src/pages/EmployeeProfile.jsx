@@ -17,6 +17,7 @@ import ProfileWizard from '../components/ProfileWizard.jsx'
 import ProfileView from '../components/ProfileView.jsx'
 import Modal from '../components/Modal.jsx'
 import { CircleUser, X } from 'lucide-react'
+import Toast from '../components/Toast.jsx'
 
 // The employee's own details. Onboarding, or update-after-verification with HR approval.
 export default function EmployeeProfile() {
@@ -24,6 +25,7 @@ export default function EmployeeProfile() {
   const [refresh, setRefresh] = useState(0)
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [requestNote, setRequestNote] = useState('')
+  const [toast, setToast] = useState(null)
 
   const profile = useMemo(() => {
     const found = getProfileForEmployee(user.id)
@@ -46,11 +48,13 @@ export default function EmployeeProfile() {
   function handleSaveDraft(data) {
     saveProfileDraft(user.id, data)
     setRefresh((n) => n + 1)
+    setToast({ message: 'Draft saved.', type: 'success' })
   }
 
   function handleSubmit(data) {
     submitProfile(user.id, data)
     setRefresh((n) => n + 1)
+    setToast({ message: 'Your details were submitted for HR review.', type: 'success' })
   }
 
   function handleRequestUpdate() {
@@ -58,6 +62,7 @@ export default function EmployeeProfile() {
     setRequestNote('')
     setShowRequestForm(false)
     setRefresh((n) => n + 1)
+    setToast({ message: 'Update request sent to HR.', type: 'success' })
   }
 
   const editable = isEditable(profile.status)
@@ -193,6 +198,8 @@ export default function EmployeeProfile() {
         to verify. Once verified, your details are locked. To change anything afterwards, use
         &ldquo;Request update&rdquo; and wait for HR to unlock the form.
       </p>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

@@ -48,6 +48,7 @@ import {
 } from '../utils/cab.js'
 import { CarFront, Check, CircleCheck, Copy, ExternalLink, Eye, MoreVertical, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Toast from '../components/Toast.jsx'
 
 const TABS = ['Vehicles', 'Drivers', 'Trips', 'Assign', 'Change Requests', 'Messages', 'Today']
 const TAB_SLUGS = ['vehicles', 'drivers', 'trips', 'assign', 'requests', 'messages', 'today']
@@ -88,6 +89,9 @@ export default function CabManagement() {
 
   function bump() { setRefresh((n) => n + 1) }
 
+  const [toast, setToast] = useState(null)
+  const notify = (message, type = 'success') => setToast({ message, type })
+
   function nameOf(id) {
     return getEmployees().find((e) => e.id === id)?.name || id
   }
@@ -114,13 +118,13 @@ export default function CabManagement() {
         ))}
       </div>
 
-      {tab === 0 && <VehiclesTab vehicles={vehicles} bump={bump} />}
-      {tab === 1 && <DriversTab drivers={drivers} bump={bump} />}
-      {tab === 2 && <TripsTab trips={trips} vehicles={vehicles} drivers={drivers} bump={bump} />}
-      {tab === 3 && <AssignTab employees={employees} trips={trips} assignments={assignments} bump={bump} />}
-      {tab === 4 && <RequestsTab requests={requests} nameOf={nameOf} bump={bump} />}
-      {tab === 5 && <MessagesTab employees={employees} unreadByEmp={unreadByEmp} bump={bump} />}
-      {tab === 6 && <TodayTab employees={employees} bump={bump} />}
+      {tab === 0 && <VehiclesTab vehicles={vehicles} bump={bump} notify={notify} />}
+      {tab === 1 && <DriversTab drivers={drivers} bump={bump} notify={notify} />}
+      {tab === 2 && <TripsTab trips={trips} vehicles={vehicles} drivers={drivers} bump={bump} notify={notify} />}
+      {tab === 3 && <AssignTab employees={employees} trips={trips} assignments={assignments} bump={bump} notify={notify} />}
+      {tab === 4 && <RequestsTab requests={requests} nameOf={nameOf} bump={bump} notify={notify} />}
+      {tab === 5 && <MessagesTab employees={employees} unreadByEmp={unreadByEmp} bump={bump} notify={notify} />}
+      {tab === 6 && <TodayTab employees={employees} bump={bump} notify={notify} />}
 
       <p className="hint">
         Manage vehicles, drivers, and trips from the tabs above. Use Assign to link employees
@@ -128,12 +132,13 @@ export default function CabManagement() {
         driver&rsquo;s run sheet to share their schedule on the driver&rsquo;s phone. Cancellation
         summary shows who opted out of today&rsquo;s cab.
       </p>
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }
 
 // ---- Vehicles ----
-function VehiclesTab({ vehicles, bump }) {
+function VehiclesTab({ vehicles, bump, notify }) {
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ number: '', label: '' })
@@ -195,23 +200,29 @@ function VehiclesTab({ vehicles, bump }) {
 
   function submitAdd() {
     if (!form.number.trim()) return
-    addVehicle({ number: form.number.trim(), label: form.label.trim() })
+    const number = form.number.trim()
+    addVehicle({ number, label: form.label.trim() })
     setShowAdd(false)
     bump()
+    notify(`Vehicle ${number} added.`)
   }
 
   function submitEdit() {
     if (!editId || !form.number.trim()) return
-    updateVehicle(editId, { number: form.number.trim(), label: form.label.trim() })
+    const number = form.number.trim()
+    updateVehicle(editId, { number, label: form.label.trim() })
     setEditId(null)
     bump()
+    notify(`Vehicle ${number} updated.`)
   }
 
   function confirmDelete() {
     if (deleteId) {
+      const number = vehicles.find((v) => v.id === deleteId)?.number
       deleteVehicle(deleteId)
       setDeleteId(null)
       bump()
+      notify(number ? `Vehicle ${number} deleted.` : 'Vehicle deleted.')
     }
   }
 
@@ -372,7 +383,7 @@ function VehiclesTab({ vehicles, bump }) {
 }
 
 // ---- Drivers ----
-function DriversTab({ drivers, bump }) {
+function DriversTab({ drivers, bump, notify }) {
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ name: '', mobile: '', pin: '' })
@@ -433,28 +444,34 @@ function DriversTab({ drivers, bump }) {
 
   function submitAdd() {
     if (!form.name.trim()) return
-    addDriver({ name: form.name.trim(), mobile: form.mobile.trim(), pin: form.pin.trim() })
+    const name = form.name.trim()
+    addDriver({ name, mobile: form.mobile.trim(), pin: form.pin.trim() })
     setShowAdd(false)
     bump()
+    notify(`Driver ${name} added.`)
   }
 
   function submitEdit() {
     if (!editId || !form.name.trim()) return
+    const name = form.name.trim()
     updateDriver(editId, {
-      name: form.name.trim(),
+      name,
       mobile: form.mobile.trim(),
       // Blank PIN keeps the existing one.
       ...(form.pin.trim() ? { pin: form.pin.trim() } : {})
     })
     setEditId(null)
     bump()
+    notify(`Driver ${name} updated.`)
   }
 
   function confirmDelete() {
     if (deleteId) {
+      const name = drivers.find((d) => d.id === deleteId)?.name
       deleteDriver(deleteId)
       setDeleteId(null)
       bump()
+      notify(name ? `Driver ${name} deleted.` : 'Driver deleted.')
     }
   }
 
@@ -465,6 +482,8 @@ function DriversTab({ drivers, bump }) {
     setPinSaved({ ...pinSaved, [driverId]: true })
     setTimeout(() => setPinSaved((s) => ({ ...s, [driverId]: false })), 2000)
     bump()
+    const name = drivers.find((d) => d.id === driverId)?.name
+    notify(name ? `PIN updated for ${name}.` : 'PIN updated.')
   }
 
   return (
@@ -692,7 +711,7 @@ function PersonCell({ name, mobile }) {
   )
 }
 
-function TripsTab({ trips, vehicles, drivers, bump }) {
+function TripsTab({ trips, vehicles, drivers, bump, notify }) {
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState(EMPTY_TRIP_FORM)
@@ -789,6 +808,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
     addTrip(normalize(form))
     setShowAdd(false)
     bump()
+    notify('Trip added.')
   }
 
   function submitEdit() {
@@ -796,6 +816,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
     updateTrip(editId, normalize(form))
     setEditId(null)
     bump()
+    notify('Trip updated.')
   }
 
   function confirmDelete() {
@@ -803,6 +824,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
       deleteTrip(deleteId)
       setDeleteId(null)
       bump()
+      notify('Trip deleted.')
     }
   }
 
@@ -1076,7 +1098,7 @@ function TripsTab({ trips, vehicles, drivers, bump }) {
 }
 
 // ---- Assign employees ----
-function AssignTab({ employees, trips, assignments, bump }) {
+function AssignTab({ employees, trips, assignments, bump, notify }) {
   const pickupTrips = trips.filter((t) => t.direction === 'pickup')
   const dropTrips = trips.filter((t) => t.direction === 'drop')
 
@@ -1128,6 +1150,8 @@ function AssignTab({ employees, trips, assignments, bump }) {
   function save(empId, pickupTripId, dropTripId) {
     setCabAssignment(empId, pickupTripId, dropTripId)
     bump()
+    const name = employees.find((e) => e.id === empId)?.name || empId
+    notify(`${name}'s cab assignment saved.`)
   }
 
   return (
@@ -1231,7 +1255,7 @@ function AssignTab({ employees, trips, assignments, bump }) {
 }
 
 // ---- Temporary requests ----
-function RequestsTab({ requests, nameOf, bump }) {
+function RequestsTab({ requests, nameOf, bump, notify }) {
   const [notes, setNotes] = useState({})
   const [approveId, setApproveId] = useState(null)
   const [rejectId, setRejectId] = useState(null)
@@ -1252,6 +1276,8 @@ function RequestsTab({ requests, nameOf, bump }) {
   function decide(id, status) {
     setCabRequestStatus(id, status, notes[id] || '')
     bump()
+    const empName = nameOf(requests.find((r) => r.id === id)?.employeeId)
+    notify(`Cab change request ${status === 'approved' ? `approved for ${empName}.` : `rejected for ${empName}.`}`)
   }
   function handleApprove() {
     if (!approveId) return
@@ -1538,7 +1564,7 @@ function RequestsTab({ requests, nameOf, bump }) {
 }
 
 // ---- Messages (chat with employees) ----
-function MessagesTab({ employees, unreadByEmp, bump }) {
+function MessagesTab({ employees, unreadByEmp, bump, notify }) {
   const [selected, setSelected] = useState('')
   const [text, setText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -1605,6 +1631,7 @@ function MessagesTab({ employees, unreadByEmp, bump }) {
       if (inputRef.current) inputRef.current.focus()
     })
     bump()
+    notify('Message sent.')
   }
 
   function handleKeyDown(e) {
@@ -1619,6 +1646,7 @@ function MessagesTab({ employees, unreadByEmp, bump }) {
     setMenuOpen(false)
     setConfirmClear(false)
     bump()
+    notify('Chat cleared.')
   }
 
   function closeChat() {
@@ -1754,7 +1782,7 @@ function MessagesTab({ employees, unreadByEmp, bump }) {
 }
 
 // ---- Today's cancellations (driver view) ----
-function TodayTab({ employees, bump }) {
+function TodayTab({ employees, bump, notify }) {
   const todayKey = new Date().toISOString().slice(0, 10)
   const cancellations = useMemo(
     () => getCabCancellationsForDate(todayKey),
@@ -1775,13 +1803,19 @@ function TodayTab({ employees, bump }) {
   }
 
   function copyRunSheetLink(d) {
-    navigator.clipboard.writeText(`${origin}/driver/${d.id}`).catch(() => {})
-    setCopiedId(d.id)
-    window.clearTimeout(copyTimer.current)
-    copyTimer.current = window.setTimeout(() => {
-      setCopiedId(null)
-      setOpenMenuId(null)
-    }, 1200)
+    navigator.clipboard.writeText(`${origin}/driver/${d.id}`)
+      .then(() => {
+        setCopiedId(d.id)
+        window.clearTimeout(copyTimer.current)
+        copyTimer.current = window.setTimeout(() => {
+          setCopiedId(null)
+          setOpenMenuId(null)
+        }, 1200)
+        notify(`Run sheet link copied for ${d.name}.`)
+      })
+      .catch(() => {
+        notify('Could not copy the link. Please copy it manually.', 'error')
+      })
   }
 
   useEffect(() => () => window.clearTimeout(copyTimer.current), [])

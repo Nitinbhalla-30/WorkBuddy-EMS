@@ -1006,9 +1006,10 @@ export function updateEmployeeSalary(employeeId, salary) {
   const all = getEmployees()
   const idx = all.findIndex((e) => e.id === employeeId)
   if (idx < 0) return null
-  all[idx] = { ...all[idx], salary: { ...all[idx].salary, ...salary } }
-  write(KEYS.employees, all)
-  return all[idx]
+  const updated = [...all]
+  updated[idx] = { ...updated[idx], salary: { ...updated[idx].salary, ...salary } }
+  write(KEYS.employees, updated)
+  return updated[idx]
 }
 
 // Update one employee's team info. `team` = { isManager, managerId }.
@@ -1016,9 +1017,10 @@ export function updateEmployeeTeam(employeeId, team) {
   const all = getEmployees()
   const idx = all.findIndex((e) => e.id === employeeId)
   if (idx < 0) return null
-  all[idx] = { ...all[idx], ...team }
-  write(KEYS.employees, all)
-  return all[idx]
+  const updated = [...all]
+  updated[idx] = { ...updated[idx], ...team }
+  write(KEYS.employees, updated)
+  return updated[idx]
 }
 
 // Add a new employee record. `data` = { id, name, department, designation, isManager, managerId, dateJoined, salary, shiftId, weekOffDays }.
@@ -1026,7 +1028,7 @@ export function updateEmployeeTeam(employeeId, team) {
 export function addEmployee(data) {
   const all = getEmployees()
   if (all.some((e) => e.id === data.id)) return null
-  all.push({
+  const newEmployee = {
     id: data.id,
     name: data.name,
     pin: '1234',
@@ -1041,9 +1043,10 @@ export function addEmployee(data) {
     salary: data.salary || { basic: 0, hra: 0, other: 0, tdsMonthly: 0 },
     shiftId: data.shiftId || null,
     weekOffDays: Array.isArray(data.weekOffDays) ? data.weekOffDays : []
-  })
-  write(KEYS.employees, all)
-  return all[all.length - 1]
+  }
+  const updated = [...all, newEmployee]
+  write(KEYS.employees, updated)
+  return newEmployee
 }
 
 // Deactivate an employee (resigned, retired, terminated, etc.).
@@ -1052,15 +1055,16 @@ export function deactivateEmployee(employeeId, info) {
   const all = getEmployees()
   const idx = all.findIndex((e) => e.id === employeeId)
   if (idx < 0) return null
-  all[idx] = {
-    ...all[idx],
+  const updated = [...all]
+  updated[idx] = {
+    ...updated[idx],
     status: 'inactive',
     separationReason: info.reason || '',
     separationDate: info.date || '',
     separationNote: info.note || ''
   }
-  write(KEYS.employees, all)
-  return all[idx]
+  write(KEYS.employees, updated)
+  return updated[idx]
 }
 
 // Reactivate a previously deactivated employee.
@@ -1068,15 +1072,16 @@ export function reactivateEmployee(employeeId) {
   const all = getEmployees()
   const idx = all.findIndex((e) => e.id === employeeId)
   if (idx < 0) return null
-  all[idx] = {
-    ...all[idx],
+  const updated = [...all]
+  updated[idx] = {
+    ...updated[idx],
     status: 'active',
     separationReason: '',
     separationDate: '',
     separationNote: ''
   }
-  write(KEYS.employees, all)
-  return all[idx]
+  write(KEYS.employees, updated)
+  return updated[idx]
 }
 
 // The people who report to a given manager (only real employees).
@@ -3055,13 +3060,14 @@ export function deleteShift(shiftId) {
   write(KEYS.shifts, getShifts().filter((s) => s.id !== shiftId))
   const emps = getEmployees()
   let changed = false
-  for (const e of emps) {
+  const updated = emps.map((e) => {
     if (e.shiftId === shiftId) {
-      e.shiftId = null
       changed = true
+      return { ...e, shiftId: null }
     }
-  }
-  if (changed) write(KEYS.employees, emps)
+    return e
+  })
+  if (changed) write(KEYS.employees, updated)
 }
 
 // Assign (or change) an employee's shift. Logs the change in history.
@@ -3071,8 +3077,9 @@ export function assignEmployeeShift(employeeId, shiftId, changedBy) {
   if (idx < 0) return null
   const prevShiftId = all[idx].shiftId || null
   if (prevShiftId === shiftId) return all[idx]
-  all[idx] = { ...all[idx], shiftId }
-  write(KEYS.employees, all)
+  const updated = [...all]
+  updated[idx] = { ...updated[idx], shiftId }
+  write(KEYS.employees, updated)
   // Log the change.
   const history = getShiftHistory()
   history.push({
@@ -3084,7 +3091,7 @@ export function assignEmployeeShift(employeeId, shiftId, changedBy) {
     changedOn: todayKey()
   })
   write(KEYS.shiftHistory, history)
-  return all[idx]
+  return updated[idx]
 }
 
 // ---- shift change requests ----

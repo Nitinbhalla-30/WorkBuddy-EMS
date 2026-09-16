@@ -24,6 +24,7 @@ import SortableTh from '../components/SortableTh.jsx'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Pagination from '../components/Pagination.jsx'
 import Modal from '../components/Modal.jsx'
+import Toast from '../components/Toast.jsx'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { usePagination } from '../hooks/usePagination.js'
 
@@ -46,6 +47,8 @@ const BLANK_FORM = {
 // Everything else on the Celebrations page is derived and needs no managing.
 export default function CelebrationAdminPanel({ user, settings, events, onChanged }) {
   const [denied, setDenied] = useState(false)
+  const [toast, setToast] = useState(null)
+  const notify = (message, type = 'success') => setToast({ message, type })
 
   // ---- company occasions ----
   const [showForm, setShowForm] = useState(false)
@@ -134,23 +137,29 @@ export default function CelebrationAdminPanel({ user, settings, events, onChange
       : createCelebrationEvent(patch, user)
     if (!result) {
       setDenied(true)
+      notify('You do not have permission to change celebrations.', 'error')
       return
     }
     setDenied(false)
+    const wasEdit = !!editId
     closeForm()
     onChanged?.()
+    notify(wasEdit ? 'Occasion updated.' : 'Occasion added.')
   }
 
   function confirmDelete() {
     if (!deleteRow) return
+    const name = deleteRow.name
     const result = deleteCelebrationEvent(deleteRow.id, user)
     setDeleteRow(null)
     if (result === null) {
       setDenied(true)
+      notify('You do not have permission to change celebrations.', 'error')
       return
     }
     setDenied(false)
     onChanged?.()
+    notify(`"${name}" deleted.`)
   }
 
   function toggleVisible(row) {
@@ -158,11 +167,14 @@ export default function CelebrationAdminPanel({ user, settings, events, onChange
     // as well — the store still refuses the write on its own.
     if (!canManageCelebrations(user)) {
       setDenied(true)
+      notify('You do not have permission to change celebrations.', 'error')
       return
     }
-    setSystemCelebrationHidden(row.id, !hiddenIds.has(row.id), user)
+    const willHide = !hiddenIds.has(row.id)
+    setSystemCelebrationHidden(row.id, willHide, user)
     setDenied(false)
     onChanged?.()
+    notify(willHide ? `${row.name} is now hidden.` : `${row.name} is now shown.`)
   }
 
   function handleCalendarFilter(key, value) {
@@ -519,6 +531,7 @@ export default function CelebrationAdminPanel({ user, settings, events, onChange
           </div>
         </Modal>
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

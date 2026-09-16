@@ -32,6 +32,7 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import { ListTodo, MessagesSquare, MoreVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
+import Toast from '../components/Toast.jsx'
 
 const TASK_STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -52,6 +53,7 @@ export default function AdminTasks() {
   const [followUpId, setFollowUpId] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [toast, setToast] = useState(null)
   const chartAreaRef = useRef(null)
 
   // Everyone who can hold a task (real employees).
@@ -120,6 +122,7 @@ export default function AdminTasks() {
     addTask({ ...data, createdById: user.id })
     setShowForm(false)
     bump()
+    setToast({ message: 'Task created and assigned.', type: 'success' })
   }
 
   function handleEdit(data) {
@@ -127,17 +130,20 @@ export default function AdminTasks() {
     updateTaskByAdmin(editTask.id, data)
     setEditTaskId(null)
     bump()
+    setToast({ message: 'Task updated.', type: 'success' })
   }
 
   function handleFollowUpReply(text) {
     if (!followUpTask) return
     addTaskMessageByAdmin(followUpTask.id, { byId: user.id, text })
     bump()
+    setToast({ message: 'Message sent.', type: 'success' })
   }
 
   function move(id, status) {
     updateTaskStatus(id, status)
     bump()
+    setToast({ message: `Task moved to ${statusLabel(status)}.`, type: 'success' })
   }
 
   function handleDelete(id) {
@@ -149,6 +155,7 @@ export default function AdminTasks() {
       deleteTask(deleteId)
       setDeleteId(null)
       bump()
+      setToast({ message: 'Task deleted.', type: 'success' })
     }
   }
 
@@ -298,7 +305,8 @@ export default function AdminTasks() {
               label: 'Quick',
               value: table.filters.quick || 'all',
               options: [],
-              hidden: true
+              hidden: true,
+              clearable: (f) => f.value !== 'overdue'
             },
             {
               key: 'assignee',
@@ -322,12 +330,12 @@ export default function AdminTasks() {
           onFilterChange={table.setFilter}
           actions={
             <>
-              {table.filters.quick && table.filters.quick !== 'all' ? (
+              {table.filters.quick === 'overdue' ? (
                 <button
                   type="button"
                   className="quick-filter-chip"
                   onClick={() => table.setFilter('quick', 'all')}
-                  aria-label={`Clear ${QUICK_FILTER_LABELS[table.filters.quick]} filter`}
+                  aria-label="Clear Overdue filter"
                 >
                   {QUICK_FILTER_LABELS[table.filters.quick]}
                   <X size={13} aria-hidden="true" />
@@ -504,6 +512,8 @@ export default function AdminTasks() {
         Managers are assigned on the Employees page. A manager sees their own team under &ldquo;My Team&rdquo;;
         here you can view and manage tasks for all employees across the organisation.
       </p>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

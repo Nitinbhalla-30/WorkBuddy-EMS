@@ -25,6 +25,7 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import { Eye, MessageSquareText, MoreVertical, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
+import Toast from '../components/Toast.jsx'
 
 const TICKET_KIND_OPTS = [
   { value: 'all', label: 'All types' },
@@ -42,6 +43,7 @@ export default function AdminTickets() {
   const [refresh, setRefresh] = useState(0)
   const [openId, setOpenId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [toast, setToast] = useState(null)
 
   const nameOf = (id) => getEmployeeById(id)?.name || id
 
@@ -95,13 +97,16 @@ export default function AdminTickets() {
   }, [openMenuId])
 
   function handleReply(text) {
+    if (!open) return
     addTicketMessage(open.id, { byId: user.id, byRole: 'admin', text })
     setRefresh((n) => n + 1)
+    setToast({ message: 'Reply sent.', type: 'success' })
   }
 
   function handleSetStatus(ticketId, status) {
     setTicketStatus(ticketId, status)
     setRefresh((n) => n + 1)
+    setToast({ message: `Ticket marked as ${statusLabel(status)}.`, type: 'success' })
   }
 
   const openCount = allTickets.filter((t) => t.status === 'open').length
@@ -287,6 +292,8 @@ export default function AdminTickets() {
         With the current single-admin setup, all tickets are visible to whoever is logged in as admin.
         Separate HR-staff and Internal-Committee access will be added in a future update.
       </p>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

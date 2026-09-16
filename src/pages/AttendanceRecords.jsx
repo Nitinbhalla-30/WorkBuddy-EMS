@@ -42,6 +42,7 @@ import { downloadExcelXlsx } from '../utils/exportExcel.js'
 import { CircleCheck, CircleX, Clock, Download, Eye, MessageCircleQuestionMark, MoreVertical, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
+import Toast from '../components/Toast.jsx'
 
 const PERIOD_FILTER_OPTS = [
   { value: 'all', label: 'All period' },
@@ -119,6 +120,8 @@ export default function AttendanceRecords() {
 
   const [corrections, setCorrections] = useState(() => getAttendanceCorrections())
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [toast, setToast] = useState(null)
+  const notify = (message, type = 'success') => setToast({ message, type })
   const [openId, setOpenId] = useState(null)
   // Approving straight from the three-dot menu asks for confirmation first, so
   // this holds the request waiting on that box (`approving` covers the wait for
@@ -391,8 +394,13 @@ export default function AttendanceRecords() {
       await resolveAttendanceCorrection(id, 'approved', user.id, 'Attendance updated as requested.')
       refreshCorrections()
       closeReview()
+      const empName = nameOf(corrections.find((c) => c.id === id)?.employeeId)
+      notify(`${empName}'s attendance correction was approved.`)
+      return true
     } catch (err) {
       console.warn('Could not approve attendance correction', err)
+      notify('Could not approve the correction. Please try again.', 'error')
+      return false
     }
   }
 
@@ -413,8 +421,13 @@ export default function AttendanceRecords() {
       await resolveAttendanceCorrection(id, 'rejected', user.id, rejectNote.trim())
       refreshCorrections()
       closeReview()
+      const empName = nameOf(corrections.find((c) => c.id === id)?.employeeId)
+      notify(`${empName}'s attendance correction was rejected.`)
+      return true
     } catch (err) {
       console.warn('Could not reject attendance correction', err)
+      notify('Could not reject the correction. Please try again.', 'error')
+      return false
     }
   }
 
@@ -426,6 +439,7 @@ export default function AttendanceRecords() {
       text
     })
     refreshCorrections()
+    notify('Reply sent.')
   }
 
   function toggleMenu(id) {
@@ -935,6 +949,7 @@ export default function AttendanceRecords() {
           </div>
         </Modal>
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

@@ -30,6 +30,7 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import { CalendarDays, ClipboardCheck, CircleCheck, CircleX, MoreVertical, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
+import Toast from '../components/Toast.jsx'
 
 const STATUS_FILTER_OPTS = [
   { value: 'all', label: 'All statuses' },
@@ -53,6 +54,7 @@ export default function AdminLeaves() {
   const [rejectId, setRejectId] = useState(null)
   const [rejectNote, setRejectNote] = useState('')
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [toast, setToast] = useState(null)
 
   // Only show leaves that HR can act on:
   // - Already decided (approved/rejected/withdrawn)
@@ -158,6 +160,7 @@ export default function AdminLeaves() {
     closeReview()
     setApproveId(null)
     closeMenu()
+    setToast({ message: 'Leave request approved.', type: 'success' })
   }
 
   function requestApprove(id) {
@@ -171,12 +174,14 @@ export default function AdminLeaves() {
     refresh()
     setRejectId(null)
     setRejectNote('')
+    setToast({ message: 'Leave request rejected.', type: 'success' })
   }
 
   function handleReply(text) {
     if (!openLeave) return
     addLeaveMessage(openLeave.id, { byId: user.id, byRole: 'admin', text })
     refresh()
+    setToast({ message: 'Reply sent.', type: 'success' })
   }
 
   useEffect(() => {
@@ -475,6 +480,8 @@ export default function AdminLeaves() {
         Open a leave request to review it, ask questions, then approve or reject.
         The employee will see who made the decision and any rejection reason on their My Leaves page.
       </p>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

@@ -25,6 +25,7 @@ import TableToolbar from '../components/TableToolbar.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortableTh from '../components/SortableTh.jsx'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Toast from '../components/Toast.jsx'
 import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { CircleCheck, CircleX, MoreVertical, Pencil, Plus, Shuffle, Trash2, X } from 'lucide-react'
@@ -55,6 +56,11 @@ export default function AdminShifts() {
   }
   const [refresh, setRefresh] = useState(0)
   const trigger = () => setRefresh((n) => n + 1)
+
+  // Toast state lives in the parent because each tab is keyed on `refresh`
+  // and remounts after data changes, which would wipe out a tab-local toast.
+  const [toast, setToast] = useState(null)
+  const notify = (message, type = 'success') => setToast({ message, type })
 
   // Pull the latest shared data from Supabase so shift change requests
   // submitted by employees show up even if this tab's initial load was stale.
@@ -105,21 +111,22 @@ export default function AdminShifts() {
         ))}
       </div>
 
-      {tab === 0 && <ShiftsTab key={`shifts-${refresh}`} />}
-      {tab === 1 && <AssignmentsTab key={`assign-${refresh}`} />}
-      {tab === 2 && <RequestsTab key={`req-${refresh}`} onDecided={trigger} />}
+      {tab === 0 && <ShiftsTab key={`shifts-${refresh}`} notify={notify} />}
+      {tab === 1 && <AssignmentsTab key={`assign-${refresh}`} notify={notify} />}
+      {tab === 2 && <RequestsTab key={`req-${refresh}`} onDecided={trigger} notify={notify} />}
 
       <p className="hint">
         Define shifts to cover 24-hour operations, assign each employee to a shift,
         and review any shift change requests they submit.
         Changing a shift assignment updates the employee's attendance clock-in expectations immediately.
       </p>
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }
 
 // ---- Tab 1: Define Shifts ----
-function ShiftsTab() {
+function ShiftsTab({ notify }) {
   const [shifts, setShifts] = useState(() => getShifts())
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState(null)
@@ -173,6 +180,7 @@ function ShiftsTab() {
     addShift(data)
     setShifts(getShifts())
     setShowForm(false)
+    notify(`Shift "${data.name}" added.`)
   }
 
   function handleEdit(data) {
@@ -180,13 +188,16 @@ function ShiftsTab() {
     updateShift(editId, data)
     setShifts(getShifts())
     setEditId(null)
+    notify(`Shift "${data.name}" updated.`)
   }
 
   function handleDelete() {
     if (!deleteId) return
+    const name = shifts.find((s) => s.id === deleteId)?.name
     deleteShift(deleteId)
     setShifts(getShifts())
     setDeleteId(null)
+    notify(name ? `Shift "${name}" deleted.` : 'Shift deleted.')
   }
 
   return (
@@ -363,7 +374,7 @@ function ShiftFormModal({ title, initial, onSubmit, onCancel }) {
 }
 
 // ---- Tab 2: Employee Assignments ----
-function AssignmentsTab() {
+function AssignmentsTab({ notify }) {
   const shifts = getShifts()
   const employees = getEmployees().filter((e) => e.role === 'employee')
   const [changeConfirm, setChangeConfirm] = useState(null)
@@ -425,6 +436,8 @@ function AssignmentsTab() {
   function confirmChange() {
     if (!changeConfirm) return
     assignEmployeeShift(changeConfirm.employeeId, changeConfirm.newShiftId, 'admin')
+    const shiftName = shifts.find((s) => s.id === changeConfirm.newShiftId)?.name
+    notify(`${changeConfirm.empName} assigned to ${shiftName || 'no shift'}.`)
     setChangeConfirm(null)
   }
 
@@ -544,7 +557,7 @@ function AssignmentsTab() {
 }
 
 // ---- Tab 3: Shift Change Requests ----
-function RequestsTab({ onDecided }) {
+function RequestsTab({ onDecided, notify }) {
   const [requests, setRequests] = useState(() => getShiftChangeRequests())
   const [approveId, setApproveId] = useState(null)
   const [rejectId, setRejectId] = useState(null)
@@ -604,18 +617,24 @@ function RequestsTab({ onDecided }) {
   } = usePagination(table.rows)
 
   function handleApprove(id) {
+    const req = requests.find((r) => r.id === id)
+    const empName = getEmployeeById(req?.employeeId)?.name || 'Employee'
     approveShiftChange(id, 'admin')
     setRequests(getShiftChangeRequests())
+    notify(`${empName}'s shift change was approved.`)
     onDecided()
   }
 
   function handleReject() {
     if (!rejectId) return
     if (!rejectReason.trim()) return
+    const req = requests.find((r) => r.id === rejectId)
+    const empName = getEmployeeById(req?.employeeId)?.name || 'Employee'
     rejectShiftChange(rejectId, 'admin', rejectReason.trim())
     setRequests(getShiftChangeRequests())
     setRejectId(null)
     setRejectReason('')
+    notify(`${empName}'s shift change was rejected.`)
     onDecided()
   }
 

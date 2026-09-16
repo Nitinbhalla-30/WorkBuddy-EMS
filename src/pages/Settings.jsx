@@ -8,6 +8,7 @@ import Modal from '../components/Modal.jsx'
 import TimeInput from '../components/TimeInput.jsx'
 import { Building2, Clock, Car, Coffee, CalendarDays, CalendarHeart, Shield, Wifi, Plus, Trash2, Check, Settings as SettingsIcon, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
+import Toast from '../components/Toast.jsx'
 
 // HR/Admin settings: branding, timing rules, and the office-internet check.
 export default function Settings() {
@@ -16,6 +17,7 @@ export default function Settings() {
   const [detectedIp, setDetectedIp] = useState('')
   const [detecting, setDetecting] = useState(false)
   const [deleteHolidayId, setDeleteHolidayId] = useState(null)
+  const [toast, setToast] = useState(null)
 
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -81,15 +83,21 @@ export default function Settings() {
     e.preventDefault()
     saveSettings(form)
     setSaved(true)
-    // Company name shows in the top bar, so refresh to update it everywhere.
-    setTimeout(() => window.location.reload(), 600)
+    // Company name shows in the top bar, so reload to update it everywhere —
+    // but only after the toast finishes so the user actually sees it.
+    setToast({ message: 'Settings saved.', type: 'success', thenReload: true })
   }
 
   async function detectIp() {
     setDetecting(true)
     const ip = await fetchPublicIp()
-    setDetectedIp(ip || 'Could not read the address.')
     setDetecting(false)
+    if (ip) {
+      setDetectedIp(ip)
+    } else {
+      setDetectedIp('Could not read the address.')
+      setToast({ message: 'Could not read the public IP address.', type: 'error' })
+    }
   }
 
   return (
@@ -530,6 +538,17 @@ export default function Settings() {
             </div>
           </div>
         </Modal>
+      )}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDone={() => {
+            const shouldReload = toast.thenReload
+            setToast(null)
+            if (shouldReload) window.location.reload()
+          }}
+        />
       )}
     </div>
   )

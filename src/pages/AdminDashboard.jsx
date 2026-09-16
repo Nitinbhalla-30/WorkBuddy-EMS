@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import {
   getAttendance,
   getEmployees,
@@ -23,7 +23,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
-import { LayoutDashboard, Users, X } from 'lucide-react'
+import { LayoutDashboard, Users } from 'lucide-react'
 
 function todayKey() {
   const d = new Date()
@@ -63,6 +63,9 @@ export default function AdminDashboard() {
     { value: 'Absent', label: 'Absent' },
     { value: 'On leave', label: 'On leave' }
   ]
+
+  const KEY_TO_STATUS = { ontime: 'On time', late: 'Late', absent: 'Absent', onleave: 'On leave' }
+  const STATUS_TO_KEY = { 'On time': 'ontime', 'Late': 'late', 'Absent': 'absent', 'On leave': 'onleave' }
 
   const onLeaveIds = useMemo(() => new Set(
     getLeaves()
@@ -114,13 +117,6 @@ export default function AdminDashboard() {
         if (val === 'On leave') return onLeaveIds.has(emp.id) && !(rec && rec.timeIn)
         if (val === 'Absent') return !onLeaveIds.has(emp.id) && (!rec || !rec.timeIn)
         return statusOf(rec, resolveStartTime(emp.id), settings.lateGraceMinutes) === val
-      },
-      quick: ({ emp, rec }, val) => {
-        if (val === 'ontime') return rec && rec.timeIn && !isLate(rec, resolveStartTime(emp.id), settings.lateGraceMinutes)
-        if (val === 'late') return rec && rec.timeIn && isLate(rec, resolveStartTime(emp.id), settings.lateGraceMinutes)
-        if (val === 'absent') return !onLeaveIds.has(emp.id) && (!rec || !rec.timeIn)
-        if (val === 'onleave') return onLeaveIds.has(emp.id) && !(rec && rec.timeIn)
-        return true
       }
     }
   })
@@ -141,20 +137,6 @@ export default function AdminDashboard() {
   const onLeave = allRows.filter(({ emp, rec }) => onLeaveIds.has(emp.id) && !(rec && rec.timeIn)).length
   const absent = employees.length - present - onLeave
 
-  const chartAreaRef = useRef(null)
-
-  // Clear quick-filter when clicking outside the stat cards / donut area
-  useEffect(() => {
-    const clearQuick = (e) => {
-      if (e.type === 'click' && table.filters.quick) {
-        table.setFilter('quick', null)
-        setRowsPage(1)
-      }
-    }
-    document.addEventListener('click', clearQuick)
-    return () => document.removeEventListener('click', clearQuick)
-  }, [table.filters.quick, table.setFilter, setRowsPage])
-
   return (
     <div>
       <div className="page-head">
@@ -167,22 +149,24 @@ export default function AdminDashboard() {
         <span className="muted">{formatDate(today)}</span>
       </div>
 
-      <div ref={chartAreaRef} onClick={(e) => e.stopPropagation()}>
       <AttendanceTodayChart
         employees={employees.length}
         present={present}
         late={late}
         absent={absent}
         onLeave={onLeave}
-        activeKey={table.filters.quick || null}
+        activeKey={table.filters.status && table.filters.status !== 'all' ? STATUS_TO_KEY[table.filters.status] || null : null}
         onToggleKey={(key) => {
+          if (key === 'all') {
+            table.setFilter('status', 'all')
+          } else {
+            const statusVal = KEY_TO_STATUS[key]
+            table.setFilter('status', table.filters.status === statusVal ? 'all' : statusVal)
+          }
           table.setFilter('department', 'all')
-          table.setFilter('status', 'all')
-          table.setFilter('quick', table.filters.quick === key ? null : key)
           setRowsPage(1)
         }}
       />
-      </div>
 
       <div className="section-head-row">
         <h3 className="section-title first">
@@ -213,26 +197,9 @@ export default function AdminDashboard() {
             }
           ]}
           onFilterChange={(key, val) => {
-            table.setFilter('quick', null)
             table.setFilter(key, val)
             setRowsPage(1)
           }}
-          actions={
-            table.filters.quick && table.filters.quick !== 'all' ? (
-              <button
-                type="button"
-                className="quick-filter-chip"
-                onClick={() => {
-                  table.setFilter('quick', null)
-                  setRowsPage(1)
-                }}
-                aria-label={`Clear ${table.filters.quick} filter`}
-              >
-                {table.filters.quick === 'ontime' ? 'On time' : table.filters.quick === 'late' ? 'Late' : table.filters.quick === 'onleave' ? 'On leave' : 'Absent'}
-                <X size={13} aria-hidden="true" />
-              </button>
-            ) : null
-          }
         />
         <table className="table">
           <colgroup>

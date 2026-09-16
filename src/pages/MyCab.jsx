@@ -212,6 +212,9 @@ export default function MyCab() {
     const newSkipDrop   = field === 'drop'   ? !skipDrop   : skipDrop
     setCabCancellation(user.id, todayKey, newSkipPickup, newSkipDrop)
     setRefresh((n) => n + 1)
+    const skipped = field === 'pickup' ? newSkipPickup : newSkipDrop
+    const label = field === 'pickup' ? 'pickup' : 'drop'
+    setToast({ message: skipped ? `You're skipping ${label} today.` : `${label.charAt(0).toUpperCase() + label.slice(1)} restored for today.`, type: 'success' })
   }
 
   const pickupTrip = assignment ? tripById(trips, assignment.pickupTripId) : null

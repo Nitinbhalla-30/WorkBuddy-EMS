@@ -24,6 +24,7 @@ import {
   totalApprovedOvertimeHours
 } from '../utils/overtime.js'
 import { CircleCheck, CircleX, MoreVertical, Timer, X } from 'lucide-react'
+import Toast from '../components/Toast.jsx'
 
 const TABS = ['Requests', 'Summary']
 const TAB_SLUGS = ['requests', 'summary']
@@ -91,6 +92,7 @@ function RequestsTab({ refresh, onDecided }) {
   const [rejectId, setRejectId] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [toast, setToast] = useState(null)
 
   const table = useTableControls(requests, {
     getSearchText: (r) => {
@@ -152,6 +154,7 @@ function RequestsTab({ refresh, onDecided }) {
     setRequests(getOvertimeRequests().filter((r) => r.stage === 'hr' || r.status !== 'pending'))
     setApproveId(null)
     onDecided()
+    setToast({ message: 'Overtime request approved.', type: 'success' })
   }
 
   function handleReject() {
@@ -162,6 +165,7 @@ function RequestsTab({ refresh, onDecided }) {
     setRejectId(null)
     setRejectReason('')
     onDecided()
+    setToast({ message: 'Overtime request rejected.', type: 'success' })
   }
 
   const STATUS_OPTIONS = [
@@ -334,6 +338,8 @@ function RequestsTab({ refresh, onDecided }) {
           </div>
         </Modal>
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </>
   )
 }

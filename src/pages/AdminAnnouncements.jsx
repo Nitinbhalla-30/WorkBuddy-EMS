@@ -21,6 +21,7 @@ import Modal from '../components/Modal.jsx'
 import { Eye, Megaphone, MoreVertical, Plus, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
+import Toast from '../components/Toast.jsx'
 
 const ANNOUNCEMENT_TYPE_OPTS = [
   { value: 'all', label: 'All types' },
@@ -34,6 +35,7 @@ export default function AdminAnnouncements() {
   const [openId, setOpenId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
+  const [toast, setToast] = useState(null)
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -98,6 +100,7 @@ export default function AdminAnnouncements() {
     setFormData({ title: '', content: '', type: 'general' })
     setShowForm(false)
     setRefresh((n) => n + 1)
+    setToast({ message: 'Announcement sent to all employees.', type: 'success' })
   }
 
   function handleDelete(announcementId) {
@@ -109,6 +112,7 @@ export default function AdminAnnouncements() {
       deleteAnnouncement(deleteId)
       setDeleteId(null)
       setRefresh((n) => n + 1)
+      setToast({ message: 'Announcement deleted.', type: 'success' })
     }
   }
 
@@ -381,6 +385,8 @@ export default function AdminAnnouncements() {
         Send company-wide announcements to keep everyone informed about important updates,
         upcoming events, and policy changes.
       </p>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

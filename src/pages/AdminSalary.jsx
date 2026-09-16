@@ -26,6 +26,7 @@ import {
 import { Download, FileText, MoreVertical, Banknote, Pencil, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
+import Toast from '../components/Toast.jsx'
 
 // HR/Admin salary screen: everyone's pay for a month, edit structure, view slip.
 export default function AdminSalary() {
@@ -37,6 +38,7 @@ export default function AdminSalary() {
   const [refresh, setRefresh] = useState(0)     // bump to recompute after save
   const [openMenuId, setOpenMenuId] = useState(null)
   const [monthReady, setMonthReady] = useState(false)
+  const [toast, setToast] = useState(null)
 
   // Pay for a month reads every attendance day in it, but only the rolling
   // window is cached at startup — fetch the selected month first so absent
@@ -148,9 +150,11 @@ export default function AdminSalary() {
       other: Number(form.other) || 0,
       tdsMonthly: Number(form.tdsMonthly) || 0
     })
+    const empName = getEmployees().find((e) => e.id === editId)?.name || editId
     setEditId(null)
     setForm(null)
     setRefresh((n) => n + 1)
+    setToast({ message: `Salary structure updated for ${empName}.`, type: 'success' })
   }
 
   const viewRow = allRows.find((r) => r.emp.id === viewId)
@@ -410,6 +414,8 @@ export default function AdminSalary() {
         Delhi does not have Professional Tax, so it is not deducted. TDS is currently a simple
         fixed amount per employee. Full income-tax slab calculation can be added in a future update.
       </p>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

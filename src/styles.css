@@ -1314,6 +1314,18 @@ textarea::placeholder {
   line-height: 1.25;
 }
 
+/* Record Status column: fixed two-line height so row height stays constant
+   regardless of whether the cell has one line, two lines, or three. */
+.table td.cell-record-status {
+  height: 52px;
+  max-height: 52px;
+  vertical-align: middle;
+  overflow: hidden;
+}
+.table td.cell-record-status > div {
+  line-height: 1.3;
+}
+
 /* IT issue tables (admin + employee): every row the same fixed height so the
    Previous/Next pager below never shifts between pages, whichever columns
    wrap or stack. 60px clears the tallest cells (avatar person-cell, inline

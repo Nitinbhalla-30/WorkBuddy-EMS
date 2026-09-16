@@ -25,6 +25,7 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import { Calendar, Contact, Eye, MoreVertical, UserPlus, UserX, RotateCcw, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
+import Toast from '../components/Toast.jsx'
 
 const ROLE_FILTER_OPTS = [
   { value: 'all', label: 'All roles' },
@@ -91,6 +92,8 @@ export default function EmployeeRecords() {
 
   // Show inactive toggle
   const [showInactive, setShowInactive] = useState(false)
+
+  const [toast, setToast] = useState(null)
 
   const employees = useMemo(() => getEmployees(), [refresh])
 
@@ -205,6 +208,7 @@ export default function EmployeeRecords() {
       managerId: emp.managerId
     })
     setRefresh((n) => n + 1)
+    setToast({ message: `${emp.name} is now ${emp.isManager ? 'no longer a manager' : 'a manager'}.`, type: 'success' })
   }
 
   function changeReportsTo(emp, managerId) {
@@ -213,6 +217,8 @@ export default function EmployeeRecords() {
       managerId: managerId || null
     })
     setRefresh((n) => n + 1)
+    const managerName = managerId ? employees.find((m) => m.id === managerId)?.name : null
+    setToast({ message: `${emp.name} now reports to ${managerName || 'no one'}.`, type: 'success' })
   }
 
   // ---- profile reviewing ----
@@ -240,6 +246,8 @@ export default function EmployeeRecords() {
     reviewProfile(employeeId, 'verified', user.id, '')
     setRefresh((n) => n + 1)
     scrollModalToTop()
+    const name = employees.find((e) => e.id === employeeId)?.name || 'Employee'
+    setToast({ message: `${name}'s record has been verified.`, type: 'success' })
   }
 
   function returnForFix(employeeId) {
@@ -248,12 +256,14 @@ export default function EmployeeRecords() {
     setNote('')
     setRefresh((n) => n + 1)
     scrollModalToTop()
+    setToast({ message: 'Record returned to the employee for correction.', type: 'success' })
   }
 
   function approveUpdateRequest(employeeId) {
     reviewProfileUpdateRequest(employeeId, true, user.id, note.trim())
     setNote('')
     setRefresh((n) => n + 1)
+    setToast({ message: 'Update request approved — the employee can now edit their details.', type: 'success' })
   }
 
   function denyUpdateRequest(employeeId) {
@@ -261,6 +271,7 @@ export default function EmployeeRecords() {
     reviewProfileUpdateRequest(employeeId, false, user.id, note.trim())
     setNote('')
     setRefresh((n) => n + 1)
+    setToast({ message: 'Update request denied.', type: 'success' })
   }
 
   // ---- add employee ----
@@ -319,8 +330,10 @@ export default function EmployeeRecords() {
       setAddError('An employee with this ID already exists.')
       return
     }
+    const addedName = addForm.name.trim()
     closeAddEmployee()
     setRefresh((n) => n + 1)
+    setToast({ message: `${addedName} has been added. Share their ID and default PIN 1234.`, type: 'success' })
   }
 
   // ---- deactivate employee ----
@@ -352,8 +365,10 @@ export default function EmployeeRecords() {
       date: deactivateForm.date,
       note: deactivateForm.reason === 'Other' ? deactivateForm.note.trim() : ''
     })
+    const deactivatedName = deactivateTarget.name
     closeDeactivate()
     setRefresh((n) => n + 1)
+    setToast({ message: `${deactivatedName} has been deactivated.`, type: 'success' })
   }
 
   // ---- reactivate employee ----
@@ -369,8 +384,10 @@ export default function EmployeeRecords() {
 
   function handleReactivate() {
     reactivateEmployee(reactivateTarget.id)
+    const reactivatedName = reactivateTarget.name
     closeReactivate()
     setRefresh((n) => n + 1)
+    setToast({ message: `${reactivatedName} has been reactivated and can log in again.`, type: 'success' })
   }
 
   return (
@@ -518,7 +535,7 @@ export default function EmployeeRecords() {
                         })()
                       : <span className="muted">--</span>}
                   </td>
-                  <td>
+                  <td className="cell-record-status">
                     {!isEmployeeActive(e) ? (
                       <>
                         <div>{e.separationReason || 'Inactive'}</div>
@@ -723,7 +740,7 @@ export default function EmployeeRecords() {
             <div className="modal-header">
               <div>
                 <h3 className="section-title first" style={{ margin: 0 }}>New Employee</h3>
-                <div className="muted small">Add a new employee to the system</div>
+                <p className="hint first">Add a new employee to the organization. Fill in their personal details, role, and department to set up their account.</p>
               </div>
               <button type="button" className="btn btn-tiny btn-light" onClick={closeAddEmployee} aria-label="Close"><X size={15} /></button>
             </div>
@@ -1045,6 +1062,8 @@ export default function EmployeeRecords() {
         employees must request HR permission before making changes. Open a record to approve
         submissions or update requests.
       </p>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

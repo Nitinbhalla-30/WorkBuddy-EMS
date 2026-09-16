@@ -26,6 +26,7 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import { CircleCheck, CircleX, Eye, ReceiptText, MoreVertical, Banknote, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
+import Toast from '../components/Toast.jsx'
 
 // The status column groups both approved states under a single "Approved"
 // label (statusLabel) and color, so the filter matches that: one "Approved"
@@ -50,6 +51,7 @@ export default function AdminReimbursements() {
   const [approveId, setApproveId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [openId, setOpenId] = useState(null)
+  const [toast, setToast] = useState(null)
 
   const table = useTableControls(claims, {
     getSearchText: (c) => {
@@ -104,12 +106,14 @@ export default function AdminReimbursements() {
       text
     })
     refresh()
+    setToast({ message: 'Reply sent.', type: 'success' })
   }
 
   function handleApprove(id) {
     approveReimbursementClaim(id, user.id)
     setApproveId(null)
     refresh()
+    setToast({ message: 'Claim approved. Mark it paid once transferred.', type: 'success' })
   }
 
   function handleReject(id) {
@@ -118,11 +122,13 @@ export default function AdminReimbursements() {
     setRejectId(null)
     setRejectNote('')
     refresh()
+    setToast({ message: 'Claim rejected.', type: 'success' })
   }
 
   function handleMarkPaid(id) {
     markReimbursementPaid(id, user.id)
     refresh()
+    setToast({ message: 'Claim marked as paid.', type: 'success' })
   }
 
   function toggleMenu(claimId) {
@@ -396,6 +402,8 @@ export default function AdminReimbursements() {
         Approve a claim to mark it as accepted but not yet paid. Use &ldquo;Mark paid&rdquo;
         once the amount has been transferred to the employee.
       </p>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }

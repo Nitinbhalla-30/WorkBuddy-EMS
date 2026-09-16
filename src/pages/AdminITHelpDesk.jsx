@@ -21,6 +21,7 @@ import { useTableControls } from '../hooks/useTableControls.js'
 import { Eye, MoreVertical, Wrench, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Avatar from '../components/Avatar.jsx'
+import Toast from '../components/Toast.jsx'
 
 const IT_PRIORITY_FILTER_OPTS = [
   { value: 'all', label: 'All priorities' },
@@ -36,6 +37,7 @@ export default function AdminITHelpDesk() {
   const [refresh, setRefresh] = useState(0)
   const [viewId, setViewId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [toast, setToast] = useState(null)
 
   // Three kinds of viewer, and only the first two own the help desk:
   //   IT staff  — work their own queue.
@@ -114,6 +116,8 @@ export default function AdminITHelpDesk() {
   function handleAssigneeChange(issue, assignedTo) {
     assignITIssue(issue.id, assignedTo || null, issue.estimatedTime || null)
     setRefresh((n) => n + 1)
+    const staffName = assignedTo ? itStaff.find((s) => s.id === assignedTo)?.name : null
+    setToast({ message: assignedTo ? `Assigned to ${staffName}.` : 'Issue moved to Unassigned.', type: 'success' })
   }
 
   function handleResponseTimeCommit(issue, rawValue) {
@@ -123,17 +127,20 @@ export default function AdminITHelpDesk() {
     if (value === (issue.estimatedTime || '')) return
     assignITIssue(issue.id, issue.assignedTo || null, value || null)
     setRefresh((n) => n + 1)
+    setToast({ message: value ? `Response time saved as "${value}".` : 'Response time cleared.', type: 'success' })
   }
 
   function handleStatusChange(issueId, newStatus) {
     setITIssueStatus(issueId, newStatus)
     setRefresh((n) => n + 1)
+    setToast({ message: `Issue moved to ${itIssueStatusLabel(newStatus)}.`, type: 'success' })
   }
 
   // IT staff post questions/updates to the issue's discussion thread.
   function handleViewReply(issueId, text) {
     addITIssueComment(issueId, { byId: user.id, byName: user.name, byRole: 'it' }, text)
     setRefresh((n) => n + 1)
+    setToast({ message: 'Comment posted.', type: 'success' })
   }
 
   function toggleMenu(issueId) {
@@ -468,6 +475,8 @@ export default function AdminITHelpDesk() {
             ? 'Assign issues to your team and keep their status up to date — every change in a row saves as soon as you make it. Employees can see the assigned person\u2019s name and contact details.'
             : 'Read-only view of every IT issue in the organisation. Assigning work and updating status belong to the IT team.'}
       </p>
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }
