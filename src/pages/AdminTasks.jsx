@@ -354,12 +354,12 @@ export default function AdminTasks() {
           <colgroup>
             <col style={{ width: '11%' }} />
             <col style={{ width: '13.5%' }} />
-            <col style={{ width: '17%' }} />
+            <col style={{ width: '19.5%' }} />
             <col style={{ width: '10%' }} />
             <col style={{ width: '9.5%' }} />
             <col style={{ width: '7.5%' }} />
             <col style={{ width: '14%' }} />
-            <col style={{ width: '12%' }} />
+            <col style={{ width: '9.5%' }} />
             <col style={{ width: '5.5%' }} />
           </colgroup>
           <thead>

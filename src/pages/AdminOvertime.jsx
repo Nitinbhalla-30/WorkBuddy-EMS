@@ -172,7 +172,8 @@ function RequestsTab({ refresh, onDecided }) {
     { value: 'all', label: 'All statuses' },
     { value: 'pending-hr', label: 'Pending' },
     { value: 'approved', label: 'Approved' },
-    { value: 'rejected', label: 'Rejected' }
+    { value: 'rejected', label: 'Rejected' },
+    { value: 'withdrawn', label: 'Withdrawn' }
   ]
 
   return (

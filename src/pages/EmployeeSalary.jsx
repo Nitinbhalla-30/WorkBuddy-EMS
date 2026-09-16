@@ -99,7 +99,7 @@ export default function EmployeeSalary() {
         </div>
       ) : (
         <div className="card">
-          <p className="muted small" style={{ margin: 0 }}>Loading attendance for this month…</p>
+          <p className="muted small" style={{ margin: 0 }}>Loading salaries for this month…</p>
         </div>
       )}
 

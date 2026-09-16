@@ -513,10 +513,10 @@ function DriversTab({ drivers, bump, notify }) {
       />
       <table className="table">
         <colgroup>
-          <col style={{ width: '18%' }} />
-          <col style={{ width: '13.5%' }} />
-          <col style={{ width: '16%' }} />
-          <col style={{ width: '42.5%' }} />
+          <col style={{ width: '30%' }} />
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '20%' }} />
           <col style={{ width: '10%' }} />
         </colgroup>
         <thead>
