@@ -5,6 +5,7 @@ import {
   approveShiftChange,
   assignEmployeeShift,
   deleteShift,
+  deleteShiftChangeRequest,
   getEmployeeById,
   getEmployees,
   getProfileForEmployee,
@@ -17,6 +18,7 @@ import {
   STORE_KEYS
 } from '../data/store.js'
 import { formatTime12 } from '../utils/cab.js'
+import { formatDate } from '../utils/attendance.js'
 import { profilePhotoUrl } from '../utils/profile.js'
 import Avatar from '../components/Avatar.jsx'
 import Modal from '../components/Modal.jsx'
@@ -113,7 +115,7 @@ export default function AdminShifts() {
 
       {tab === 0 && <ShiftsTab key={`shifts-${refresh}`} notify={notify} />}
       {tab === 1 && <AssignmentsTab key={`assign-${refresh}`} notify={notify} />}
-      {tab === 2 && <RequestsTab key={`req-${refresh}`} onDecided={trigger} notify={notify} />}
+      {tab === 2 && <RequestsTab refresh={refresh} onDecided={trigger} notify={notify} />}
 
       <p className="hint">
         Define shifts to cover 24-hour operations, assign each employee to a shift,
@@ -557,12 +559,20 @@ function AssignmentsTab({ notify }) {
 }
 
 // ---- Tab 3: Shift Change Requests ----
-function RequestsTab({ onDecided, notify }) {
+function RequestsTab({ refresh, onDecided, notify }) {
   const [requests, setRequests] = useState(() => getShiftChangeRequests())
   const [approveId, setApproveId] = useState(null)
   const [rejectId, setRejectId] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [deleteReqId, setDeleteReqId] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
+
+  // Re-read the list in place whenever the parent bumps `refresh`. Because the
+  // tab is no longer keyed/remounted, the user's applied filter survives an
+  // approve/reject instead of snapping back to "All statuses".
+  useEffect(() => {
+    setRequests(getShiftChangeRequests())
+  }, [refresh])
 
   function toggleMenu(id) {
     setOpenMenuId(openMenuId === id ? null : id)
@@ -638,6 +648,15 @@ function RequestsTab({ onDecided, notify }) {
     onDecided()
   }
 
+  function handleDeleteRequest() {
+    if (!deleteReqId) return
+    deleteShiftChangeRequest(deleteReqId)
+    setRequests(getShiftChangeRequests())
+    setDeleteReqId(null)
+    notify('Withdrawn request deleted.')
+    onDecided()
+  }
+
   const STATUS_OPTIONS = [
     { value: 'all', label: 'All statuses' },
     { value: 'pending', label: 'Pending' },
@@ -668,16 +687,18 @@ function RequestsTab({ onDecided, notify }) {
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '30%' }} />
+            <col style={{ width: '16%' }} />
             <col style={{ width: '12%' }} />
-            <col style={{ width: '10%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '25%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
           </colgroup>
           <thead>
             <tr>
               <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Requested" keyName="requestedOn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="From shift" keyName="fromShift" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="To shift" keyName="toShift" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Reason" keyName="reason" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
@@ -687,7 +708,7 @@ function RequestsTab({ onDecided, notify }) {
           </thead>
           <tbody>
             {table.count === 0 && (
-              <TableEmpty colSpan={6} message="No shift change requests yet." />
+              <TableEmpty colSpan={7} message="No shift change requests yet." />
             )}
             {page.map((r) => {
               const emp = getEmployeeById(r.employeeId)
@@ -706,6 +727,7 @@ function RequestsTab({ onDecided, notify }) {
                       </div>
                     </div>
                   </td>
+                  <td>{r.requestedOn ? formatDate(r.requestedOn) : <span className="muted">--</span>}</td>
                   <td>{fromShift?.name || <span className="muted">None</span>}</td>
                   <td>{toShift?.name || <span className="muted">--</span>}</td>
                   <td className="cell-ellipsis" title={r.reason || undefined}>{r.reason || <span className="muted">--</span>}</td>
@@ -742,6 +764,16 @@ function RequestsTab({ onDecided, notify }) {
                             <CircleX size={14} aria-hidden="true" />
                             Reject
                           </button>
+                          {r.status === 'withdrawn' && (
+                            <button
+                              type="button"
+                              className="task-menu-item task-menu-item-danger"
+                              onClick={() => { setDeleteReqId(r.id); closeMenu() }}
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                              Delete
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -791,6 +823,24 @@ function RequestsTab({ onDecided, notify }) {
             <div className="button-row">
               <button type="button" className="btn btn-danger" onClick={handleReject} disabled={!rejectReason.trim()}>Reject</button>
               <button type="button" className="btn btn-light" onClick={() => setRejectId(null)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteReqId && (
+        <Modal onClose={() => setDeleteReqId(null)} title="Delete withdrawn request">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first">Delete request</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setDeleteReqId(null)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This permanently removes the withdrawn shift change request. You will not be able to restore it.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-danger" onClick={handleDeleteRequest}>Delete</button>
+              <button type="button" className="btn btn-light" onClick={() => setDeleteReqId(null)}>Cancel</button>
             </div>
           </div>
         </Modal>

@@ -3182,6 +3182,15 @@ export function updateShiftChangeRequest(requestId, employeeId, updates) {
   return all[idx]
 }
 
+// Hard delete a shift change request (used by admin to clear a withdrawn row).
+// Optimized tables are upsert-only on push, so the removal is queued as an
+// explicit row delete to make it propagate to Supabase as well.
+export function deleteShiftChangeRequest(requestId) {
+  const all = getShiftChangeRequests().filter((r) => r.id !== requestId)
+  queueRowDelete(KEYS.shiftChangeRequests, requestId)
+  write(KEYS.shiftChangeRequests, all)
+}
+
 // ---- shift history ----
 export function getShiftHistory() {
   return read(KEYS.shiftHistory, [])
