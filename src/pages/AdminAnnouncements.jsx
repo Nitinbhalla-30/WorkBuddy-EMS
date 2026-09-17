@@ -156,7 +156,7 @@ export default function AdminAnnouncements() {
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} title="New Announcement">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">New Announcement</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowForm(false)} aria-label="Close"><X size={15} /></button>

@@ -54,8 +54,14 @@ export function formatRupees(n) {
   return '₹' + v.toLocaleString('en-IN')
 }
 
-// Work out the full salary breakdown for an employee in a month.
-export function computeSalary(employee, mKey, { attendance, leaves, settings, overtimeRequests, reimbursements }) {
+const NO_DATES = new Set()
+const NO_ROWS = []
+
+// Work out the full salary breakdown for one employee from pre-grouped data:
+// `presentDates` holds the 'YYYY-MM-DD' keys the employee clocked in on, and
+// the emp* arrays hold only that employee's rows. computeSalary and
+// computeSalaries build those parts from the shared collections.
+function computeSalaryFromParts(employee, mKey, { presentDates, empLeaves, settings, empOvertime, empReimbursements }) {
   const s = employee.salary || { basic: 0, hra: 0, other: 0, tdsMonthly: 0 }
   const gross = (s.basic || 0) + (s.hra || 0) + (s.other || 0)
   const dim = daysInMonth(mKey)
@@ -83,28 +89,15 @@ export function computeSalary(employee, mKey, { attendance, leaves, settings, ov
     workingDays++
     const key = `${y}-${pad(m)}-${pad(day)}`
 
-    const onUnpaidLeave = leaves.some(
-      (l) =>
-        l.employeeId === employee.id &&
-        l.status === 'approved' &&
-        !isPaidType(l.type) &&
-        key >= l.fromDate &&
-        key <= l.toDate
+    const onUnpaidLeave = empLeaves.some(
+      (l) => !isPaidType(l.type) && key >= l.fromDate && key <= l.toDate
     )
     if (onUnpaidLeave) { lopDays++; continue }
 
-    const wasPresent = attendance.some(
-      (r) => r.employeeId === employee.id && r.date === key && r.timeIn
-    )
-    if (wasPresent) { presentDays++; continue }
+    if (presentDates.has(key)) { presentDays++; continue }
 
-    const onPaidLeave = leaves.some(
-      (l) =>
-        l.employeeId === employee.id &&
-        l.status === 'approved' &&
-        isPaidType(l.type) &&
-        key >= l.fromDate &&
-        key <= l.toDate
+    const onPaidLeave = empLeaves.some(
+      (l) => isPaidType(l.type) && key >= l.fromDate && key <= l.toDate
     )
     if (onPaidLeave) { paidLeaveDays++; continue }
 
@@ -116,20 +109,12 @@ export function computeSalary(employee, mKey, { attendance, leaves, settings, ov
   const earnedGross = Math.max(0, gross - lopDeduction)
 
   // Overtime: approved hours x hourly rate x 2
-  const approvedOvertime = (overtimeRequests || []).filter(
-    (r) => r.employeeId === employee.id && r.monthKey === mKey && r.status === 'approved'
-  )
-  const overtimeHours = approvedOvertime.reduce((sum, r) => sum + (r.hours || 0), 0)
+  const overtimeHours = empOvertime.reduce((sum, r) => sum + (r.hours || 0), 0)
   const hourlyRate = gross / dim / 8 // standard 8-hour workday
   const overtimePay = Math.round(overtimeHours * hourlyRate * 2)
 
   // Reimbursements: approved claims for this month (based on approval date)
-  const approvedReimbursements = (reimbursements || []).filter(
-    (r) => r.employeeId === employee.id && 
-           (r.status === 'approved_unpaid' || r.status === 'paid') &&
-           r.decidedOn && r.decidedOn.startsWith(mKey)
-  )
-  const reimbursementAmount = approvedReimbursements.reduce((sum, r) => sum + (r.amount || 0), 0)
+  const reimbursementAmount = empReimbursements.reduce((sum, r) => sum + (r.amount || 0), 0)
 
   const rules = settings.salary || {}
   const pf = Math.round(((rules.pfPercent || 0) / 100) * (s.basic || 0))
@@ -165,4 +150,88 @@ export function computeSalary(employee, mKey, { attendance, leaves, settings, ov
     totalDeductions,
     netPay
   }
+}
+
+// Full breakdown for one employee. The shared collections are scanned once to
+// pull out this employee's rows, so the cost is linear in their size instead
+// of one scan per working day.
+export function computeSalary(employee, mKey, { attendance, leaves, settings, overtimeRequests, reimbursements }) {
+  const presentDates = new Set()
+  for (const r of attendance) {
+    if (r.employeeId === employee.id && r.timeIn) presentDates.add(r.date)
+  }
+  return computeSalaryFromParts(employee, mKey, {
+    presentDates,
+    empLeaves: leaves.filter((l) => l.employeeId === employee.id && l.status === 'approved'),
+    settings,
+    empOvertime: (overtimeRequests || []).filter((r) =>
+      r.employeeId === employee.id && r.monthKey === mKey && r.status === 'approved'
+    ),
+    empReimbursements: (reimbursements || []).filter((r) =>
+      r.employeeId === employee.id &&
+      (r.status === 'approved_unpaid' || r.status === 'paid') &&
+      r.decidedOn && r.decidedOn.startsWith(mKey)
+    )
+  })
+}
+
+// Breakdowns for a whole payroll in one call. Grouping once matters: running
+// computeSalary per employee against the full attendance array re-scanned it
+// for every working day of every employee (~500 x 22 x 30,000 comparisons),
+// which stalled the Salaries screen for seconds on open.
+export function computeSalaries(employees, mKey, { attendance, leaves, settings, overtimeRequests, reimbursements }) {
+  const presentByEmployee = new Map()
+  for (const r of attendance) {
+    if (!r.timeIn) continue
+    let dates = presentByEmployee.get(r.employeeId)
+    if (!dates) {
+      dates = new Set()
+      presentByEmployee.set(r.employeeId, dates)
+    }
+    dates.add(r.date)
+  }
+
+  const leavesByEmployee = new Map()
+  for (const l of leaves) {
+    if (l.status !== 'approved') continue
+    let list = leavesByEmployee.get(l.employeeId)
+    if (!list) {
+      list = []
+      leavesByEmployee.set(l.employeeId, list)
+    }
+    list.push(l)
+  }
+
+  const overtimeByEmployee = new Map()
+  for (const r of overtimeRequests || []) {
+    if (r.status !== 'approved' || r.monthKey !== mKey) continue
+    let list = overtimeByEmployee.get(r.employeeId)
+    if (!list) {
+      list = []
+      overtimeByEmployee.set(r.employeeId, list)
+    }
+    list.push(r)
+  }
+
+  const reimbursementsByEmployee = new Map()
+  for (const r of reimbursements || []) {
+    if (r.status !== 'approved_unpaid' && r.status !== 'paid') continue
+    if (!r.decidedOn || !r.decidedOn.startsWith(mKey)) continue
+    let list = reimbursementsByEmployee.get(r.employeeId)
+    if (!list) {
+      list = []
+      reimbursementsByEmployee.set(r.employeeId, list)
+    }
+    list.push(r)
+  }
+
+  return employees.map((emp) =>
+    computeSalaryFromParts(emp, mKey, {
+      presentDates: presentByEmployee.get(emp.id) || NO_DATES,
+      empLeaves: leavesByEmployee.get(emp.id) || NO_ROWS,
+      settings,
+      empOvertime: overtimeByEmployee.get(emp.id) || NO_ROWS,
+      empReimbursements: reimbursementsByEmployee.get(emp.id) || NO_ROWS
+    })
+  )
 }

@@ -569,7 +569,7 @@ export default function MyCab() {
       {/* Edit request modal */}
       {editRequest && (
         <Modal onClose={() => setEditRequestId(null)} title="Edit change request">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Edit change request</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditRequestId(null)} aria-label="Close"><X size={15} /></button>
@@ -897,7 +897,7 @@ function ChatSection({ messages, onSend, onClear }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message"
+            placeholder="Message Transport Desk..."
           />
           <div className="team-chat-composer-actions">
             <button

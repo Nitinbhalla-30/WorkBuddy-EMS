@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getAttendance, getLeaves, getSettings, getOvertimeRequests, getReimbursements, ensureAttendanceMonths } from '../data/store.js'
+import { getAttendance, getLeaves, getSettings, getOvertimeRequests, getReimbursements, ensureAttendanceMonths, attendanceMonthsLoaded } from '../data/store.js'
 import Payslip from '../components/Payslip.jsx'
 import {
   computeSalary,
@@ -25,12 +25,18 @@ export default function EmployeeSalary() {
     return monthKey(lastMonth)
   })
   const payslipRef = useRef(null)
-  const [monthReady, setMonthReady] = useState(false)
+  // Starts true when the month is already cached, so the slip renders on the
+  // first paint instead of flashing "Loading salaries" on every visit.
+  const [monthReady, setMonthReady] = useState(() => attendanceMonthsLoaded().includes(selected))
 
   // A payslip reads every day of its month, but only the rolling window is
   // cached at startup — pull the selected month from Supabase first, otherwise
   // missing attendance would be counted as loss of pay.
   useEffect(() => {
+    if (attendanceMonthsLoaded().includes(selected)) {
+      setMonthReady(true)
+      return undefined
+    }
     let cancelled = false
     setMonthReady(false)
     ensureAttendanceMonths([selected]).then((ok) => {

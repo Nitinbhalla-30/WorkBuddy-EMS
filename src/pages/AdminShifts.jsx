@@ -342,7 +342,7 @@ function ShiftFormModal({ title, initial, onSubmit, onCancel }) {
 
   return (
     <Modal onClose={onCancel} title={title}>
-      <div className="modal-form">
+      <div className="modal-form modal-form-wide">
         <div className="modal-header">
           <h3 className="section-title first">{title}</h3>
           <button type="button" className="btn btn-tiny btn-light" onClick={onCancel} aria-label="Close"><X size={15} /></button>
@@ -811,7 +811,7 @@ function RequestsTab({ refresh, onDecided, notify }) {
 
       {rejectId && (
         <Modal onClose={() => setRejectId(null)} title="Reject shift change request">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Reject request</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setRejectId(null)} aria-label="Close"><X size={15} /></button>

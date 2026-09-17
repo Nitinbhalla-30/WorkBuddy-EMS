@@ -1,6 +1,6 @@
 // Helpers to turn raw time stamps into useful numbers for the screens.
 
-import { ATTENDANCE_CORRECTION_ISSUES } from '../data/sampleData.js'
+import { ATTENDANCE_CORRECTION_ISSUES, LEAVE_TYPES } from '../data/sampleData.js'
 import { getEmployeeById, getShiftForEmployee, getSettings } from '../data/store.js'
 
 function toDate(iso) {
@@ -369,4 +369,12 @@ export function isWeekOffDay(employeeId, dateKey) {
   const d = new Date(`${dateKey}T00:00:00`)
   if (Number.isNaN(d.getTime())) return false
   return emp.weekOffDays.includes(d.getDay())
+}
+
+// Check if a leave type is partial (half-day or short leave).
+// Partial leaves allow employees to work part of the day and clock in/out.
+export function isPartialLeave(leaveType) {
+  if (!leaveType) return false
+  const leave = LEAVE_TYPES.find((l) => l.key === leaveType)
+  return leave?.partial === true
 }

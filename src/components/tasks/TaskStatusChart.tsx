@@ -152,6 +152,8 @@ export function TaskStatusChart({
           strokeWidth={16}
           onSegmentHover={handleSegmentHover}
           onSegmentClick={(seg) => onToggleKey?.(seg.key)}
+          externalHoveredLabel={hovered}
+          activeSegmentKey={activeKey}
           centerContent={
             <AnimatePresence mode="wait">
               <motion.div

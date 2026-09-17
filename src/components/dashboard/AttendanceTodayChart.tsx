@@ -150,6 +150,8 @@ export function AttendanceTodayChart({
           strokeWidth={16}
           onSegmentHover={handleSegmentHover}
           onSegmentClick={(seg) => onToggleKey?.(seg.key as AttendanceChartKey)}
+          externalHoveredLabel={hovered}
+          activeSegmentKey={activeKey}
           centerContent={
             <AnimatePresence mode="wait">
               <motion.div

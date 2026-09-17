@@ -226,13 +226,10 @@ export default function TeamTasksPanel() {
           onToggleKey={(key) => {
             const isTogglingOff = table.filters.quick === key
             table.setFilter('quick', isTogglingOff ? 'all' : key)
-            if (isTogglingOff) {
-              table.setFilter('status', 'all')
-            } else if (key === 'overdue') {
-              table.setFilter('status', 'all')
-            } else {
-              table.setFilter('status', key)
-            }
+            // Card buckets count done and closed together; the status dropdown
+            // is exact-match, so syncing it would shrink the table below the
+            // card's count. Clear it so the card alone drives the rows.
+            table.setFilter('status', 'all')
           }}
         />
       </div>

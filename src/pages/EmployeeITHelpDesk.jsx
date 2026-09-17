@@ -376,7 +376,7 @@ export default function EmployeeITHelpDesk() {
 
       {editIssue && (
         <Modal onClose={() => setEditId(null)} title="Edit IT issue">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Edit IT issue</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
@@ -397,7 +397,7 @@ export default function EmployeeITHelpDesk() {
 
       {openIssue && (
         <Modal onClose={() => setOpenId(null)} title={openIssue.issue}>
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <div>
                 <h3 className="section-title first" style={{ margin: 0 }}>{openIssue.issue}</h3>

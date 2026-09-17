@@ -449,7 +449,7 @@ export default function AdminLeaves() {
         const emp = lv ? getEmployeeById(lv.employeeId) : null
         return (
           <Modal onClose={() => setRejectId(null)} title="Reject leave request">
-            <div className="modal-form">
+            <div className="modal-form modal-form-wide">
               <div className="modal-header">
                 <h3 className="section-title first">Reject request</h3>
                 <button type="button" className="btn btn-tiny btn-light" onClick={() => setRejectId(null)} aria-label="Close"><X size={15} /></button>

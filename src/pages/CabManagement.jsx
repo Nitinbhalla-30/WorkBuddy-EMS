@@ -12,6 +12,7 @@ import {
   getCabAssignments,
   getCabCancellationsForDate,
   getCabClearedAtAdmin,
+  getCabMessages,
   getCabMessagesForEmployee,
   getCabRequests,
   getCabUnreadByEmployee,
@@ -46,7 +47,7 @@ import {
   tripLabel,
   vehicleById
 } from '../utils/cab.js'
-import { CarFront, Check, CircleCheck, Copy, ExternalLink, Eye, MoreVertical, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
+import { CarFront, Check, CircleCheck, Copy, ExternalLink, Eye, MoreVertical, Pencil, Plus, Search, Send, Trash2, X } from 'lucide-react'
 import TableEmpty from '../components/TableEmpty.jsx'
 import Toast from '../components/Toast.jsx'
 
@@ -317,7 +318,7 @@ function VehiclesTab({ vehicles, bump, notify }) {
 
       {showAdd && (
         <Modal onClose={() => setShowAdd(false)} title="Add vehicle">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Add vehicle</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)} aria-label="Close"><X size={15} /></button>
@@ -340,7 +341,7 @@ function VehiclesTab({ vehicles, bump, notify }) {
 
       {editVehicle && (
         <Modal onClose={() => setEditId(null)} title={`Edit vehicle — ${editVehicle.number}`}>
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Edit vehicle — {editVehicle.number}</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
@@ -613,7 +614,7 @@ function DriversTab({ drivers, bump, notify }) {
 
       {showAdd && (
         <Modal onClose={() => setShowAdd(false)} title="Add driver">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Add driver</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)} aria-label="Close"><X size={15} /></button>
@@ -642,7 +643,7 @@ function DriversTab({ drivers, bump, notify }) {
 
       {editDriver && (
         <Modal onClose={() => setEditId(null)} title={`Edit driver — ${editDriver.name}`}>
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Edit driver — {editDriver.name}</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
@@ -1046,7 +1047,7 @@ function TripsTab({ trips, vehicles, drivers, bump, notify }) {
 
       {showAdd && (
         <Modal onClose={() => setShowAdd(false)} title="Add trip">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Add trip</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setShowAdd(false)} aria-label="Close"><X size={15} /></button>
@@ -1062,7 +1063,7 @@ function TripsTab({ trips, vehicles, drivers, bump, notify }) {
 
       {editTrip && (
         <Modal onClose={() => setEditId(null)} title="Edit trip">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Edit trip</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setEditId(null)} aria-label="Close"><X size={15} /></button>
@@ -1529,7 +1530,7 @@ function RequestsTab({ requests, nameOf, bump, notify }) {
       {/* Reject — confirm + note */}
       {rejectRequest && (
         <Modal onClose={() => setRejectId(null)} title="Confirm rejection">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first" style={{ margin: 0 }}>Confirm rejection</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setRejectId(null)} aria-label="Close"><X size={15} /></button>
@@ -1564,11 +1565,36 @@ function RequestsTab({ requests, nameOf, bump, notify }) {
 }
 
 // ---- Messages (chat with employees) ----
+// Which inbox section a message time belongs to: today / yesterday / earlier.
+function dayBucket(iso) {
+  const d = new Date(iso)
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (d >= startOfToday) return 'today'
+  const yesterday = new Date(startOfToday)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (d >= yesterday) return 'yesterday'
+  return 'earlier'
+}
+
+// Compact time for the inbox row: "10:24 AM" today, "Yesterday", else "20 Jul".
+function formatInboxTime(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const bucket = dayBucket(iso)
+  if (bucket === 'today') return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  if (bucket === 'yesterday') return 'Yesterday'
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+}
+
 function MessagesTab({ employees, unreadByEmp, bump, notify }) {
   const [selected, setSelected] = useState('')
+  const [search, setSearch] = useState('')
   const [text, setText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [confirmMarkAll, setConfirmMarkAll] = useState(false)
+  const [filter, setFilter] = useState('all') // 'all' | 'unread'
   const threadRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -1580,17 +1606,55 @@ function MessagesTab({ employees, unreadByEmp, bump, notify }) {
     )
   }, [selected, bump])
 
+  // Latest surviving message per employee (respects cleared chats) in one pass.
+  const lastByEmp = useMemo(() => {
+    const map = {}
+    for (const m of getCabMessages()) {
+      const clearedAt = getCabClearedAtAdmin(m.employeeId)
+      if (clearedAt && m.on <= clearedAt) continue
+      const cur = map[m.employeeId]
+      if (!cur || m.on > cur.on) map[m.employeeId] = m
+    }
+    return map
+  }, [bump])
+
   const selectedEmp = employees.find((e) => e.id === selected)
 
-  // Employees with unread messages first (highest count on top), then the rest.
-  const sortedEmployees = useMemo(() => {
-    return [...employees].sort((a, b) => {
+  // Threads with at least one unread message — drives the Unread filter count.
+  const unreadThreads = useMemo(
+    () => employees.filter((e) => (unreadByEmp[e.id] || 0) > 0).length,
+    [employees, unreadByEmp]
+  )
+
+  // Inbox sections by last activity: Today / Yesterday / Earlier / Start a
+  // chat. Within a section: unread first, then most recent, then A-Z.
+  const inboxGroups = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const cmp = (a, b) => {
       const ua = unreadByEmp[a.id] || 0
       const ub = unreadByEmp[b.id] || 0
       if (ua !== ub) return ub - ua
+      const ta = lastByEmp[a.id]?.on || ''
+      const tb = lastByEmp[b.id]?.on || ''
+      if (ta !== tb) return ta < tb ? 1 : -1
       return a.name.localeCompare(b.name)
-    })
-  }, [employees, unreadByEmp])
+    }
+    const byKey = { today: [], yesterday: [], earlier: [], new: [] }
+    for (const e of employees) {
+      if (q && !e.name.toLowerCase().includes(q) && !e.id.toLowerCase().includes(q)) continue
+      if (filter === 'unread' && !(unreadByEmp[e.id] > 0)) continue
+      const last = lastByEmp[e.id]
+      byKey[last ? dayBucket(last.on) : 'new'].push(e)
+    }
+    return [
+      { key: 'today', label: 'Today', rows: byKey.today.sort(cmp) },
+      { key: 'yesterday', label: 'Yesterday', rows: byKey.yesterday.sort(cmp) },
+      { key: 'earlier', label: 'Earlier', rows: byKey.earlier.sort(cmp) },
+      { key: 'new', label: 'Start a chat', rows: byKey.new.sort(cmp) },
+    ].filter((g) => g.rows.length > 0)
+  }, [employees, unreadByEmp, lastByEmp, search, filter])
+
+  const totalVisible = inboxGroups.reduce((s, g) => s + g.rows.length, 0)
 
   // Auto-scroll to the bottom when new messages arrive, and focus the reply
   // box as the slide-in panel opens so the admin can start typing right away.
@@ -1631,7 +1695,6 @@ function MessagesTab({ employees, unreadByEmp, bump, notify }) {
       if (inputRef.current) inputRef.current.focus()
     })
     bump()
-    notify('Message sent.')
   }
 
   function handleKeyDown(e) {
@@ -1649,27 +1712,97 @@ function MessagesTab({ employees, unreadByEmp, bump, notify }) {
     notify('Chat cleared.')
   }
 
+  function handleMarkAllRead() {
+    for (const id of Object.keys(unreadByEmp)) {
+      if (unreadByEmp[id] > 0) markCabThreadRead(id)
+    }
+    setConfirmMarkAll(false)
+    bump()
+    notify('All messages marked as read.')
+  }
+
   function closeChat() {
     setSelected('')
   }
 
   return (
     <>
-      <div className="card" style={{ padding: '12px 16px', marginBottom: 12 }}>
-        <label className="field" style={{ margin: 0 }}>
-          <span>Choose an employee to view their chat (unread shown first)</span>
-          <select value={selected} onChange={(e) => chooseEmployee(e.target.value)}>
-            <option value="">-- choose employee --</option>
-            {sortedEmployees.map((emp) => {
-              const n = unreadByEmp[emp.id] || 0
-              return (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} ({emp.id}){n > 0 ? ` — ${n} new` : ''}
-                </option>
-              )
-            })}
-          </select>
-        </label>
+      <div className="card msg-inbox-card">
+        <span className="search-control msg-inbox-search">
+          <Search size={15} className="search-control-icon" aria-hidden="true" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name or employee ID"
+          />
+        </span>
+        <div className="msg-inbox-toolbar">
+          <div className="msg-inbox-filters" role="group" aria-label="Filter conversations">
+            <button
+              type="button"
+              className={`msg-inbox-filter ${filter === 'all' ? 'active' : ''}`}
+              onClick={() => setFilter('all')}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={`msg-inbox-filter ${filter === 'unread' ? 'active' : ''}`}
+              onClick={() => setFilter('unread')}
+            >
+              Unread{unreadThreads > 0 ? ` (${unreadThreads})` : ''}
+            </button>
+          </div>
+          {unreadThreads > 0 && (
+            <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmMarkAll(true)}>
+              Mark all read
+            </button>
+          )}
+        </div>
+        <div className="msg-inbox-list">
+          {inboxGroups.map((group) => (
+            <div key={group.key} className="msg-inbox-group">
+              <p className="msg-inbox-group-label">{group.label}</p>
+              {group.rows.map((emp) => {
+                const n = unreadByEmp[emp.id] || 0
+                const last = lastByEmp[emp.id]
+                return (
+                  <button
+                    type="button"
+                    key={emp.id}
+                    className="msg-inbox-row"
+                    onClick={() => chooseEmployee(emp.id)}
+                  >
+                    <Avatar src={emp.photoUrl} name={emp.name} size={38} />
+                    <span className="msg-inbox-main">
+                      <span className="msg-inbox-name">
+                        <span className={`msg-inbox-name-text ${n > 0 ? 'unread' : ''}`}>{emp.name}</span>
+                        <span className="msg-inbox-id">{emp.id}</span>
+                      </span>
+                      <span className={`msg-inbox-preview ${n > 0 ? 'unread' : ''}`}>
+                        {last
+                          ? `${last.byRole === 'admin' ? 'You: ' : ''}${last.text}`
+                          : 'No messages yet'}
+                      </span>
+                    </span>
+                    <span className="msg-inbox-meta">
+                      {last && <span className="msg-inbox-time">{formatInboxTime(last.on)}</span>}
+                      {n > 0 && <span className="msg-inbox-badge">{n} new</span>}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+          {totalVisible === 0 && (
+            <p className="msg-inbox-empty">
+              {search
+                ? `No employees match “${search}”. Try a different name or ID.`
+                : "No unread messages. You're all caught up."}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Slide-in chat panel — same pattern as the My Team message panel */}
@@ -1734,7 +1867,7 @@ function MessagesTab({ employees, unreadByEmp, bump, notify }) {
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={`Reply to ${selectedEmp?.name || 'employee'}...`}
+                    placeholder={`Message ${(selectedEmp?.name || 'employee').split(' ')[0]}...`}
                   />
                   <div className="team-chat-composer-actions">
                     <button
@@ -1771,6 +1904,29 @@ function MessagesTab({ employees, unreadByEmp, bump, notify }) {
                 Clear chat
               </button>
               <button type="button" className="btn btn-light" onClick={() => setConfirmClear(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {confirmMarkAll && (
+        <Modal onClose={() => setConfirmMarkAll(false)} title="Mark all read">
+          <div className="modal-form">
+            <div className="modal-header">
+              <h3 className="section-title first" style={{ margin: 0 }}>Mark all read</h3>
+              <button type="button" className="btn btn-tiny btn-light" onClick={() => setConfirmMarkAll(false)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <p className="hint first">
+              This marks every unread message from all employees as read. You can
+              still open any conversation from the list.
+            </p>
+            <div className="button-row">
+              <button type="button" className="btn btn-primary" onClick={handleMarkAllRead}>
+                Mark all read
+              </button>
+              <button type="button" className="btn btn-light" onClick={() => setConfirmMarkAll(false)}>
                 Cancel
               </button>
             </div>

@@ -403,7 +403,7 @@ export default function AdminITHelpDesk() {
 
       {viewIssue && (
         <Modal onClose={() => setViewId(null)} title={viewIssue.issue}>
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <div>
                 <h3 className="section-title first" style={{ margin: 0 }}>{viewIssue.issue}</h3>

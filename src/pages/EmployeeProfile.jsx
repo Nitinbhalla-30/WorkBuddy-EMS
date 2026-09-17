@@ -150,7 +150,7 @@ export default function EmployeeProfile() {
 
           {showRequestForm && (
             <Modal onClose={() => setShowRequestForm(false)} title="Request to update details">
-              <div className="modal-form">
+              <div className="modal-form modal-form-wide">
                   <div className="modal-header">
                     <h3 className="section-title first">Request to update details</h3>
                     <button

@@ -60,8 +60,8 @@ export default function AdminDashboard() {
     { value: 'all', label: 'All statuses' },
     { value: 'On time', label: 'On time' },
     { value: 'Late', label: 'Late' },
-    { value: 'Absent', label: 'Absent' },
-    { value: 'On leave', label: 'On leave' }
+    { value: 'On leave', label: 'On leave' },
+    { value: 'Absent', label: 'Absent' }
   ]
 
   const KEY_TO_STATUS = { ontime: 'On time', late: 'Late', absent: 'Absent', onleave: 'On leave' }
@@ -246,7 +246,7 @@ export default function AdminDashboard() {
                 <td>{formatClock(rec?.timeOut)}</td>
                 <td>{rec && workedMinutes(rec) > 0 ? formatMinutes(workedMinutes(rec)) : '--'}</td>
                 <td>{rec && totalBreakMinutes(rec) > 0 ? formatMinutes(totalBreakMinutes(rec)) : '--'}</td>
-                <td>{leaveType ? LEAVE_TYPE_LABELS[leaveType] || leaveType : '--'}</td>
+                <td>{leaveType ? (leaveType === 'halfday' && rec?.timeIn ? (<div>Half-day<div className="muted small">({new Date(rec.timeIn).getHours() < 12 ? 'First half' : 'Second half'})</div></div>) : LEAVE_TYPE_LABELS[leaveType] || leaveType) : '--'}</td>
                 <td>
                   <span
                     className={`tag ${

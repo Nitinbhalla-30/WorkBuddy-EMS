@@ -7,7 +7,8 @@ import {
   getOvertimeRequests,
   getReimbursements,
   updateEmployeeSalary,
-  ensureAttendanceMonths
+  ensureAttendanceMonths,
+  attendanceMonthsLoaded
 } from '../data/store.js'
 import Payslip from '../components/Payslip.jsx'
 import Modal from '../components/Modal.jsx'
@@ -18,7 +19,7 @@ import { usePagination } from '../hooks/usePagination.js'
 import { useTableControls } from '../hooks/useTableControls.js'
 import { downloadExcelXlsx } from '../utils/exportExcel.js'
 import {
-  computeSalary,
+  computeSalaries,
   formatRupees,
   listRecentMonths,
   monthKey
@@ -37,13 +38,19 @@ export default function AdminSalary() {
   const [form, setForm] = useState(null)
   const [refresh, setRefresh] = useState(0)     // bump to recompute after save
   const [openMenuId, setOpenMenuId] = useState(null)
-  const [monthReady, setMonthReady] = useState(false)
+  // Starts true when the month is already cached, so the table renders on the
+  // first paint instead of flashing "Loading salaries" on every visit.
+  const [monthReady, setMonthReady] = useState(() => attendanceMonthsLoaded().includes(selected))
   const [toast, setToast] = useState(null)
 
   // Pay for a month reads every attendance day in it, but only the rolling
   // window is cached at startup — fetch the selected month first so absent
   // rows are never mistaken for loss of pay.
   useEffect(() => {
+    if (attendanceMonthsLoaded().includes(selected)) {
+      setMonthReady(true)
+      return undefined
+    }
     let cancelled = false
     setMonthReady(false)
     ensureAttendanceMonths([selected]).then((ok) => {
@@ -59,15 +66,14 @@ export default function AdminSalary() {
 
   const allRows = useMemo(() => {
     if (!monthReady) return []
-    const attendance = getAttendance()
-    const leaves = getLeaves()
-    const settings = getSettings()
-    const overtimeRequests = getOvertimeRequests()
-    const reimbursements = getReimbursements()
-    return employees.map((emp) => ({
-      emp,
-      calc: computeSalary(emp, selected, { attendance, leaves, settings, overtimeRequests, reimbursements })
-    }))
+    const calcs = computeSalaries(employees, selected, {
+      attendance: getAttendance(),
+      leaves: getLeaves(),
+      settings: getSettings(),
+      overtimeRequests: getOvertimeRequests(),
+      reimbursements: getReimbursements()
+    })
+    return employees.map((emp, i) => ({ emp, calc: calcs[i] }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employees, selected, refresh, monthReady])
 
@@ -347,7 +353,7 @@ export default function AdminSalary() {
       {/* Edit salary structure */}
       {editId && form && (
         <Modal onClose={() => { setEditId(null); setForm(null) }} title={`Edit salary — ${editId}`}>
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Edit salary — {editId}</h3>
               <button

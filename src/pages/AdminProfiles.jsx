@@ -447,7 +447,7 @@ export default function EmployeeRecords() {
             </div>
           }
         />
-        <table className="table" style={{ tableLayout: 'fixed' }}>
+        <table className="table table-profiles" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '16%' }} />
             <col style={{ width: '8%' }} />
@@ -478,6 +478,9 @@ export default function EmployeeRecords() {
             )}
             {recordsPage.map((e) => {
               const profile = profileOf(e)
+              const statusText = !isEmployeeActive(e)
+                ? (profile ? profileStatusLabel(profile.status) : 'No record')
+                : `${e.separationReason || 'Inactive'}${e.separationDate ? ` (${e.separationDate})` : ''}`
               return (
                 <tr key={e.id}>
                   <td>
@@ -487,8 +490,8 @@ export default function EmployeeRecords() {
                     </div>
                   </td>
                   <td>{e.id}</td>
-                  <td>{e.department}</td>
-                  <td>{e.designation || <span className="muted">--</span>}</td>
+                  <td className="cell-ellipsis" title={e.department || undefined}>{e.department}</td>
+                  <td className="cell-ellipsis" title={e.designation || undefined}>{e.designation || <span className="muted">--</span>}</td>
                   <td>
                     {e.role === 'employee' ? (
                       <label className="toggle-switch" title={e.isManager ? 'Manager' : 'Not a manager'}>
@@ -535,26 +538,18 @@ export default function EmployeeRecords() {
                         })()
                       : <span className="muted">--</span>}
                   </td>
-                  <td className="cell-record-status">
+                  <td className="cell-record-status cell-ellipsis" title={statusText}>
                     {!isEmployeeActive(e) ? (
-                      <>
-                        <div>{e.separationReason || 'Inactive'}</div>
-                        {e.separationDate && <div className="muted" style={{ fontSize: '0.85em' }}>{e.separationDate}</div>}
-                        {e.separationReason === 'Other' && e.separationNote && <div className="muted" style={{ fontSize: '0.85em' }}>{e.separationNote}</div>}
-                      </>
+                      <span className="tag tag-absent">
+                        {e.separationReason || 'Inactive'}
+                        {e.separationDate && <span className="muted" style={{ marginLeft: 6 }}>{e.separationDate}</span>}
+                      </span>
                     ) : profile ? (
-                      <>
-                        {(() => {
-                          const label = profileStatusLabel(profile.status)
-                          const match = label.match(/^(.+?)\s*(\(.*\)$)/)
-                          if (match) {
-                            return <><div>{match[1]}</div><div className="muted" style={{ fontSize: '0.85em' }}>{match[2]}</div></>
-                          }
-                          return <div>{label}</div>
-                        })()}
-                      </>
+                      <span className={`tag ${profileStatusTagClass(profile.status)}`}>
+                        {profileStatusLabel(profile.status)}
+                      </span>
                     ) : (
-                      <span className="muted">No record</span>
+                      <span className="tag tag-absent">No record</span>
                     )}
                   </td>
                   <td>

@@ -320,7 +320,7 @@ function EditModal({ request, onClose, onSaved }) {
 
   return (
     <Modal onClose={onClose} title="Edit overtime request">
-      <div className="modal-form">
+      <div className="modal-form modal-form-wide">
         <div className="modal-header">
           <h3 className="section-title first">Edit overtime request</h3>
           <button type="button" className="btn btn-tiny btn-light" onClick={onClose} aria-label="Close"><X size={15} /></button>

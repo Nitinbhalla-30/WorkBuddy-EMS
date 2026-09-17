@@ -39,9 +39,12 @@ export function useTableControls(items, options = {}) {
     }
 
     if (sortKey) {
-      list.sort((a, b) =>
-        compareValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir)
-      )
+      // Compute each row's sort value once (decorate-sort-undecorate) instead
+      // of calling the getter O(n log n) times inside the comparator, which
+      // is noticeable on tables with tens of thousands of rows.
+      const decorated = list.map((item) => [getSortValue(item, sortKey), item])
+      decorated.sort((a, b) => compareValues(a[0], b[0], sortDir))
+      list = decorated.map((entry) => entry[1])
     }
 
     return list

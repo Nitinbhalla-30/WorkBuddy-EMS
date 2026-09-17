@@ -992,8 +992,21 @@ export function getEmployees() {
   return read(KEYS.employees, [])
 }
 
+// Employees are looked up by id on hot paths (table search text, per-row
+// rendering, shift resolution). A linear find over 500+ employees per call
+// made large pages crawl, so index them once; the cache is keyed on the array
+// reference, which every store write replaces, so it can never go stale.
+let employeeByIdCache = { source: null, map: null }
 export function getEmployeeById(id) {
-  return getEmployees().find((e) => e.id === id) || null
+  const employees = getEmployees()
+  if (employeeByIdCache.source !== employees) {
+    const map = new Map()
+    for (const e of employees) {
+      if (!map.has(e.id)) map.set(e.id, e)
+    }
+    employeeByIdCache = { source: employees, map }
+  }
+  return employeeByIdCache.map.get(id) || null
 }
 
 // Check if an employee is active. Legacy employees without a status field are treated as active.

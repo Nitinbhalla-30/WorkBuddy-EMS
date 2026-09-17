@@ -27,6 +27,7 @@ import {
   formatDate,
   formatMinutes,
   isLate,
+  isPartialLeave,
   isWeekOffDay,
   monthKey,
   monthKeyOffset,
@@ -247,7 +248,9 @@ export default function EmployeeDashboard() {
       if (key === 'status') {
         if (isObservedCompanyHoliday(r.date, holidays)) return 'Holiday'
         if (isWeekOffDay(user.id, r.date)) return 'Week off'
-        if (approvedLeavesByDate.has(r.date)) return 'On leave'
+        const lt = approvedLeavesByDate.get(r.date)
+        if (lt && !isPartialLeave(lt)) return 'On leave'
+        if (lt && isPartialLeave(lt) && (!r || !r.timeIn)) return 'On leave'
         return statusOf(r, shiftStartTime, settings.lateGraceMinutes)
       }
       if (key === 'leaveType') return leaveTypeLabel(approvedLeavesByDate.get(r.date) || '')
@@ -259,11 +262,13 @@ export default function EmployeeDashboard() {
       status: (r, val) => {
         const isHoliday = isObservedCompanyHoliday(r.date, holidays)
         const isWeekOff = isWeekOffDay(user.id, r.date)
-        const onLeave = approvedLeavesByDate.has(r.date)
+        const lt = approvedLeavesByDate.get(r.date)
+        const onLeave = !!lt && !isPartialLeave(lt)
+        const onLeavePartial = !!lt && isPartialLeave(lt) && (!r || !r.timeIn)
         if (val === 'Holiday') return isHoliday
         if (val === 'Week off') return !isHoliday && isWeekOff
-        if (val === 'On leave') return !isHoliday && !isWeekOff && onLeave
-        if (val === 'Absent') return !isHoliday && !isWeekOff && !onLeave && (!r || !r.timeIn)
+        if (val === 'On leave') return !isHoliday && !isWeekOff && (onLeave || onLeavePartial)
+        if (val === 'Absent') return !isHoliday && !isWeekOff && !lt && (!r || !r.timeIn)
         return !isHoliday && !isWeekOff && !onLeave && statusOf(r, shiftStartTime, settings.lateGraceMinutes) === val
       }
     }
@@ -427,17 +432,18 @@ export default function EmployeeDashboard() {
     const rows = historyTable.rows.map((r) => {
       const isHoliday = isObservedCompanyHoliday(r.date, holidays)
       const isWeekOff = !isHoliday && isWeekOffDay(user.id, r.date)
-      const onLeave = !isHoliday && !isWeekOff && approvedLeavesByDate.has(r.date)
-      const noClock = isWeekOff || onLeave
       const leaveType = approvedLeavesByDate.get(r.date)
+      const onLeave = !isHoliday && !isWeekOff && !!leaveType
+      const noClock = isWeekOff || (onLeave && !isPartialLeave(leaveType))
+      const showAsOnLeave = onLeave && !isPartialLeave(leaveType) || (onLeave && isPartialLeave(leaveType) && (!r || !r.timeIn))
       return [
         formatDate(r.date),
         noClock ? '--' : formatClock(r.timeIn),
         noClock ? '--' : formatClock(r.timeOut),
         noClock ? '--' : formatMinutes(workedMinutes(r)),
         noClock ? '--' : formatMinutes(totalBreakMinutes(r)),
-        leaveType ? leaveTypeLabel(leaveType) : '--',
-        isHoliday ? 'Holiday' : isWeekOff ? 'Week off' : onLeave ? 'On leave' : statusOf(r, shiftStartTime, settings.lateGraceMinutes)
+        leaveType ? (leaveType === 'halfday' && r?.timeIn ? `${leaveTypeLabel(leaveType)} (${new Date(r.timeIn).getHours() < 12 ? 'first half' : 'second half'})` : leaveTypeLabel(leaveType)) : '--',
+        isHoliday ? 'Holiday' : isWeekOff ? 'Week off' : showAsOnLeave ? 'On leave' : statusOf(r, shiftStartTime, settings.lateGraceMinutes)
       ]
     })
     // Resolves 'saved' | 'downloaded' | 'cancelled'; closing the save dialog
@@ -716,10 +722,11 @@ export default function EmployeeDashboard() {
             {historyPage.map((r) => {
               const isHoliday = isObservedCompanyHoliday(r.date, holidays)
               const isWeekOff = !isHoliday && isWeekOffDay(user.id, r.date)
-              const onLeave = !isHoliday && !isWeekOff && approvedLeavesByDate.has(r.date)
-              const isAbsent = !isHoliday && !isWeekOff && !onLeave && (!r || !r.timeIn)
-              const noClock = isAbsent || isWeekOff || onLeave
               const leaveType = approvedLeavesByDate.get(r.date)
+              const onLeave = !isHoliday && !isWeekOff && !!leaveType
+              const isAbsent = !isHoliday && !isWeekOff && !onLeave && (!r || !r.timeIn)
+              const noClock = isAbsent || isWeekOff || (onLeave && !isPartialLeave(leaveType))
+              const showAsOnLeave = onLeave && !isPartialLeave(leaveType) || (onLeave && isPartialLeave(leaveType) && (!r || !r.timeIn))
               return (
               <tr key={r.id}>
                 <td>{formatDate(r.date)}</td>
@@ -727,14 +734,14 @@ export default function EmployeeDashboard() {
                 <td>{noClock ? '--' : formatClock(r.timeOut)}</td>
                 <td>{noClock ? '--' : formatMinutes(workedMinutes(r))}</td>
                 <td>{noClock ? '--' : formatMinutes(totalBreakMinutes(r))}</td>
-                <td>{leaveType ? leaveTypeLabel(leaveType) : '--'}</td>
+                <td>{leaveType ? (leaveType === 'halfday' && r?.timeIn ? (<div>{leaveTypeLabel(leaveType)}<div className="muted small">({new Date(r.timeIn).getHours() < 12 ? 'first half' : 'second half'})</div></div>) : leaveTypeLabel(leaveType)) : '--'}</td>
                 <td>
                   <span className={`tag ${
                     isHoliday
                       ? 'tag-holiday'
                       : isWeekOff
                         ? 'tag-weekoff'
-                        : onLeave
+                        : showAsOnLeave
                           ? 'tag-info'
                           : isLate(r, shiftStartTime, settings.lateGraceMinutes)
                             ? 'tag-late'
@@ -742,7 +749,7 @@ export default function EmployeeDashboard() {
                               ? 'tag-bad'
                               : 'tag-ok'
                   }`}>
-                    {isHoliday ? 'Holiday' : isWeekOff ? 'Week off' : onLeave ? 'On leave' : statusOf(r, shiftStartTime, settings.lateGraceMinutes)}
+                    {isHoliday ? 'Holiday' : isWeekOff ? 'Week off' : showAsOnLeave ? 'On leave' : statusOf(r, shiftStartTime, settings.lateGraceMinutes)}
                   </span>
                 </td>
               </tr>
@@ -923,7 +930,7 @@ export default function EmployeeDashboard() {
 
       {editCorrection && (
         <Modal onClose={() => setEditCorrectionId(null)} title="Edit correction request">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Edit correction request</h3>
               <button
@@ -948,7 +955,7 @@ export default function EmployeeDashboard() {
 
       {openCorrection && (
         <Modal onClose={() => setOpenCorrectionId(null)} title="Correction request">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <div>
                 <h3 className="section-title first" style={{ margin: 0 }}>

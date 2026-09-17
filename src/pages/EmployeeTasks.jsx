@@ -283,13 +283,10 @@ export default function EmployeeTasks() {
           onToggleKey={(key) => {
             const isTogglingOff = table.filters.quick === key
             table.setFilter('quick', isTogglingOff ? 'all' : key)
-            if (isTogglingOff) {
-              table.setFilter('status', 'all')
-            } else if (key === 'overdue') {
-              table.setFilter('status', 'all')
-            } else {
-              table.setFilter('status', key)
-            }
+            // Card buckets count done and closed together; the status dropdown
+            // is exact-match, so syncing it would shrink the table below the
+            // card's count. Clear it so the card alone drives the rows.
+            table.setFilter('status', 'all')
           }}
         />
       </div>
@@ -319,7 +316,7 @@ export default function EmployeeTasks() {
 
       {editTask && (
         <Modal onClose={() => setEditTaskId(null)} title="Edit task">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Edit task</h3>
               <button
@@ -341,7 +338,7 @@ export default function EmployeeTasks() {
 
       {openTask && (
         <Modal onClose={() => setOpenTaskId(null)} title={openTask.title}>
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <div>
                 <h3 className="section-title first" style={{ margin: 0 }}>{openTask.title}</h3>

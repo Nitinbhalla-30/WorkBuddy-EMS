@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -86,11 +86,101 @@ function monthFilterOptions() {
 // clicking one lands on the queue instead of the records table.
 const VALID_TABS = ['all', 'corrections']
 
+function statusLabel(status) {
+  return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+function statusClass(status) {
+  if (status === 'approved') return 'tag-ok'
+  if (status === 'rejected') return 'tag-late'
+  if (status === 'withdrawn') return 'tag-absent'
+  return 'tag-pending'
+}
+
+// Memoized row component to prevent re-renders when parent state changes
+const CorrectionRow = React.memo(function CorrectionRow({ c, openMenuId, toggleMenu, openReview, setApproveId, closeMenu }) {
+  const emp = getEmployeeById(c.employeeId)
+  return (
+    <tr key={c.id}>
+      <td>
+        <div className="person-cell">
+          <Avatar src={emp?.photoUrl} name={emp?.name} size={34} />
+          <div style={{ minWidth: 0 }}>
+            <div className="cell-line" title={emp?.name || c.employeeId}>
+              <strong>{emp ? emp.name : c.employeeId}</strong>
+            </div>
+            <div className="muted small cell-line">{c.employeeId}</div>
+          </div>
+        </div>
+      </td>
+      <td>{formatDate(c.date)}</td>
+      <td>{correctionIssueLabel(c.issueType)}</td>
+      <td className="cell-ellipsis" title={c.description || undefined}>{c.description || <span className="muted">--</span>}</td>
+      <td className="small">
+        {c.suggestedTimeIn && c.suggestedTimeOut && `In: ${c.suggestedTimeIn} · Out: ${c.suggestedTimeOut}`}
+        {c.suggestedTimeIn && !c.suggestedTimeOut && `In: ${c.suggestedTimeIn}`}
+        {!c.suggestedTimeIn && c.suggestedTimeOut && `Out: ${c.suggestedTimeOut}`}
+        {!c.suggestedTimeIn && !c.suggestedTimeOut && <span className="muted">--</span>}
+      </td>
+      <td>
+        <span className={`tag ${statusClass(c.status)}`}>
+          {statusLabel(c.status)}
+        </span>
+      </td>
+      <td>
+        <div className="task-menu-container">
+          <button
+            type="button"
+            className="btn btn-tiny btn-light task-menu-button corrections-menu-button"
+            onClick={() => toggleMenu(c.id)}
+            aria-label="Correction actions"
+           ><MoreVertical size={16} /></button>
+          {openMenuId === c.id && (
+            <div className="task-menu-dropdown">
+              <button
+                type="button"
+                className="task-menu-item"
+                onClick={() => openReview(c.id, false)}
+              >
+                {c.status === 'pending'
+                  ? (<><MessageCircleQuestionMark size={14} aria-hidden="true" /> Ask question</>)
+                  : (<><Eye size={14} aria-hidden="true" /> View thread</>)}
+              </button>
+              <button
+                type="button"
+                className="task-menu-item"
+                disabled={c.status !== 'pending'}
+                onClick={() => {
+                  setApproveId(c.id)
+                  closeMenu()
+                }}
+              >
+                <CircleCheck size={14} aria-hidden="true" />
+                Approve
+              </button>
+              <button
+                type="button"
+                className="task-menu-item task-menu-item-danger"
+                disabled={c.status !== 'pending'}
+                onClick={() => openReview(c.id, true)}
+              >
+                <CircleX size={14} aria-hidden="true" />
+                Reject
+              </button>
+            </div>
+          )}
+        </div>
+      </td>
+    </tr>
+  )
+})
+
 // All attendance records with filters by employee, period, department, and manager.
 export default function AttendanceRecords() {
   const { user } = useAuth()
   const settings = getSettings()
-  const employees = getEmployees().filter((e) => e.role === 'employee')
+  const allEmployees = getEmployees()
+  const employees = useMemo(() => allEmployees.filter((e) => e.role === 'employee'), [allEmployees])
   const today = todayDateKey()
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -170,19 +260,24 @@ export default function AttendanceRecords() {
   const rawRecords = useMemo(() => getAttendance(), [attendanceTick])
 
   const allRecords = useMemo(() => {
-    // Build a set of dates that have at least one real record
-    const datesWithRecords = new Set(rawRecords.map((r) => r.date))
+    // One pass over the raw records: which employees already have a record on
+    // each date. The naive version re-filtered every raw record for every
+    // date, which is quadratic over the two-month window.
+    const empIdsByDate = new Map()
+    for (const r of rawRecords) {
+      let ids = empIdsByDate.get(r.date)
+      if (!ids) {
+        ids = new Set()
+        empIdsByDate.set(r.date, ids)
+      }
+      ids.add(r.employeeId)
+    }
 
     // For each date that has records, also generate synthetic absent records
     // for employees who have no record on that date
     const syntheticAbsent = []
     let nextId = 1000000
-
-    for (const date of datesWithRecords) {
-      const empIdsWithRecord = new Set(
-        rawRecords.filter((r) => r.date === date).map((r) => r.employeeId)
-      )
-
+    for (const [date, empIdsWithRecord] of empIdsByDate) {
       for (const emp of employees) {
         if (!empIdsWithRecord.has(emp.id)) {
           syntheticAbsent.push({
@@ -199,7 +294,7 @@ export default function AttendanceRecords() {
     }
 
     return [...rawRecords, ...syntheticAbsent]
-  }, [employees])
+  }, [rawRecords, employees])
 
   const onLeaveIds = useMemo(() => new Set(
     getLeaves()
@@ -227,66 +322,81 @@ export default function AttendanceRecords() {
     short: 'Short'
   }
 
-  function recordStatus(r) {
+  const recordStatus = useCallback((r) => {
     if (onLeaveIds.has(r.employeeId) && !r.timeIn) return 'On leave'
     return statusOf(r, resolveStartTime(r.employeeId), settings.lateGraceMinutes)
-  }
+  }, [onLeaveIds, settings.lateGraceMinutes])
+
+  // Group raw records by employee once, so resolveJoinDate only sees each
+  // employee's own rows instead of re-filtering the whole window per employee.
+  const recordsByEmployee = useMemo(() => {
+    const byId = new Map()
+    for (const r of rawRecords) {
+      const own = byId.get(r.employeeId)
+      if (own) own.push(r)
+      else byId.set(r.employeeId, [r])
+    }
+    return byId
+  }, [rawRecords])
 
   const joinDateByEmployee = useMemo(() => {
     const map = {}
     for (const emp of employees) {
-      map[emp.id] = resolveJoinDate(
-        emp,
-        rawRecords.filter((r) => r.employeeId === emp.id)
-      )
+      map[emp.id] = resolveJoinDate(emp, recordsByEmployee.get(emp.id) || [])
     }
     return map
-  }, [employees, rawRecords])
+  }, [employees, recordsByEmployee])
+
+  const getRecordsSearchText = useCallback((r) => {
+    const emp = getEmployeeById(r.employeeId)
+    const manager = emp?.managerId ? getEmployeeById(emp.managerId) : null
+    const leaveType = leaveTypeByEmployee.get(r.employeeId) || ''
+    return [
+      r.date, emp?.name, emp?.department, manager?.name,
+      formatClock(r.timeIn), formatClock(r.timeOut),
+      recordStatus(r), leaveType
+    ].join(' ')
+  }, [leaveTypeByEmployee, recordStatus])
+
+  const getRecordsSortValue = useCallback((r, key) => {
+    const emp = getEmployeeById(r.employeeId)
+    if (key === 'employee') return emp?.name || r.employeeId
+    if (key === 'department') return emp?.department || ''
+    if (key === 'reportsTo') {
+      return emp?.managerId ? (getEmployeeById(emp.managerId)?.name || '') : ''
+    }
+    if (key === 'worked') return workedMinutes(r)
+    if (key === 'break') return totalBreakMinutes(r)
+    if (key === 'status') return recordStatus(r)
+    if (key === 'leaveType') return leaveTypeByEmployee.get(r.employeeId) || ''
+    return r[key]
+  }, [leaveTypeByEmployee, recordStatus])
+
+  const recordsFilterFns = useMemo(() => ({
+    employeeId: (r, val) => r.employeeId === val,
+    period: (r, val) => filterRecordsForStatsPeriod([r], val, {
+      joinDate: joinDateByEmployee[r.employeeId] || today,
+      todayDate: today
+    }).length > 0,
+    month: (r, val) => val === 'all' || String(r.date || '').startsWith(val),
+    department: (r, val) => getEmployeeById(r.employeeId)?.department === val,
+    reportsTo: (r, val) => {
+      const managerId = getEmployeeById(r.employeeId)?.managerId
+      if (val === 'none') return !managerId
+      return managerId === val
+    },
+    status: (r, val) => {
+      if (val === 'all') return true
+      return recordStatus(r) === val
+    }
+  }), [joinDateByEmployee, today, recordStatus])
 
   const table = useTableControls(allRecords, {
-    getSearchText: (r) => {
-      const emp = getEmployeeById(r.employeeId)
-      const manager = emp?.managerId ? getEmployeeById(emp.managerId) : null
-      const leaveType = leaveTypeByEmployee.get(r.employeeId) || ''
-      return [
-        r.date, emp?.name, emp?.department, manager?.name,
-        formatClock(r.timeIn), formatClock(r.timeOut),
-        recordStatus(r), leaveType
-      ].join(' ')
-    },
-    getSortValue: (r, key) => {
-      const emp = getEmployeeById(r.employeeId)
-      if (key === 'employee') return emp?.name || r.employeeId
-      if (key === 'department') return emp?.department || ''
-      if (key === 'reportsTo') {
-        return emp?.managerId ? (getEmployeeById(emp.managerId)?.name || '') : ''
-      }
-      if (key === 'worked') return workedMinutes(r)
-      if (key === 'break') return totalBreakMinutes(r)
-      if (key === 'status') return recordStatus(r)
-      if (key === 'leaveType') return leaveTypeByEmployee.get(r.employeeId) || ''
-      return r[key]
-    },
+    getSearchText: getRecordsSearchText,
+    getSortValue: getRecordsSortValue,
     initialSortKey: 'date',
     initialSortDir: 'desc',
-    filterFns: {
-      employeeId: (r, val) => r.employeeId === val,
-      period: (r, val) => filterRecordsForStatsPeriod([r], val, {
-        joinDate: joinDateByEmployee[r.employeeId] || today,
-        todayDate: today
-      }).length > 0,
-      month: (r, val) => val === 'all' || String(r.date || '').startsWith(val),
-      department: (r, val) => getEmployeeById(r.employeeId)?.department === val,
-      reportsTo: (r, val) => {
-        const managerId = getEmployeeById(r.employeeId)?.managerId
-        if (val === 'none') return !managerId
-        return managerId === val
-      },
-      status: (r, val) => {
-        if (val === 'all') return true
-        return recordStatus(r) === val
-      }
-    },
+    filterFns: recordsFilterFns,
     initialFilters: { period: 'all', month: 'all' }
   })
 
@@ -313,31 +423,37 @@ export default function AttendanceRecords() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPeriod, selectedMonth, today])
 
+  const getCorrectionsSearchText = useCallback((c) => {
+    const emp = getEmployeeById(c.employeeId)
+    return [
+      emp?.name, c.date, correctionIssueLabel(c.issueType),
+      c.description, statusLabel(c.status)
+    ].join(' ')
+  }, [])
+
+  const getCorrectionsSortValue = useCallback((c, key) => {
+    if (key === 'employee') return getEmployeeById(c.employeeId)?.name || c.employeeId
+    if (key === 'issue') return correctionIssueLabel(c.issueType)
+    if (key === 'details') return c.description || ''
+    if (key === 'suggested') return `${c.suggestedTimeIn || ''} ${c.suggestedTimeOut || ''}`.trim()
+    return c[key]
+  }, [])
+
+  const correctionsFilterFns = useMemo(() => ({
+    employeeId: (c, val) => c.employeeId === val,
+    period: (c, val) => filterRecordsForStatsPeriod([{ date: c.date }], val, {
+      joinDate: today,
+      todayDate: today
+    }).length > 0,
+    status: (c, val) => c.status === val
+  }), [today])
+
   const correctionsTable = useTableControls(corrections, {
-    getSearchText: (c) => {
-      const emp = getEmployeeById(c.employeeId)
-      return [
-        emp?.name, c.date, correctionIssueLabel(c.issueType),
-        c.description, statusLabel(c.status)
-      ].join(' ')
-    },
-    getSortValue: (c, key) => {
-      if (key === 'employee') return getEmployeeById(c.employeeId)?.name || c.employeeId
-      if (key === 'issue') return correctionIssueLabel(c.issueType)
-      if (key === 'details') return c.description || ''
-      if (key === 'suggested') return `${c.suggestedTimeIn || ''} ${c.suggestedTimeOut || ''}`.trim()
-      return c[key]
-    },
+    getSearchText: getCorrectionsSearchText,
+    getSortValue: getCorrectionsSortValue,
     initialSortKey: 'appliedOn',
     initialSortDir: 'desc',
-    filterFns: {
-      employeeId: (c, val) => c.employeeId === val,
-      period: (c, val) => filterRecordsForStatsPeriod([{ date: c.date }], val, {
-        joinDate: today,
-        todayDate: today
-      }).length > 0,
-      status: (c, val) => c.status === val
-    },
+    filterFns: correctionsFilterFns,
     initialFilters: { employeeId: 'all', period: 'all', status: 'all' }
   })
   const {
@@ -374,12 +490,12 @@ export default function AttendanceRecords() {
     setCorrections([...getAttendanceCorrections()])
   }
 
-  function openReview(id, startReject = false) {
+  const openReview = useCallback((id, startReject = false) => {
     setOpenId(id)
     setRejectMode(startReject)
     setRejectNote('')
     setOpenMenuId(null)
-  }
+  }, [])
 
   function closeReview() {
     setOpenId(null)
@@ -442,24 +558,13 @@ export default function AttendanceRecords() {
     notify('Reply sent.')
   }
 
-  function toggleMenu(id) {
-    setOpenMenuId(openMenuId === id ? null : id)
-  }
+  const toggleMenu = useCallback((id) => {
+    setOpenMenuId((prev) => (prev === id ? null : id))
+  }, [])
 
-  function closeMenu() {
+  const closeMenu = useCallback(() => {
     setOpenMenuId(null)
-  }
-
-  function statusLabel(status) {
-    return status.charAt(0).toUpperCase() + status.slice(1)
-  }
-
-  function statusClass(status) {
-    if (status === 'approved') return 'tag-ok'
-    if (status === 'rejected') return 'tag-late'
-    if (status === 'withdrawn') return 'tag-absent'
-    return 'tag-pending' // pending — blue, distinct from the grey withdrawn tag
-  }
+  }, [])
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -523,7 +628,7 @@ export default function AttendanceRecords() {
         timeToFraction(r.timeOut),
         minutesToFraction(workedMinutes(r)),
         minutesToFraction(totalBreakMinutes(r)),
-        leaveType ? (LEAVE_TYPE_LABELS[leaveType] || leaveType) : '',
+        leaveType ? (leaveType === 'halfday' && r?.timeIn ? `${LEAVE_TYPE_LABELS[leaveType] || leaveType} (${new Date(r.timeIn).getHours() < 12 ? 'first half' : 'second half'})` : (LEAVE_TYPE_LABELS[leaveType] || leaveType)) : '',
         recordStatus(r)
       ]
     })
@@ -613,8 +718,8 @@ export default function AttendanceRecords() {
         />
         <table className="table" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '10%' }} />
             <col style={{ width: '15%' }} />
+            <col style={{ width: '10%' }} />
             <col style={{ width: '10%' }} />
             <col style={{ width: '11%' }} />
             <col style={{ width: '9%' }} />
@@ -626,8 +731,8 @@ export default function AttendanceRecords() {
           </colgroup>
           <thead>
             <tr>
-              <SortableTh label="Date" keyName="date" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Employee" keyName="employee" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
+              <SortableTh label="Date" keyName="date" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Department" keyName="department" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} />
               <SortableTh label="Reports to" keyName="reportsTo" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
               <SortableTh label="Time In" keyName="timeIn" sortKey={table.sortKey} sortDir={table.sortDir} onSort={table.toggleSort} className="th-wrap" />
@@ -654,7 +759,6 @@ export default function AttendanceRecords() {
               const recStatus = recordStatus(r)
               return (
                 <tr key={r.id}>
-                  <td>{formatDate(r.date)}</td>
                   <td>
                     <div className="person-cell">
                       <Avatar src={emp?.photoUrl} name={emp?.name} size={34} />
@@ -664,13 +768,14 @@ export default function AttendanceRecords() {
                       </div>
                     </div>
                   </td>
+                  <td>{formatDate(r.date)}</td>
                   <td>{emp?.department || <span className="muted">--</span>}</td>
                   <td>{manager?.name || <span className="muted">None</span>}</td>
                   <td>{formatClock(r.timeIn)}</td>
                   <td>{formatClock(r.timeOut)}</td>
                   <td>{r.timeIn ? formatMinutes(workedMinutes(r)) : <span className="muted">--</span>}</td>
                   <td>{r.timeIn ? formatMinutes(totalBreakMinutes(r)) : <span className="muted">--</span>}</td>
-                  <td>{leaveType ? (LEAVE_TYPE_LABELS[leaveType] || leaveType) : <span className="muted">--</span>}</td>
+                  <td>{leaveType ? (leaveType === 'halfday' && r?.timeIn ? (<div>{LEAVE_TYPE_LABELS[leaveType] || leaveType}<div className="muted small">({new Date(r.timeIn).getHours() < 12 ? 'first half' : 'second half'})</div></div>) : (LEAVE_TYPE_LABELS[leaveType] || leaveType)) : <span className="muted">--</span>}</td>
                   <td>
                     <span className={`tag ${
                       recStatus === 'On leave' ? 'tag-absent'
@@ -727,10 +832,10 @@ export default function AttendanceRecords() {
         />
         <table className="table table-corrections" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '20%' }} />
+            <col style={{ width: '15%' }} />
             <col style={{ width: '10%' }} />
             <col style={{ width: '13%' }} />
-            <col style={{ width: '22%' }} />
+            <col style={{ width: '27%' }} />
             <col style={{ width: '14%' }} />
             <col style={{ width: '11%' }} />
             <col style={{ width: '6%' }} />
@@ -750,77 +855,17 @@ export default function AttendanceRecords() {
             {correctionsTotal === 0 && (
               <TableEmpty colSpan={7} message={correctionsTotal === 0 ? 'No correction requests yet.' : 'No correction requests found.'} />
             )}
-            {correctionsPage.map((c) => {
-              const emp = getEmployeeById(c.employeeId)
-              return (
-                <tr key={c.id}>
-                  <td>
-                    <div className="person-cell">
-                      <Avatar src={emp?.photoUrl} name={emp?.name} size={34} />
-                      <span>{emp?.name || c.employeeId}</span>
-                    </div>
-                  </td>
-                  <td>{formatDate(c.date)}</td>
-                  <td>{correctionIssueLabel(c.issueType)}</td>
-                  <td className="cell-ellipsis" title={c.description || undefined}>{c.description || <span className="muted">--</span>}</td>
-                  <td className="small">
-                    {c.suggestedTimeIn && c.suggestedTimeOut && `In: ${c.suggestedTimeIn} · Out: ${c.suggestedTimeOut}`}
-                    {c.suggestedTimeIn && !c.suggestedTimeOut && `In: ${c.suggestedTimeIn}`}
-                    {!c.suggestedTimeIn && c.suggestedTimeOut && `Out: ${c.suggestedTimeOut}`}
-                    {!c.suggestedTimeIn && !c.suggestedTimeOut && <span className="muted">--</span>}
-                  </td>
-                  <td>
-                    <span className={`tag ${statusClass(c.status)}`}>
-                      {statusLabel(c.status)}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="task-menu-container">
-                      <button
-                        type="button"
-                        className="btn btn-tiny btn-light task-menu-button corrections-menu-button"
-                        onClick={() => toggleMenu(c.id)}
-                        aria-label="Correction actions"
-                       ><MoreVertical size={16} /></button>
-                      {openMenuId === c.id && (
-                        <div className="task-menu-dropdown">
-                          <button
-                            type="button"
-                            className="task-menu-item"
-                            onClick={() => openReview(c.id, false)}
-                          >
-                            {c.status === 'pending'
-                              ? (<><MessageCircleQuestionMark size={14} aria-hidden="true" /> Ask question</>)
-                              : (<><Eye size={14} aria-hidden="true" /> View thread</>)}
-                          </button>
-                          <button
-                            type="button"
-                            className="task-menu-item"
-                            disabled={c.status !== 'pending'}
-                            onClick={() => {
-                              setApproveId(c.id)
-                              closeMenu()
-                            }}
-                          >
-                            <CircleCheck size={14} aria-hidden="true" />
-                            Approve
-                          </button>
-                          <button
-                            type="button"
-                            className="task-menu-item task-menu-item-danger"
-                            disabled={c.status !== 'pending'}
-                            onClick={() => openReview(c.id, true)}
-                          >
-                            <CircleX size={14} aria-hidden="true" />
-                            Reject
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
+            {correctionsPage.map((c) => (
+              <CorrectionRow
+                key={c.id}
+                c={c}
+                openMenuId={openMenuId}
+                toggleMenu={toggleMenu}
+                openReview={openReview}
+                setApproveId={setApproveId}
+                closeMenu={closeMenu}
+              />
+            ))}
           </tbody>
         </table>
         <Pagination
@@ -842,7 +887,7 @@ export default function AttendanceRecords() {
 
       {openCorrection && (
         <Modal onClose={closeReview} title="Review correction request">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <div>
                 <h3 className="section-title first" style={{ margin: 0 }}>

@@ -6,12 +6,14 @@ import { TASK_PRIORITIES } from '../data/sampleData.js'
 //   people    - list of { id, name } who can be picked as assignee.
 //               If null/empty, the task is assigned to defaultAssigneeId (self).
 //   defaultAssigneeId - who to assign to when there is no picker.
+//   assigneePlaceholder - prompt text in the assignee dropdown (default "Select your team member").
 //   initial   - optional existing task fields for edit mode.
 //   submitLabel - button label (default "Add task").
 //   onCreate  - function({ title, description, assigneeId, dueDate, priority })
 export default function TaskForm({
   people,
   defaultAssigneeId,
+  assigneePlaceholder = 'Select your team member',
   initial,
   submitLabel = 'Add task',
   onCreate,
@@ -72,10 +74,12 @@ export default function TaskForm({
           <label className="field">
             <span>Assign to</span>
             <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
-              <option value="">Select your team member</option>
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
+              <option value="">{assigneePlaceholder}</option>
+              {[...people]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
             </select>
           </label>
         )}

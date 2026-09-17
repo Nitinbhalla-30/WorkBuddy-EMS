@@ -22,6 +22,8 @@ interface DonutChartProps extends React.HTMLAttributes<HTMLDivElement> {
   centerContent?: React.ReactNode
   onSegmentHover?: (segment: DonutChartSegment | null) => void
   onSegmentClick?: (segment: DonutChartSegment) => void
+  externalHoveredLabel?: string | null
+  activeSegmentKey?: string | null
 }
 
 const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
@@ -37,6 +39,8 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
       centerContent,
       onSegmentHover,
       onSegmentClick,
+      externalHoveredLabel,
+      activeSegmentKey,
       className,
       ...props
     },
@@ -110,8 +114,8 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
               const strokeDasharray = `${(percentage / 100) * circumference} ${circumference}`
               const strokeDashoffset = (cumulativePercentage / 100) * circumference
 
-              const isActive = hoveredSegment?.label === segment.label
-              const isDimmed = hoveredSegment !== null && !isActive
+              const isActive = hoveredSegment?.label === segment.label || externalHoveredLabel === segment.label || activeSegmentKey === segment.key
+              const isDimmed = (hoveredSegment !== null || externalHoveredLabel != null || (activeSegmentKey != null && activeSegmentKey !== 'all')) && !isActive
 
               // Pull-out offset along the segment's radial midpoint
               const midAngle = ((cumulativePercentage + percentage / 2) / 100) * 2 * Math.PI

@@ -317,7 +317,7 @@ function RequestsTab({ refresh, onDecided }) {
 
       {rejectId && (
         <Modal onClose={() => setRejectId(null)} title="Reject request">
-          <div className="modal-form">
+          <div className="modal-form modal-form-wide">
             <div className="modal-header">
               <h3 className="section-title first">Reject request</h3>
               <button type="button" className="btn btn-tiny btn-light" onClick={() => setRejectId(null)} aria-label="Close"><X size={15} /></button>
