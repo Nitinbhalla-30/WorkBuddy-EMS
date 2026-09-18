@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getSettings } from '../data/store.js'
+import { getSettings, getEmployeeById } from '../data/store.js'
+import { supabase, supabaseEnabled } from '../data/supabaseClient.js'
 import { Clock, CheckCircle2, Megaphone, User, Lock, Eye, EyeOff, ChevronDown, ChevronUp, Loader2, Briefcase } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import AnimatedThemeToggle from '../components/ui/animated-theme-toggle.tsx'
@@ -21,6 +22,9 @@ export default function Login() {
   const [showPin, setShowPin] = useState(false)
   const [remember, setRemember] = useState(false)
   const [showForgotPin, setShowForgotPin] = useState(false)
+  const [forgotId, setForgotId] = useState('')
+  const [forgotBusy, setForgotBusy] = useState(false)
+  const [forgotMsg, setForgotMsg] = useState(null)
 
   const shouldReduceMotion = useReducedMotion()
 
@@ -64,25 +68,53 @@ export default function Login() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setError('')
-    // Small delay so the loading state is visible
-    setTimeout(() => {
-      const err = login(id, pin)
-      if (err) {
-        setError(err)
-        setLoading(false)
+    const err = await login(id, pin)
+    if (err) {
+      setError(err)
+      setLoading(false)
+      return
+    }
+    if (remember) {
+      localStorage.setItem('hr_remember_id', id)
+    } else {
+      localStorage.removeItem('hr_remember_id')
+    }
+    navigate('/', { replace: true })
+  }
+
+  function openForgot() {
+    setForgotId(id)
+    setForgotMsg(null)
+    setShowForgotPin(true)
+  }
+
+  async function handleForgot() {
+    const cleanId = (forgotId || '').trim().toUpperCase()
+    setForgotMsg(null)
+    if (!cleanId) {
+      setForgotMsg({ type: 'error', text: 'Enter your EmployeeForce ID so we can find your account.' })
+      return
+    }
+    const emp = getEmployeeById(cleanId)
+    // Migrated accounts recover by email; everyone else still goes through HR.
+    if (emp && emp.authEnabled && emp.email && supabaseEnabled) {
+      setForgotBusy(true)
+      const { error } = await supabase.auth.resetPasswordForEmail(emp.email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      })
+      setForgotBusy(false)
+      if (error) {
+        setForgotMsg({ type: 'error', text: error.message || 'Could not send the reset link.' })
         return
       }
-      if (remember) {
-        localStorage.setItem('hr_remember_id', id)
-      } else {
-        localStorage.removeItem('hr_remember_id')
-      }
-      navigate('/', { replace: true })
-    }, 400)
+      setForgotMsg({ type: 'success', text: 'If that account has a password login, a reset link is on its way to the email on file.' })
+      return
+    }
+    setForgotMsg({ type: 'info', text: 'This account still uses a PIN. Please contact your HR Administrator or Reporting Manager to have it reset from the Profiles section.' })
   }
 
   return (
@@ -92,7 +124,7 @@ export default function Login() {
           <span className="brand-mark brand-mark--lg" aria-hidden="true">
             <Briefcase size={18} strokeWidth={2.25} />
           </span>
-          WorkBuddy
+          EmployeeForce
         </div>
         <div>
           <h1 className="login-brand-headline">Everything your team needs, in one place.</h1>
@@ -113,7 +145,7 @@ export default function Login() {
         <span className="brand-mark brand-mark--lg" aria-hidden="true">
           <Briefcase size={18} strokeWidth={2.25} />
         </span>
-        <span className="login-brand-compact-name">WorkBuddy</span>
+        <span className="login-brand-compact-name">EmployeeForce</span>
       </div>
 
       <div className="login-form-panel" ref={formPanelRef}>
@@ -124,18 +156,18 @@ export default function Login() {
               <AnimatedThemeToggle />
             </div>
           </div>
-          <p className="login-sub">Log in to WorkBuddy — {settings.companyName}</p>
+          <p className="login-sub">Log in to EmployeeForce — {settings.companyName}</p>
 
           <form onSubmit={handleSubmit}>
             <label className="field field-icon-field">
-              <span>WorkBuddy ID</span>
+              <span>EmployeeForce ID</span>
               <div className="field-icon-row">
                 <User className="field-ico" size={16} />
                 <input
                   ref={idInputRef}
                   value={id}
                   onChange={(e) => setId(e.target.value)}
-                  placeholder="Enter your WorkBuddy ID"
+                  placeholder="Enter your EmployeeForce ID"
                   autoFocus
                 />
               </div>
@@ -179,9 +211,9 @@ export default function Login() {
                 ref={forgotPinRef}
                 type="button"
                 className="login-forgot-pin"
-                onClick={() => setShowForgotPin(true)}
+                onClick={openForgot}
               >
-                Forgot PIN?
+                Forgot PIN or password?
               </button>
             </div>
 
@@ -216,7 +248,7 @@ export default function Login() {
             {showDemo && (
               <ul>
                 <li>Employee &mdash; <code>EMP001</code> / PIN <code>1111</code></li>
-                <li>HR / Admin &mdash; <code>ADM001</code> / PIN <code>0000</code></li>
+                <li>HR / Admin &mdash; <code>ADM001</code> / password login</li>
                 <li>IT Support &mdash; <code>IT001</code> / PIN <code>5555</code></li>
                 <li>Driver &mdash; <code>DRV01</code> / PIN <code>1234</code></li>
               </ul>
@@ -226,21 +258,40 @@ export default function Login() {
       </div>
 
       {showForgotPin && (
-        <Modal onClose={() => setShowForgotPin(false)} title="Forgot PIN?">
+        <Modal onClose={() => setShowForgotPin(false)} title="Reset your access">
           <div className="modal-form">
             <p className="hint first">
-              If you have forgotten your PIN, please contact your <strong>HR Administrator</strong> or <strong>Reporting Manager</strong> to have it reset.
+              Enter your EmployeeForce ID. If your account uses a password, we'll email a secure link to set a new one.
             </p>
-            <p className="hint">
-              They can generate a new PIN for you from the <strong>Profiles</strong> section in the admin panel.
-            </p>
+            <label className="field">
+              <span>EmployeeForce ID</span>
+              <input
+                value={forgotId}
+                onChange={(e) => setForgotId(e.target.value)}
+                placeholder="e.g. ADM001"
+                autoFocus
+              />
+            </label>
+            {forgotMsg && (
+              forgotMsg.type === 'error'
+                ? <div className="error-box">{forgotMsg.text}</div>
+                : <p className="hint">{forgotMsg.text}</p>
+            )}
             <div className="button-row">
               <button
                 type="button"
                 className="btn btn-primary"
+                onClick={handleForgot}
+                disabled={forgotBusy}
+              >
+                {forgotBusy ? 'Sending…' : 'Send reset link'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-light"
                 onClick={() => setShowForgotPin(false)}
               >
-                Got it
+                Cancel
               </button>
             </div>
           </div>

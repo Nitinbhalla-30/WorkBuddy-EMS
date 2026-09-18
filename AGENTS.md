@@ -1,4 +1,4 @@
-# WorkBuddy EMS — Agent Instructions
+# EmployeeForce EMS — Agent Instructions
 
 ## Graphify knowledge graph (query-first)
 

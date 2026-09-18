@@ -1,5 +1,5 @@
 ---
-name: WorkBuddy EMS
+name: EmployeeForce EMS
 description: "A precision employee management cockpit — clean, efficient, trustworthy, with warm modern inviting details."
 colors:
   trust-teal: "#0f766e"
@@ -118,13 +118,13 @@ components:
     padding: "9px 12px"
 ---
 
-# Design System: WorkBuddy EMS
+# Design System: EmployeeForce EMS
 
 ## Overview
 
 **Creative North Star: "The Operations Cockpit"**
 
-WorkBuddy EMS is a precision instrument for employee management — a cockpit where every gauge, switch, and indicator earns its place through utility. The visual language communicates calm authority: the admin who opens this system at 9 AM should immediately feel oriented, informed, and in control. Data-dense tables, status chips, and stat cards are scannable at a glance because every pixel has a job.
+EmployeeForce EMS is a precision instrument for employee management — a cockpit where every gauge, switch, and indicator earns its place through utility. The visual language communicates calm authority: the admin who opens this system at 9 AM should immediately feel oriented, informed, and in control. Data-dense tables, status chips, and stat cards are scannable at a glance because every pixel has a job.
 
 But precision does not mean cold. The modern & inviting mood lives in the details: the warm teal that greets you on the login brand panel, the confident weight of a primary button press, the gentle amber glow of a pickup card, the satisfying pill-shape of a status tab. Rounded corners (8–14px) keep surfaces friendly without feeling casual. The Plus Jakarta Sans typeface carries personality in its geometric curves while maintaining professional legibility at small sizes. The system sits between sterile enterprise and flashy consumer — it is neither a gray bureaucratic form nor a gradient-drenched startup toy. It is a well-crafted tool that respects the person using it.
 
@@ -141,7 +141,7 @@ But precision does not mean cold. The modern & inviting mood lives in the detail
 A focused palette led by Trust Teal, supported by slate neutrals for structure, and accented with semantic green, warm amber, alert red, and ocean blue for information.
 
 ### Primary
-- **Trust Teal** (#0f766e): The system's identity color. Used on primary buttons, active navigation, brand marks, links, focus rings, and any element that says "this is WorkBuddy." Deep variant (#115e59) for hover states. Bright variant (#2dd4bf) for dark mode.
+- **Trust Teal** (#0f766e): The system's identity color. Used on primary buttons, active navigation, brand marks, links, focus rings, and any element that says "this is EmployeeForce." Deep variant (#115e59) for hover states. Bright variant (#2dd4bf) for dark mode.
 
 ### Secondary
 - **Ocean Blue** (#0369a1): Informational tone for charts, task status (To Do), and cool-accent contexts. Harmonizes with teal without competing. Dark mode shifts to sky blue (#38bdf8).

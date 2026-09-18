@@ -4,11 +4,12 @@ import { getProfileForEmployee, getSettings, getUnreadAnnouncementCount, getTeam
 import { profilePhotoUrl } from '../utils/profile.js'
 import Avatar from './Avatar.jsx'
 import Modal from './Modal.jsx'
+import ChangePasswordModal from './ChangePasswordModal.jsx'
 import NotificationBell from './NotificationBell.jsx'
 import AnimatedThemeToggle from './ui/animated-theme-toggle.tsx'
 import { OriginButton } from './ui/origin-button.tsx'
 import { useState, useEffect } from 'react'
-import { Banknote, Briefcase, CalendarDays, CalendarHeart, CarFront, CircleUser, Clock, Contact, LayoutDashboard, ListTodo, LogOut, Megaphone, MessageSquareText, PanelLeftClose, PanelLeftOpen, ReceiptText, Settings, Shuffle, Users, Wrench, X, Timer } from 'lucide-react'
+import { Banknote, Briefcase, CalendarDays, CalendarHeart, CarFront, CircleUser, Clock, Contact, KeyRound, LayoutDashboard, ListTodo, LogOut, Megaphone, MessageSquareText, PanelLeftClose, PanelLeftOpen, ReceiptText, Settings, Shuffle, Users, Wrench, X, Timer } from 'lucide-react'
 
 // Sidebar collapse-to-rail is a display preference, not app data → localStorage.
 // Guarded because the app already tolerates storage being unavailable.
@@ -38,6 +39,7 @@ export default function Layout() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [teamUnreadCount, setTeamUnreadCount] = useState(0)
   const [confirmLogout, setConfirmLogout] = useState(false)
+  const [showChangePw, setShowChangePw] = useState(false)
   const [navCollapsed, setNavCollapsed] = useState(readNavCollapsed)
 
   const toggleNav = () => {
@@ -162,7 +164,7 @@ export default function Layout() {
           <span className="brand-mark" aria-hidden="true">
             <Briefcase size={16} strokeWidth={2.25} />
           </span>
-          WorkBuddy - {settings.companyName}
+          EmployeeForce - {settings.companyName}
         </div>
         <div className="topbar-right">
           <span className="who">
@@ -183,6 +185,15 @@ export default function Layout() {
           <div className="theme-toggle-wrap">
             <AnimatedThemeToggle />
           </div>
+          {user?.authEnabled && (
+            <OriginButton
+              className="h-10 rounded-lg px-4 text-[14px] data-[hovered=true]:text-white dark:data-[hovered=true]:text-white"
+              fillClassName="bg-[#0f766e] dark:bg-[#0f766e]"
+              onClick={() => setShowChangePw(true)}
+            >
+              <KeyRound size={16} aria-hidden="true" /> Change password
+            </OriginButton>
+          )}
           <OriginButton
             className="h-10 rounded-lg px-4 text-[14px] data-[hovered=true]:text-white dark:data-[hovered=true]:text-white"
             fillClassName="bg-[#e81123] dark:bg-[#e81123]"
@@ -265,6 +276,8 @@ export default function Layout() {
           </div>
         </Modal>
       )}
+
+      {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
     </div>
   )
 }

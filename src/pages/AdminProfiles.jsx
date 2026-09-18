@@ -292,7 +292,7 @@ export default function EmployeeRecords() {
   }, [employees, addForm.department])
 
   function openAddEmployee() {
-    setAddForm({ name: '', id: getNextEmployeeId(), department: '', designation: '', isManager: false, managerId: '', dateJoined: '', basic: '', hra: '', other: '', tdsMonthly: '', shiftId: '', weekOffDays: [] })
+    setAddForm({ name: '', id: getNextEmployeeId(), department: '', designation: '', isManager: false, managerId: '', dateJoined: '', email: '', basic: '', hra: '', other: '', tdsMonthly: '', shiftId: '', weekOffDays: [] })
     setAddError('')
     setShowAdd(true)
   }
@@ -305,8 +305,13 @@ export default function EmployeeRecords() {
   }
 
   function handleAddEmployee() {
-    if (!addForm.name.trim() || !addForm.id.trim() || !addForm.department.trim() || !addForm.designation.trim()) {
-      setAddError('Name, ID, department, and designation are required.')
+    if (!addForm.name.trim() || !addForm.id.trim() || !addForm.department.trim() || !addForm.designation.trim() || !addForm.email.trim()) {
+      setAddError('Name, ID, department, designation, and email are required.')
+      return
+    }
+    const email = addForm.email.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAddError('Please enter a valid email address (e.g. name@company.com). It is used for password reset.')
       return
     }
     const result = addEmployee({
@@ -317,6 +322,7 @@ export default function EmployeeRecords() {
       isManager: addForm.isManager,
       managerId: addForm.managerId || null,
       dateJoined: addForm.dateJoined,
+      email,
       shiftId: addForm.shiftId || null,
       weekOffDays: addForm.weekOffDays,
       salary: {
@@ -760,6 +766,17 @@ export default function EmployeeRecords() {
                 />
               </label>
             </div>
+
+            <label className="field">
+              <span>Work email *</span>
+              <input
+                type="email"
+                value={addForm.email}
+                onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                placeholder="e.g. priya.sharma@company.com"
+              />
+              <span className="hint">We use this address for signing in and for password reset, so it must be correct.</span>
+            </label>
 
             <div className="two-col">
               <label className="field">

@@ -39,7 +39,7 @@ export default function DriverView() {
               <span className="brand-mark" aria-hidden="true">
                 <Briefcase size={14} strokeWidth={2.25} />
               </span>
-              WorkBuddy — Driver View
+              EmployeeForce — Driver View
             </span>
             <div className="theme-toggle-wrap">
               <AnimatedThemeToggle />
@@ -86,7 +86,7 @@ export default function DriverView() {
             <span className="brand-mark" aria-hidden="true">
               <Briefcase size={14} strokeWidth={2.25} />
             </span>
-            WorkBuddy — Driver View
+            EmployeeForce — Driver View
           </span>
           <div className="theme-toggle-wrap">
             <AnimatedThemeToggle />

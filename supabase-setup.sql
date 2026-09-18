@@ -1,4 +1,4 @@
--- WorkBuddy EMS — Supabase setup
+-- EmployeeForce EMS — Supabase setup
 -- Run this once in the Supabase Dashboard: SQL Editor -> New query -> Run.
 --
 -- The app keeps each data collection (employees, attendance, leaves, ...)

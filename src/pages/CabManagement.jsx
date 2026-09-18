@@ -524,7 +524,7 @@ function DriversTab({ drivers, bump, notify }) {
           <tr>
             <SortableTh label="Name" keyName="name" sortKey={driversTable.sortKey} sortDir={driversTable.sortDir} onSort={driversTable.toggleSort} />
             <SortableTh label="Mobile" keyName="mobile" sortKey={driversTable.sortKey} sortDir={driversTable.sortDir} onSort={driversTable.toggleSort} />
-            <SortableTh label="WorkBuddy ID" keyName="id" sortKey={driversTable.sortKey} sortDir={driversTable.sortDir} onSort={driversTable.toggleSort} />
+            <SortableTh label="EmployeeForce ID" keyName="id" sortKey={driversTable.sortKey} sortDir={driversTable.sortDir} onSort={driversTable.toggleSort} />
             <th>PIN</th>
             <th>Action</th>
           </tr>
@@ -2078,7 +2078,7 @@ function TodayTab({ employees, bump, notify }) {
             <tr>
               <SortableTh label="Driver" keyName="name" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
               <SortableTh label="Mobile" keyName="mobile" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
-              <SortableTh label="WorkBuddy ID" keyName="id" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
+              <SortableTh label="EmployeeForce ID" keyName="id" sortKey={runsTable.sortKey} sortDir={runsTable.sortDir} onSort={runsTable.toggleSort} />
               <th>Action</th>
             </tr>
           </thead>

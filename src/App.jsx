@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './context/AuthContext.jsx'
 import Layout from './components/Layout.jsx'
 import Login from './pages/Login.jsx'
+import ResetPassword from './pages/ResetPassword.jsx'
 import EmployeeDashboard from './pages/EmployeeDashboard.jsx'
 import EmployeeLeaves from './pages/EmployeeLeaves.jsx'
 import EmployeeSalary from './pages/EmployeeSalary.jsx'
@@ -92,6 +93,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route
         element={

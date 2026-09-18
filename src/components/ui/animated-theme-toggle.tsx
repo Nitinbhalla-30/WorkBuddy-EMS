@@ -7,7 +7,7 @@ import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 
 // real next-themes state (persisted, SSR-safe) instead of local useState, the
 // morph is driven by one spring MotionValue so it reads as a real draw-on /
 // draw-off instead of a plain crossfade, and the button frame uses the
-// WorkBuddy icon-button tokens (.theme-toggle in styles.css).
+// EmployeeForce icon-button tokens (.theme-toggle in styles.css).
 // Pressing it is a plain theme swap — no page-level transition animation.
 // Icon geometry is authored on a 25x25 grid; stroke 2.1 at 18px matches the
 // 18px / weight-2 lucide icons it sits next to in the topbar.

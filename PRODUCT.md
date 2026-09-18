@@ -17,13 +17,13 @@ web
 
 ## Product Purpose
 
-WorkBuddy EMS is a unified employee management system that replaces scattered spreadsheets, WhatsApp groups, and disconnected tools with a single, coherent platform. It covers the full employee lifecycle: attendance tracking, leave management (with India-specific probation rules), salary computation (PF/ESI), task management, cab coordination, reimbursements, queries & grievances, IT help desk, and company announcements.
+EmployeeForce EMS is a unified employee management system that replaces scattered spreadsheets, WhatsApp groups, and disconnected tools with a single, coherent platform. It covers the full employee lifecycle: attendance tracking, leave management (with India-specific probation rules), salary computation (PF/ESI), task management, cab coordination, reimbursements, queries & grievances, IT help desk, and company announcements.
 
 Success means: employees can self-serve without asking HR; admins can process payroll, approve leaves, and manage cabs in one place; drivers get a clear daily run sheet; and the company has a single source of truth for all employee operations.
 
 ## Positioning
 
-An all-in-one employee management platform purpose-built for micro and small companies in India. Unlike enterprise HR suites (SAP SuccessFactors, Darwinbox) that are expensive and over-engineered for small teams, WorkBuddy EMS is lightweight, opinionated, and includes India-specific compliance (PF, ESI, professional tax rules, Indian holidays) and unique operational modules like cab management with driver run sheets that generic HR tools do not cover.
+An all-in-one employee management platform purpose-built for micro and small companies in India. Unlike enterprise HR suites (SAP SuccessFactors, Darwinbox) that are expensive and over-engineered for small teams, EmployeeForce EMS is lightweight, opinionated, and includes India-specific compliance (PF, ESI, professional tax rules, Indian holidays) and unique operational modules like cab management with driver run sheets that generic HR tools do not cover.
 
 ## Operating Context
 
@@ -57,7 +57,7 @@ An all-in-one employee management platform purpose-built for micro and small com
 
 ## Brand Commitments
 
-- **Name:** WorkBuddy
+- **Name:** EmployeeForce
 - **Primary color:** Trust Teal (#0F766E light / #2DD4BF dark)
 - **Typeface:** Plus Jakarta Sans (400–800 weights)
 - **Icon style:** lucide-react SVG icons only — no emoji anywhere in UI

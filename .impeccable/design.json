@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-08-19T11:15:00+05:30",
-  "title": "Design System: WorkBuddy EMS",
+  "title": "Design System: EmployeeForce EMS",
   "extensions": {
     "colorMeta": {
       "trust-teal": {
@@ -128,7 +128,7 @@
   ],
   "narrative": {
     "northStar": "The Operations Cockpit",
-    "overview": "WorkBuddy EMS is a precision instrument for employee management — a cockpit where every gauge, switch, and indicator earns its place through utility. The visual language communicates calm authority: the admin who opens this system at 9 AM should immediately feel oriented, informed, and in control.\n\nBut precision does not mean cold. The modern & inviting mood lives in the details: the warm teal that greets you on the login brand panel, the confident weight of a primary button press, the gentle amber glow of a pickup card. Rounded corners (8–14px) keep surfaces friendly without feeling casual. The system sits between sterile enterprise and flashy consumer.",
+    "overview": "EmployeeForce EMS is a precision instrument for employee management — a cockpit where every gauge, switch, and indicator earns its place through utility. The visual language communicates calm authority: the admin who opens this system at 9 AM should immediately feel oriented, informed, and in control.\n\nBut precision does not mean cold. The modern & inviting mood lives in the details: the warm teal that greets you on the login brand panel, the confident weight of a primary button press, the gentle amber glow of a pickup card. Rounded corners (8–14px) keep surfaces friendly without feeling casual. The system sits between sterile enterprise and flashy consumer.",
     "keyCharacteristics": [
       "Scanability first — tables, stat cards, and status chips designed for rapid visual parsing",
       "Tactile confidence — buttons have weight, cards feel solid, inputs respond clearly",

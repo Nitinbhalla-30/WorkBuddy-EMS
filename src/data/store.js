@@ -1036,8 +1036,9 @@ export function updateEmployeeTeam(employeeId, team) {
   return updated[idx]
 }
 
-// Add a new employee record. `data` = { id, name, department, designation, isManager, managerId, dateJoined, salary, shiftId, weekOffDays }.
+// Add a new employee record. `data` = { id, name, department, designation, isManager, managerId, dateJoined, email, salary, shiftId, weekOffDays }.
 // A default PIN of "1234" is assigned so the employee can log in immediately.
+// `email` is required by the caller: it is the address used for password reset.
 export function addEmployee(data) {
   const all = getEmployees()
   if (all.some((e) => e.id === data.id)) return null
@@ -1051,7 +1052,7 @@ export function addEmployee(data) {
     isManager: !!data.isManager,
     managerId: data.managerId || null,
     dateJoined: data.dateJoined || '',
-    email: '',
+    email: data.email || '',
     status: 'active',
     salary: data.salary || { basic: 0, hra: 0, other: 0, tdsMonthly: 0 },
     shiftId: data.shiftId || null,
